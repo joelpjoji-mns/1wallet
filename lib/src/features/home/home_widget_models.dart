@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../utils/date_range_utils.dart';
+
+export '../../utils/date_range_utils.dart';
+
 enum HomeDashboardWidgetId {
   balanceHero('balanceHero'),
   accountGrid('accountGrid'),
@@ -45,37 +49,25 @@ const defaultHomeWidgetOrder = [
 const standardHomeDateFilterOptions = [
   'This week',
   'This month',
-  'Last month',
   '30 days',
   '6 months',
   'This year',
   'All time',
+  'Custom range',
 ];
 
-const recentRecordsDateFilterOptions = [
-  'Today',
-  'This week',
-  '2 weeks',
-  'This month',
-];
+const recentRecordsDateFilterOptions = standardHomeDateFilterOptions;
 
-const futureHomeDateFilterOptions = [
-  'This week',
-  'This month',
-  '30 days',
-  '6 months',
-  'This year',
-  'All time',
-];
+const futureHomeDateFilterOptions = standardHomeDateFilterOptions;
 
 const homeWidgetDatePresets = [
   'thisWeek',
   'thisMonth',
-  'lastMonth',
   '30Days',
   '6Months',
   'thisYear',
   'allTime',
+  'custom',
 ];
 
 const homeWidgetDateLabels = {
@@ -87,6 +79,7 @@ const homeWidgetDateLabels = {
   '1Year': '1 year',
   'thisYear': 'This year',
   'allTime': 'All time',
+  'custom': 'Custom range',
   'This week': 'This week',
   'This month': 'This month',
   'Last month': 'Last month',
@@ -95,6 +88,7 @@ const homeWidgetDateLabels = {
   '1 year': '1 year',
   'This year': 'This year',
   'All time': 'All time',
+  'Custom range': 'Custom range',
   'today': 'Today',
   'Today': 'Today',
   '1_week': 'This week',
@@ -109,6 +103,15 @@ const currencyRateDatePresets = standardHomeDateFilterOptions;
 DateTimeRange homeWidgetDateRange(String period) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
+  if (period.startsWith('custom:') || period.startsWith('Custom:')) {
+    final range = parseCustomDateRange(period);
+    if (range != null) {
+      return DateTimeRange(
+        start: range.start,
+        end: DateTime(range.end.year, range.end.month, range.end.day).add(const Duration(days: 1)),
+      );
+    }
+  }
   switch (period) {
     case 'Today':
     case 'today':
@@ -188,6 +191,12 @@ DateTimeRange homeWidgetDateRange(String period) {
 DateTime homeWidgetFutureLimit(String period) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
+  if (period.startsWith('custom:') || period.startsWith('Custom:')) {
+    final range = parseCustomDateRange(period);
+    if (range != null) {
+      return DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59, 999);
+    }
+  }
   switch (period) {
     case 'This week':
     case 'thisWeek':
@@ -274,6 +283,9 @@ List<String> allowedDatePresetsForHomeWidget(String id) {
 }
 
 String homeWidgetDateLabel(String preset) {
+  if (preset.startsWith('custom:') || preset.startsWith('Custom:')) {
+    return formatCustomDateRangeLabel(preset);
+  }
   return homeWidgetDateLabels[preset] ?? preset;
 }
 

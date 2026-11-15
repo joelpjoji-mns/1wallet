@@ -73,7 +73,7 @@ void main() {
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(AppBackAction), findsOneWidget);
       expect(find.text('Review & Inbox'), findsOneWidget);
-      expect(find.byTooltip('Capture diagnostics'), findsOneWidget);
+      expect(find.byTooltip('Capture tools'), findsOneWidget);
     },
   );
 

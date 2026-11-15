@@ -173,7 +173,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       child: Icon(
                         Icons.chevron_left_rounded,
                         size: 20,
-                        color: Colors.white,
                       ),
                     ),
                     label: 'Previous month',
@@ -190,7 +189,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       child: Icon(
                         Icons.today_rounded,
                         size: 18,
-                        color: Colors.white,
                       ),
                     ),
                     label: 'Current month',
@@ -207,7 +205,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       child: Icon(
                         Icons.chevron_right_rounded,
                         size: 20,
-                        color: Colors.white,
                       ),
                     ),
                     label: 'Next month',
@@ -715,13 +712,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       );
     }
 
-    final glassFinish = ref.watch(glassFinishProvider);
-
     if (isDesktop) {
-      g1455.showGlassDialog<void>(
+      showDialog<void>(
         context: context,
-        barrierDismissible: true,
-        builder: (dialogContext) => Center(
+        builder: (dialogContext) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: buildCardContent(dialogContext),
@@ -729,18 +725,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ),
       );
     } else {
-      g1455.showGlassSheet<void>(
+      showAppSheet<void>(
         context: context,
-        finish: glassFinish,
-        showGrabber: true,
-        barrierDismissible: true,
-        constraints: const BoxConstraints(maxWidth: 540),
+        maxWidth: 540,
         builder: (sheetContext) => SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: buildCardContent(sheetContext),
           ),
         ),
@@ -835,9 +825,12 @@ class _CalendarFilterCard extends StatelessWidget {
         ),
         decoration: active
             ? BoxDecoration(
-                color: scheme.primaryContainer.withValues(alpha: 0.39),
+                color: scheme.primaryContainer.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(color: scheme.primary, width: 0.8),
+                border: Border.all(
+                  color: scheme.primary.withValues(alpha: 0.70),
+                  width: 0.8,
+                ),
               )
             : null,
         child: Row(
@@ -940,10 +933,16 @@ class _DayCell extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.xxs),
         decoration: BoxDecoration(
-          color: isToday ? scheme.primaryContainer : scheme.surfaceContainer,
+          color: isToday
+              ? scheme.primaryContainer.withValues(alpha: 0.55)
+              : (inMonth
+                  ? scheme.surfaceContainer.withValues(alpha: 0.70)
+                  : scheme.surfaceContainer.withValues(alpha: 0.25)),
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
-            color: isToday ? scheme.primary : scheme.outlineVariant,
+            color: isToday
+                ? scheme.primary.withValues(alpha: 0.75)
+                : scheme.outlineVariant.withValues(alpha: inMonth ? 0.6 : 0.25),
             width: 0.8,
           ),
         ),

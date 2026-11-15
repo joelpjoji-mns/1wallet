@@ -24,6 +24,38 @@ void main() {
       final allTime = homeWidgetDateRange('All time');
       expect(allTime.start, DateTime(1970, 1, 1));
       expect(allTime.end, DateTime(2100, 1, 1));
+
+      final sixMonths = homeWidgetDateRange('6 months');
+      expect(sixMonths.start, DateTime(now.year, now.month - 6, now.day));
+
+      final custom = homeWidgetDateRange('custom:2026-05-01..2026-05-15');
+      expect(custom.start, DateTime(2026, 5, 1));
+      expect(custom.end, DateTime(2026, 5, 16));
+    });
+
+    test('standard options include exactly the 7 expected options', () {
+      expect(standardHomeDateFilterOptions, [
+        'This week',
+        'This month',
+        '30 days',
+        '6 months',
+        'This year',
+        'All time',
+        'Custom range',
+      ]);
+      expect(recentRecordsDateFilterOptions, standardHomeDateFilterOptions);
+      expect(futureHomeDateFilterOptions, standardHomeDateFilterOptions);
+    });
+
+    test('custom date range formatting and parsing', () {
+      final range = parseCustomDateRange('custom:2026-03-01..2026-03-10');
+      expect(range, isNotNull);
+      expect(range!.start, DateTime(2026, 3, 1));
+      expect(range.end, DateTime(2026, 3, 10));
+
+      final label = formatCustomDateRangeLabel('custom:2026-03-01..2026-03-10');
+      expect(label, contains('Mar 1'));
+      expect(label, contains('Mar 10, 2026'));
     });
   });
 
@@ -107,6 +139,20 @@ void main() {
         final allTimeFlow = flowForPeriod(state, 'All time');
         expect(allTimeFlow.income.amountMinor, equals(50000));
         expect(allTimeFlow.expense.amountMinor, equals(30000));
+
+        final customIncomeFlow = flowForPeriod(
+          state,
+          'custom:${currentMonthDate.year}-${currentMonthDate.month.toString().padLeft(2, '0')}-01..${currentMonthDate.year}-${currentMonthDate.month.toString().padLeft(2, '0')}-20',
+        );
+        expect(customIncomeFlow.income.amountMinor, equals(50000));
+        expect(customIncomeFlow.expense.amountMinor, equals(0));
+
+        final customEmptyFlow = flowForPeriod(
+          state,
+          'custom:2010-01-01..2010-01-15',
+        );
+        expect(customEmptyFlow.income.amountMinor, equals(0));
+        expect(customEmptyFlow.expense.amountMinor, equals(0));
       },
     );
   });

@@ -282,27 +282,55 @@ class _LiveWidgetPreview extends ConsumerWidget {
     WidgetRef ref,
     String datePreset,
   ) async {
+    final isCustom = datePreset.startsWith('custom:');
+    final activeCustomLabel =
+        isCustom ? homeWidgetDateLabel(datePreset) : 'Custom range';
+    final presets = allowedDatePresetsForHomeWidget(widgetId.storageKey);
+
     final next = await showFullScreenPicker<String>(
       context: context,
       title: 'Widget period',
       searchable: false,
       selectedValue: datePreset,
       options: [
-        for (final preset in allowedDatePresetsForHomeWidget(
-          widgetId.storageKey,
-        ))
-          PickerOption(value: preset, title: homeWidgetDateLabel(preset)),
+        for (final preset in presets)
+          if (preset == 'custom' || preset == 'Custom range')
+            PickerOption(
+              value: isCustom ? datePreset : 'custom',
+              title: activeCustomLabel,
+            )
+          else
+            PickerOption(value: preset, title: homeWidgetDateLabel(preset)),
       ],
     );
-    if (next != null && next != datePreset) {
-      final filters = Map<String, String>.from(preferences.homeWidgetFilters);
-      filters[widgetId.storageKey] = next;
-      await ref
-          .read(ledgerProvider.notifier)
-          .updatePreferencesWith(
-            (livePreferences) =>
-                livePreferences.copyWith(homeWidgetFilters: filters),
-          );
+    if (next != null) {
+      String resolved = next;
+      if (next == 'custom' ||
+          next == 'Custom range' ||
+          next.startsWith('custom:')) {
+        if (!context.mounted) return;
+        final initial =
+            parseCustomDateRange(next) ?? parseCustomDateRange(datePreset);
+        final picked = await showDateRangePicker(
+          context: context,
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+          initialDateRange: initial,
+          helpText: 'Select widget date range',
+        );
+        if (picked == null) return;
+        resolved = formatCustomDateRangeKey(picked);
+      }
+      if (resolved != datePreset) {
+        final filters = Map<String, String>.from(preferences.homeWidgetFilters);
+        filters[widgetId.storageKey] = resolved;
+        await ref
+            .read(ledgerProvider.notifier)
+            .updatePreferencesWith(
+              (livePreferences) =>
+                  livePreferences.copyWith(homeWidgetFilters: filters),
+            );
+      }
     }
   }
 

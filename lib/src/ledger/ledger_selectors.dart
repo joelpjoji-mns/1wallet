@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../data/ledger_models.dart';
 import '../design/tokens.dart';
+import '../utils/date_range_utils.dart';
 
 const incomeTypes = {
   'income',
@@ -453,61 +454,73 @@ Money totalBalance(
   DateTime start;
   DateTime end;
 
-  switch (period) {
-    case 'Today':
-    case 'today':
-      start = today;
-      end = today.add(const Duration(days: 1));
-      break;
-    case 'This week':
-    case 'thisWeek':
-      final diff = now.weekday - 1; // 0 for Monday
-      start = today.subtract(Duration(days: diff));
-      end = start.add(const Duration(days: 7));
-      break;
-    case 'This month':
-    case 'thisMonth':
+  if (period.startsWith('custom:') || period.startsWith('Custom:')) {
+    final range = parseCustomDateRange(period);
+    if (range != null) {
+      start = range.start;
+      end = DateTime(range.end.year, range.end.month, range.end.day)
+          .add(const Duration(days: 1));
+    } else {
       start = DateTime(now.year, now.month);
       end = DateTime(now.year, now.month + 1);
-      break;
-    case 'Last month':
-    case 'lastMonth':
-    case 'last_month':
-      start = DateTime(now.year, now.month - 1);
-      end = DateTime(now.year, now.month);
-      break;
-    case '30 days':
-    case '30_days':
-    case '30Days':
-      start = today.subtract(const Duration(days: 30));
-      end = today.add(const Duration(days: 1));
-      break;
-    case '6 months':
-    case '6_months':
-    case '6Months':
-      start = DateTime(now.year, now.month - 6, now.day);
-      end = today.add(const Duration(days: 1));
-      break;
-    case '1 year':
-    case '1_year':
-    case '1Year':
-      start = today.subtract(const Duration(days: 365));
-      end = today.add(const Duration(days: 1));
-      break;
-    case 'This year':
-    case 'thisYear':
-      start = DateTime(now.year, 1, 1);
-      end = DateTime(now.year + 1, 1, 1);
-      break;
-    case 'All time':
-    case 'allTime':
-    case 'all':
-      start = DateTime(1970, 1, 1);
-      end = DateTime(2100, 1, 1);
-      break;
-    default:
-      start = DateTime(now.year, now.month);
-      end = DateTime(now.year, now.month + 1);
+    }
+  } else {
+    switch (period) {
+      case 'Today':
+      case 'today':
+        start = today;
+        end = today.add(const Duration(days: 1));
+        break;
+      case 'This week':
+      case 'thisWeek':
+        final diff = now.weekday - 1; // 0 for Monday
+        start = today.subtract(Duration(days: diff));
+        end = start.add(const Duration(days: 7));
+        break;
+      case 'This month':
+      case 'thisMonth':
+        start = DateTime(now.year, now.month);
+        end = DateTime(now.year, now.month + 1);
+        break;
+      case 'Last month':
+      case 'lastMonth':
+      case 'last_month':
+        start = DateTime(now.year, now.month - 1);
+        end = DateTime(now.year, now.month);
+        break;
+      case '30 days':
+      case '30_days':
+      case '30Days':
+        start = today.subtract(const Duration(days: 30));
+        end = today.add(const Duration(days: 1));
+        break;
+      case '6 months':
+      case '6_months':
+      case '6Months':
+        start = DateTime(now.year, now.month - 6, now.day);
+        end = today.add(const Duration(days: 1));
+        break;
+      case '1 year':
+      case '1_year':
+      case '1Year':
+        start = today.subtract(const Duration(days: 365));
+        end = today.add(const Duration(days: 1));
+        break;
+      case 'This year':
+      case 'thisYear':
+        start = DateTime(now.year, 1, 1);
+        end = DateTime(now.year + 1, 1, 1);
+        break;
+      case 'All time':
+      case 'allTime':
+      case 'all':
+        start = DateTime(1970, 1, 1);
+        end = DateTime(2100, 1, 1);
+        break;
+      default:
+        start = DateTime(now.year, now.month);
+        end = DateTime(now.year, now.month + 1);
+    }
   }
 
   final displayCurrency = targetCurrency ?? state.preferences.displayCurrency;

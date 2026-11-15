@@ -38,9 +38,8 @@ class AddRecordTypeTabs extends StatelessWidget {
               const SizedBox(width: AppSpacing.xxs),
               Text(
                 'Expense',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   fontWeight: selectedIndex == 0 ? FontWeight.w700 : FontWeight.w600,
-                  fontSize: 13,
                   color: selectedIndex == 0 ? scheme.error : scheme.onSurfaceVariant,
                 ),
               ),
@@ -56,9 +55,8 @@ class AddRecordTypeTabs extends StatelessWidget {
               const SizedBox(width: AppSpacing.xxs),
               Text(
                 'Income',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   fontWeight: selectedIndex == 1 ? FontWeight.w700 : FontWeight.w600,
-                  fontSize: 13,
                   color: selectedIndex == 1 ? scheme.tertiary : scheme.onSurfaceVariant,
                 ),
               ),
@@ -74,9 +72,8 @@ class AddRecordTypeTabs extends StatelessWidget {
               const SizedBox(width: AppSpacing.xxs),
               Text(
                 'Transfer',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   fontWeight: selectedIndex == 2 ? FontWeight.w700 : FontWeight.w600,
-                  fontSize: 13,
                   color: selectedIndex == 2 ? scheme.primary : scheme.onSurfaceVariant,
                 ),
               ),

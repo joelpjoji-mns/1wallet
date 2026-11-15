@@ -62,7 +62,6 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                   icon: const Icon(
                     Icons.refresh_rounded,
                     size: 20,
-                    color: Colors.white,
                   ),
                   label: 'Refresh rates',
                   onPressed: () async {
@@ -87,7 +86,6 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                   icon: const Icon(
                     Icons.currency_exchange_rounded,
                     size: 20,
-                    color: Colors.white,
                   ),
                   label: 'Choose display currency',
                   onPressed: () => _chooseDisplayCurrency(context, ref, state),

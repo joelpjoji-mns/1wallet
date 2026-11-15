@@ -28,6 +28,17 @@ abstract final class AppTheme {
           );
 
     final scheme = baseScheme.copyWith(
+      primaryContainer: dark
+          ? Color.lerp(
+              baseScheme.surfaceContainerHigh,
+              baseScheme.primaryContainer,
+              0.65,
+            )
+          : Color.lerp(
+              baseScheme.surfaceContainerHighest,
+              baseScheme.primaryContainer,
+              0.65,
+            ),
       error: dark ? AppColors.dangerDark : AppColors.dangerLight,
       surface: amoled ? AppColors.amoledBackground : baseScheme.surface,
       surfaceContainerLowest: amoled

@@ -21,19 +21,28 @@ class _Rule {
 
 const _brand = 'features/launch/brand_widgets.dart';
 const _login = 'features/login/login_screen.dart';
+const _glassOptics = 'features/settings/glass_effect_screen.dart';
 
 final _featureRules = <_Rule>[
   _Rule(
     'raw radius',
     RegExp(r'Radius\.circular\(\s*[0-9]'),
     'use AppRadii.*',
-    allow: {_brand: 'launch brand art', _login: 'Google sign-in button'},
+    allow: {
+      _brand: 'launch brand art',
+      _login: 'Google sign-in button',
+      _glassOptics: 'interactive glass optics lab & preview canvas',
+    },
   ),
   _Rule(
     'raw font size',
     RegExp(r'fontSize:\s*[0-9]'),
     'use a Theme.textTheme role',
-    allow: {_brand: 'launch brand art', _login: 'Google sign-in button'},
+    allow: {
+      _brand: 'launch brand art',
+      _login: 'Google sign-in button',
+      _glassOptics: 'interactive glass optics lab & preview canvas',
+    },
   ),
   _Rule(
     'literal font family',
@@ -45,12 +54,19 @@ final _featureRules = <_Rule>[
     'hex colour literal',
     RegExp(r'\bColor\(0x'),
     'use a ColorScheme role, scheme.positive or an AppColors token',
-    allow: {_brand: 'launch brand art', _login: 'Google sign-in button'},
+    allow: {
+      _brand: 'launch brand art',
+      _login: 'Google sign-in button',
+      _glassOptics: 'interactive glass optics lab & preview canvas',
+    },
   ),
   _Rule(
     'named Material colour',
     RegExp(r'\bColors\.(?!transparent\b|white\b|black\b)[a-z]\w*'),
     'use a ColorScheme role or scheme.positive',
+    allow: {
+      _glassOptics: 'interactive glass optics lab & preview canvas',
+    },
   ),
   _Rule(
     'inline SnackBar',

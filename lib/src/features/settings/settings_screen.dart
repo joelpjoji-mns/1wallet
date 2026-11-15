@@ -464,7 +464,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Your name'),
-        content: AppGlassTextField(
+        content: TextField(
           controller: controller,
           autofocus: true,
           decoration: const InputDecoration(
@@ -658,7 +658,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
-              AppGlassTextField(
+              TextField(
                 controller: _confirmationController,
                 autofocus: true,
                 decoration: const InputDecoration(

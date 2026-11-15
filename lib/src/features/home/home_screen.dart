@@ -87,7 +87,6 @@ class HomeScreen extends ConsumerWidget {
                   icon: const Icon(
                     Icons.restart_alt_rounded,
                     size: 20,
-                    color: Colors.white,
                   ),
                   label: 'Reset widget order',
                   onPressed: () {
@@ -98,7 +97,6 @@ class HomeScreen extends ConsumerWidget {
                   icon: const Icon(
                     Icons.check_rounded,
                     size: 20,
-                    color: Colors.white,
                   ),
                   label: 'Done reordering widgets',
                   onPressed: () =>

@@ -619,7 +619,7 @@ class _LiveGlassPreview extends StatelessWidget {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(Icons.credit_card, color: Colors.white, size: 16),
+                                    Icon(Icons.credit_card_rounded, color: Colors.white, size: 16),
                                     Text(
                                       'USD',
                                       style: TextStyle(
@@ -683,7 +683,7 @@ class _LiveGlassPreview extends StatelessWidget {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(Icons.account_balance, color: Colors.white, size: 16),
+                                    Icon(Icons.account_balance_rounded, color: Colors.white, size: 16),
                                     Text(
                                       'INR',
                                       style: TextStyle(
@@ -747,7 +747,7 @@ class _LiveGlassPreview extends StatelessWidget {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(Icons.directions_subway, color: Colors.white, size: 16),
+                                    Icon(Icons.directions_subway_rounded, color: Colors.white, size: 16),
                                     Text(
                                       'JPY',
                                       style: TextStyle(

@@ -1,11 +1,9 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-import '../data/ledger_providers.dart';
 import '../design/tokens.dart';
 
 /// A horizontal drag gesture recognizer that only claims gestures moving to the right
@@ -599,7 +597,7 @@ class GlassHeaderButton extends StatelessWidget {
   );
 }
 
-class AppMenuAction extends ConsumerWidget {
+class AppMenuAction extends StatelessWidget {
   const AppMenuAction({
     required this.onPressed,
     this.badge,
@@ -612,8 +610,8 @@ class AppMenuAction extends ConsumerWidget {
   final bool showIndicator;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final finish = ref.watch(glassFinishProvider);
+  Widget build(BuildContext context) {
+    final finish = g1455.GlassTheme.maybeOf(context)?.finish;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final buttonRadius = BorderRadius.circular(14);
 
@@ -705,7 +703,7 @@ class AppMenuAction extends ConsumerWidget {
   }
 }
 
-class HeaderIconButton extends ConsumerWidget {
+class HeaderIconButton extends StatelessWidget {
   const HeaderIconButton({
     required this.icon,
     required this.onPressed,
@@ -737,17 +735,17 @@ class HeaderIconButton extends ConsumerWidget {
   final String? tooltip;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final message = tooltip;
     if (message != null && message.isNotEmpty) {
-      return Tooltip(message: message, child: _buildButton(context, ref));
+      return Tooltip(message: message, child: _buildButton(context));
     }
-    return _buildButton(context, ref);
+    return _buildButton(context);
   }
 
-  Widget _buildButton(BuildContext context, WidgetRef ref) {
+  Widget _buildButton(BuildContext context) {
     final badgeCount = badge ?? 0;
-    final finish = ref.watch(glassFinishProvider);
+    final finish = g1455.GlassTheme.maybeOf(context)?.finish;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
     final buttonRadius = BorderRadius.circular(14);
@@ -1083,7 +1081,7 @@ class SectionCard extends StatelessWidget {
       ),
     );
 
-    if (glass) {
+    if (glass && !AppSurfaces.isAmoled(context)) {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
@@ -1168,7 +1166,7 @@ class MetricTile extends StatelessWidget {
       ),
     );
 
-    if (glass) {
+    if (glass && !AppSurfaces.isAmoled(context)) {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
@@ -1853,7 +1851,7 @@ class PremiumRow extends StatelessWidget {
       ),
     );
 
-    if (glass) {
+    if (glass && !AppSurfaces.isAmoled(context)) {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
@@ -2253,7 +2251,7 @@ class AppPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final interactive = onTap != null || onLongPress != null;
     Widget content = Padding(padding: padding, child: child);
-    if (glass) {
+    if (glass && !AppSurfaces.isAmoled(context)) {
       if (interactive) {
         content = Material(
           color: Colors.transparent,

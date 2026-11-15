@@ -107,17 +107,7 @@ class HomeWidgetCard extends StatelessWidget {
               ] else if (dateFilter != null &&
                   onDateFilterChanged != null) ...[
                 const SizedBox(width: AppSpacing.xs),
-                GlassDropdownPill<String>(
-                  value: dateFilterOptions.contains(dateFilter)
-                      ? dateFilter!
-                      : dateFilterOptions.first,
-                  options: [
-                    for (final option in dateFilterOptions)
-                      GlassDropdownOption(option, option),
-                  ],
-                  semanticLabel: '$title date filter',
-                  onChanged: onDateFilterChanged!,
-                ),
+                _buildDateDropdown(context),
               ] else if (actionLabel != null &&
                   onAction != null &&
                   headerTrailing == null) ...[
@@ -161,6 +151,71 @@ class HomeWidgetCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildDateDropdown(BuildContext context) {
+    final filter = dateFilter!;
+    final isCustom = filter.startsWith('custom:');
+    final activeCustomLabel =
+        isCustom ? homeWidgetDateLabel(filter) : 'Custom range';
+
+    final options = <GlassDropdownOption<String>>[
+      for (final option in dateFilterOptions)
+        if (option == 'Custom range' || option == 'custom')
+          GlassDropdownOption(
+            isCustom ? filter : 'custom',
+            activeCustomLabel,
+            icon: Icons.date_range_rounded,
+          )
+        else
+          GlassDropdownOption(
+            option,
+            homeWidgetDateLabel(option),
+          ),
+      if (isCustom &&
+          !dateFilterOptions.contains('Custom range') &&
+          !dateFilterOptions.contains('custom'))
+        GlassDropdownOption(
+          filter,
+          activeCustomLabel,
+          icon: Icons.date_range_rounded,
+        ),
+    ];
+
+    final resolvedValue = isCustom
+        ? filter
+        : (dateFilterOptions.contains(filter)
+            ? filter
+            : (dateFilterOptions.isNotEmpty
+                ? dateFilterOptions.first
+                : filter));
+
+    return GlassDropdownPill<String>(
+      value: resolvedValue,
+      options: options,
+      semanticLabel: '$title date filter',
+      onChanged: (selected) async {
+        if (selected == 'Custom range' ||
+            selected == 'custom' ||
+            selected.startsWith('custom:')) {
+          final initial = parseCustomDateRange(selected) ??
+              parseCustomDateRange(filter);
+          final picked = await showDateRangePicker(
+            context: context,
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2100),
+            initialDateRange: initial,
+            helpText: 'Select date range for $title',
+          );
+          if (picked != null) {
+            final key = formatCustomDateRangeKey(picked);
+            onDateFilterChanged!(key);
+          }
+        } else {
+          onDateFilterChanged!(selected);
+        }
+      },
+    );
+  }
 }
 
 class HomeWidgetReorderableIcon extends StatelessWidget {
@@ -193,7 +248,7 @@ class HomeWidgetReorderableIcon extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: iconColor.withAlphaFactor(0.24),
+        color: iconColor.withAlphaFactor(0.16),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: Icon(icon, color: iconColor, size: iconSize),
@@ -318,9 +373,9 @@ class HomeMetricTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: color.withValues(alpha: 0.16)),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,7 +384,7 @@ class HomeMetricTile extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: color.withAlphaFactor(0.24),
+              color: color.withAlphaFactor(0.16),
               borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
             child: Icon(icon, size: 17, color: color),
@@ -389,7 +444,7 @@ class HomeDetailRow extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: resolvedIconColor.withAlphaFactor(0.22),
+            color: resolvedIconColor.withAlphaFactor(0.15),
             borderRadius: BorderRadius.circular(AppRadii.sm),
           ),
           child: Icon(icon, color: resolvedIconColor, size: 19),

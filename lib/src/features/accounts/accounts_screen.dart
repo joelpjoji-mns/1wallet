@@ -67,7 +67,6 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                 icon: const Icon(
                   Icons.credit_card_outlined,
                   size: 20,
-                  color: Colors.white,
                 ),
                 label: 'Cards',
                 onPressed: () => context.push('/cards'),
@@ -76,7 +75,6 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                 icon: const Icon(
                   Icons.account_balance_outlined,
                   size: 20,
-                  color: Colors.white,
                 ),
                 label: 'Loans',
                 onPressed: () => context.push('/loans'),

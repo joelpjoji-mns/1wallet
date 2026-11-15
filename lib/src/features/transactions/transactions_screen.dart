@@ -9,6 +9,7 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../utils/date_range_utils.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 import '../common/category_hierarchy_picker.dart';
@@ -439,7 +440,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         icon: const Icon(
                           Icons.call_merge_rounded,
                           size: 20,
-                          color: Colors.white,
                         ),
                         label: 'Merge selected transactions',
                         onPressed: _showMergeDialog,
@@ -448,7 +448,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       icon: const Icon(
                         Icons.delete_outline_rounded,
                         size: 20,
-                        color: Colors.white,
                       ),
                       label: 'Delete selected transactions',
                       onPressed: _confirmDeleteSelected,
@@ -457,7 +456,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       icon: const Icon(
                         Icons.close_rounded,
                         size: 20,
-                        color: Colors.white,
                       ),
                       label: 'Clear selection',
                       onPressed: () =>
@@ -513,8 +511,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onClear: _clearFilters,
             onTypeSelected: (value) =>
                 ref.read(transactionsTypeFilterProvider.notifier).state = value,
-            onDateSelected: (value) =>
-                ref.read(transactionsDateFilterProvider.notifier).state = value,
+            onDateSelected: _onDateSelected,
             onAccountTap: () => _showAccountFilter(state, accountFilter),
             onCategoryTap: () => _showCategoryFilter(state),
             onStatusSelected: (value) =>
@@ -978,6 +975,27 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     await ref.read(ledgerProvider.notifier).setDisplayCurrency(next);
   }
 
+  Future<void> _onDateSelected(String value) async {
+    if (value == 'custom' || value.startsWith('custom:')) {
+      final currentFilter = ref.read(transactionsDateFilterProvider);
+      final initial = parseCustomDateRange(value) ??
+          parseCustomDateRange(currentFilter);
+      final picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+        initialDateRange: initial,
+        helpText: 'Select transaction date range',
+      );
+      if (picked != null) {
+        final key = formatCustomDateRangeKey(picked);
+        ref.read(transactionsDateFilterProvider.notifier).state = key;
+      }
+    } else {
+      ref.read(transactionsDateFilterProvider.notifier).state = value;
+    }
+  }
+
   Future<void> _showAccountFilter(
     LedgerState state,
     String? accountFilter,
@@ -1230,14 +1248,27 @@ Set<String> _selectedCategoryMatchIds(
 }
 
 bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
-  if (dateFilter == 'all') return true;
+  if (dateFilter == 'all' || dateFilter == 'All time') return true;
+  if (dateFilter.startsWith('custom:')) {
+    final range = parseCustomDateRange(dateFilter);
+    if (range != null) {
+      final start = range.start;
+      final end = DateTime(
+        range.end.year,
+        range.end.month,
+        range.end.day,
+        23,
+        59,
+        59,
+        999,
+      );
+      return !date.isBefore(start) && !date.isAfter(end);
+    }
+    return true;
+  }
   final current = now ?? DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
   return switch (dateFilter) {
-    'today' =>
-      date.year == current.year &&
-          date.month == current.month &&
-          date.day == current.day,
     'this_week' => () {
       final diff = current.weekday - 1; // 0 for Monday
       final start = DateTime(
@@ -1249,17 +1280,16 @@ bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
       return !date.isBefore(start) && date.isBefore(end);
     }(),
     'this_month' => date.year == current.year && date.month == current.month,
-    'last_month' => () {
-      final prevMonth = DateTime(current.year, current.month - 1);
-      return date.year == prevMonth.year && date.month == prevMonth.month;
-    }(),
-    'last_30_days' => !day.isBefore(
+    'last_30_days' || '30_days' => !day.isBefore(
       DateTime(
         current.year,
         current.month,
         current.day,
       ).subtract(const Duration(days: 30)),
-    ),
+    ) && !date.isAfter(DateTime(current.year, current.month, current.day, 23, 59, 59, 999)),
+    '6_months' => !day.isBefore(
+      DateTime(current.year, current.month - 6, current.day),
+    ) && !date.isAfter(DateTime(current.year, current.month, current.day, 23, 59, 59, 999)),
     'this_year' => date.year == current.year,
     _ => true,
   };
@@ -1275,13 +1305,17 @@ String _typeFilterLabel(String value) {
 }
 
 String _dateFilterLabel(String value) {
+  if (value.startsWith('custom:')) {
+    return formatCustomDateRangeLabel(value);
+  }
   return switch (value) {
-    'today' => 'Today',
     'this_week' => 'This week',
     'this_month' => 'This month',
-    'last_month' => 'Last month',
-    'last_30_days' => 'Last 30 days',
+    '30_days' || 'last_30_days' => '30 days',
+    '6_months' => '6 months',
     'this_year' => 'This year',
+    'all' => 'All time',
+    'custom' => 'Custom range',
     _ => 'All time',
   };
 }

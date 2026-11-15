@@ -75,7 +75,6 @@ class _TransactionDetailScreenState
                 icon: const Icon(
                   Icons.edit_outlined,
                   size: 20,
-                  color: Colors.white,
                 ),
                 label: 'Edit transaction',
                 onPressed: () =>
@@ -85,7 +84,6 @@ class _TransactionDetailScreenState
                 icon: const Icon(
                   Icons.delete_outline_rounded,
                   size: 20,
-                  color: Colors.white,
                 ),
                 label: 'Delete transaction',
                 onPressed: () => _confirmDelete(context, ref, transaction),
@@ -357,7 +355,6 @@ class _TransactionDetailScreenState
                               : const Icon(
                                   Icons.camera_alt_outlined,
                                   size: 20,
-                                  color: Colors.white,
                                 ),
                           label: 'Scan receipt',
                           onPressed: _isAttaching
@@ -373,7 +370,6 @@ class _TransactionDetailScreenState
                               : const Icon(
                                   Icons.image_outlined,
                                   size: 20,
-                                  color: Colors.white,
                                 ),
                           label: 'Photo from gallery',
                           onPressed: _isAttaching

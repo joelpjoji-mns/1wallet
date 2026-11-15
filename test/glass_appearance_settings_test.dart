@@ -25,11 +25,11 @@ void main() {
       const prefs = LedgerPreferences();
       expect(prefs.glassFinish, AppGlassFinish.clear);
       expect(prefs.glassIntensity, GlassIntensity.medium);
-      expect(prefs.glassBlurLevel, 9.0);
-      expect(prefs.glassBackgroundOpacity, 0.15);
+      expect(prefs.glassBlurLevel, 0.0);
+      expect(prefs.glassBackgroundOpacity, 0.04);
       expect(prefs.glassRefractionLevel, 1.0);
       expect(prefs.glassInteractionStrength, 0.35);
-      expect(prefs.glassSpecularOpacity, 1.0);
+      expect(prefs.glassSpecularOpacity, 0.30);
     });
 
     test('withGlassFinish updates glass finish to regular, clear, and frosted', () {
@@ -73,8 +73,8 @@ void main() {
     test('LedgerCodec round-trips glassIntensity and glassFinish', () {
       final initial = emptyLedgerState().copyWith(
         preferences: const LedgerPreferences()
-            .withGlassIntensity(GlassIntensity.heavy)
-            .withGlassFinish(AppGlassFinish.frosted),
+            .withGlassFinish(AppGlassFinish.frosted)
+            .withGlassIntensity(GlassIntensity.heavy),
       );
       final json = encodeLedgerState(initial);
       final decoded = decodeLedgerState(json);
@@ -103,7 +103,7 @@ void main() {
 
   group('Settings screen glass appearance UI', () {
     testWidgets(
-      'shows one glass option (Light/Medium/Heavy) and no individual property sliders',
+      'shows glass effect tile and navigates to optics customization screen',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
         final container = ProviderContainer(
@@ -125,18 +125,11 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Sliders for individual properties must NOT exist
-        expect(find.text('Frosting'), findsNothing);
-        expect(find.text('Tint strength'), findsNothing);
-        expect(find.text('Refraction'), findsNothing);
-        expect(find.text('Bounce'), findsNothing);
-        expect(find.text('Highlight'), findsNothing);
-        expect(
-          find.text(
-            'Tune the shared glass surfaces and interactions across the app.',
-          ),
-          findsNothing,
-        );
+        // Sliders for individual properties must NOT exist on main settings screen
+        expect(find.text('Blur Radius'), findsNothing);
+        expect(find.text('Background Opacity'), findsNothing);
+        expect(find.text('Refraction Strength'), findsNothing);
+        expect(find.text('Rim Sheen / Specular'), findsNothing);
 
         // Scroll until the Glass appearance section is visible
         await tester.scrollUntilVisible(
@@ -149,7 +142,7 @@ void main() {
         // Section and tile should exist
         expect(find.text('Glass appearance'), findsOneWidget);
         expect(find.text('Glass effect'), findsOneWidget);
-        expect(find.textContaining('Medium'), findsOneWidget);
+        expect(find.textContaining('Clear'), findsOneWidget);
 
         // Tap to open glass effect options and live preview screen
         await tester.tap(find.text('Glass effect'));
@@ -160,43 +153,24 @@ void main() {
         expect(find.text('Regular'), findsWidgets);
         expect(find.text('Frosted'), findsWidgets);
 
-        // Intensity options should be present
-        expect(find.text('Light'), findsOneWidget);
-        expect(
-          find.text('Subtle frosted surface with soft blur and low opacity'),
-          findsOneWidget,
-        );
-        expect(find.text('Medium'), findsWidgets); // title and/or option
-        expect(
-          find.text('Balanced liquid glass with standard blur and refraction'),
-          findsOneWidget,
-        );
-        expect(find.text('Heavy'), findsOneWidget);
-        expect(
-          find.text('Strong frosted glass with deeper blur and opacity'),
-          findsOneWidget,
-        );
+        // Optics customization options should be present
+        expect(find.text('Liquid Optics Customization'), findsOneWidget);
+        expect(find.text('Blur Radius'), findsOneWidget);
+        expect(find.text('Background Opacity'), findsOneWidget);
+        expect(find.text('Refraction Strength'), findsOneWidget);
+        expect(find.text('Rim Sheen / Specular'), findsOneWidget);
 
         // Select 'Regular' finish
-        await tester.tap(find.text('Regular'));
+        await tester.tap(find.text('Regular').first);
         await tester.pumpAndSettle();
         expect(
           container.read(ledgerProvider).preferences.glassFinish,
           AppGlassFinish.regular,
         );
-
-        // Scroll to 'Heavy' intensity and select it
-        await tester.scrollUntilVisible(find.text('Heavy'), 200);
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Heavy'));
-        await tester.pumpAndSettle();
-
-        // Preference should now be Heavy
         expect(
-          container.read(ledgerProvider).preferences.glassIntensity,
-          GlassIntensity.heavy,
+          container.read(ledgerProvider).preferences.glassBlurLevel,
+          14.0,
         );
-        expect(container.read(ledgerProvider).preferences.glassBlurLevel, 16.0);
 
         // Allow auto-backup debounce timer to finish
         await tester.pump(const Duration(milliseconds: 600));

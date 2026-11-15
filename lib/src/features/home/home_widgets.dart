@@ -122,12 +122,28 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
   String get _period =>
       widget.state.preferences.homeWidgetFilters['balanceHero'] ?? 'This month';
 
-  void _onPeriodChanged(String? value) {
+  Future<void> _onPeriodChanged(String? value) async {
     if (value == null) return;
+    String resolved = value;
+    if (value == 'Custom range' ||
+        value == 'custom' ||
+        value.startsWith('custom:')) {
+      final initial = parseCustomDateRange(value) ??
+          parseCustomDateRange(_period);
+      final picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+        initialDateRange: initial,
+        helpText: 'Select balance period',
+      );
+      if (picked == null) return;
+      resolved = formatCustomDateRangeKey(picked);
+    }
     final newFilters = Map<String, String>.from(
       widget.state.preferences.homeWidgetFilters,
     );
-    newFilters['balanceHero'] = value;
+    newFilters['balanceHero'] = resolved;
     ref
         .read(ledgerProvider.notifier)
         .updatePreferencesWith(
@@ -210,19 +226,43 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                   ),
                 ),
               ),
-              GlassDropdownPill<String>(
-                value: standardHomeDateFilterOptions.contains(_period)
-                    ? _period
-                    : 'This month',
-                options: [
+              () {
+                final isCustom = _period.startsWith('custom:');
+                final activeCustomLabel =
+                    isCustom ? homeWidgetDateLabel(_period) : 'Custom range';
+                final options = [
                   for (final opt in standardHomeDateFilterOptions)
-                    GlassDropdownOption(opt, opt),
-                ],
-                onChanged: _onPeriodChanged,
-                icon: Icons.calendar_month_rounded,
-                semanticLabel: 'Balance period',
-                maxLabelWidth: 80,
-              ),
+                    if (opt == 'Custom range' || opt == 'custom')
+                      GlassDropdownOption(
+                        isCustom ? _period : 'custom',
+                        activeCustomLabel,
+                        icon: Icons.date_range_rounded,
+                      )
+                    else
+                      GlassDropdownOption(opt, homeWidgetDateLabel(opt)),
+                  if (isCustom &&
+                      !standardHomeDateFilterOptions.contains('Custom range') &&
+                      !standardHomeDateFilterOptions.contains('custom'))
+                    GlassDropdownOption(
+                      _period,
+                      activeCustomLabel,
+                      icon: Icons.date_range_rounded,
+                    ),
+                ];
+                final resolvedValue = isCustom
+                    ? _period
+                    : (standardHomeDateFilterOptions.contains(_period)
+                        ? _period
+                        : 'This month');
+                return GlassDropdownPill<String>(
+                  value: resolvedValue,
+                  options: options,
+                  onChanged: _onPeriodChanged,
+                  icon: Icons.calendar_month_rounded,
+                  semanticLabel: 'Balance period',
+                  maxLabelWidth: 80,
+                );
+              }(),
               const SizedBox(width: AppSpacing.xs),
               if (allCurrencies.length > 1 && forcedCurrency == null)
                 GlassDropdownPill<String>(
@@ -249,39 +289,31 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
             ],
           ),
           const SizedBox(height: AppSpacing.xxxs),
-          GlassMaterializeSwitcher(
-            duration: const Duration(milliseconds: 320),
-            child: KeyedSubtree(
-              key: ValueKey('balance_content_${selectedAccountId ?? "all"}_$displayCurrency'),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TweenAnimationBuilder<double>(
-                    key: ValueKey('total_${selectedAccountId ?? "all"}_${total.amountMinor}'),
-                    duration: const Duration(milliseconds: 500),
-                    curve: Curves.easeOutCubic,
-                    tween: Tween<double>(
-                      begin: total.amountMinor.toDouble(),
-                      end: total.amountMinor.toDouble(),
-                    ),
-                    builder: (context, amountMinor, child) {
-                      return FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: PrivacyText(
-                          formatMoney(
-                            total.copyWith(amountMinor: amountMinor.round()),
-                            widget.state.preferences.locale,
-                          ),
-                          maxLines: 1,
-                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -1.2,
-                          ),
-                        ),
-                      );
-                    },
+          TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            tween: Tween<double>(
+              begin: total.amountMinor.toDouble(),
+              end: total.amountMinor.toDouble(),
+            ),
+            builder: (context, amountMinor, child) {
+              return FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: PrivacyText(
+                  formatMoney(
+                    total.copyWith(amountMinor: amountMinor.round()),
+                    widget.state.preferences.locale,
                   ),
+                  maxLines: 1,
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1.2,
+                  ),
+                ),
+              );
+            },
+          ),
                   const SizedBox(height: AppSpacing.xs),
                   SizedBox(
                     height: 24,
@@ -364,22 +396,17 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+            );
+          }
 
   String _mapPeriodToDateFilter(String period) {
+    if (period.startsWith('custom:')) return period;
     return switch (period) {
-      'Today' => 'today',
       'This week' => 'this_week',
       'This month' => 'this_month',
-      'Last month' => 'last_month',
-      '30 days' => 'last_30_days',
+      '30 days' => '30_days',
+      '6 months' => '6_months',
       'This year' => 'this_year',
-      '1 year' => 'this_year',
       _ => 'all',
     };
   }
@@ -628,6 +655,13 @@ class _BalanceTrendHomeWidgetState
   double? _touchedIndex;
 
   int get _zoomDays {
+    if (_period.startsWith('custom:') || _period.startsWith('Custom:')) {
+      final range = parseCustomDateRange(_period);
+      if (range != null) {
+        final days = range.end.difference(range.start).inDays;
+        return days > 0 ? days : 1;
+      }
+    }
     switch (_period) {
       case 'This week':
         return 7;
@@ -674,9 +708,10 @@ class _BalanceTrendHomeWidgetState
               ? 'Cash'
               : (selectedAccount?.name ?? 'Selected account'))
         : null;
+    final periodLabel = homeWidgetDateLabel(_period);
     final fallbackSubtitle = accountFilterName != null
-        ? '$accountFilterName · $_period'
-        : _period;
+        ? '$accountFilterName · $periodLabel'
+        : periodLabel;
 
     final now = DateTime.now();
     final nowRounded = DateTime(now.year, now.month, now.day);
@@ -963,11 +998,11 @@ class _BalanceTrendHomeWidgetState
     final rightDate = pastTrend.isNotEmpty
         ? pastTrend.first.date.add(Duration(days: viewRight.round()))
         : nowRounded;
-    final periodLabel =
+    final trendRangeLabel =
         '${_shortDate(leftDate, widget.state.preferences.locale)} · ${_shortDate(rightDate, widget.state.preferences.locale)}';
     final subtitle = accountFilterName != null
-        ? '$accountFilterName · $periodLabel'
-        : periodLabel;
+        ? '$accountFilterName · $trendRangeLabel'
+        : trendRangeLabel;
 
     return RepaintBoundary(
       child: HomeWidgetCard(
@@ -1461,20 +1496,68 @@ class _BalanceTrendHomeWidgetState
   }
 
   Widget _buildDropdown() {
+    final isCustom = _period.startsWith('custom:');
+    final activeCustomLabel =
+        isCustom ? homeWidgetDateLabel(_period) : 'Custom range';
+    final options = <GlassDropdownOption<String>>[
+      for (final opt in standardHomeDateFilterOptions)
+        if (opt == 'Custom range' || opt == 'custom')
+          GlassDropdownOption(
+            isCustom ? _period : 'custom',
+            activeCustomLabel,
+            icon: Icons.date_range_rounded,
+          )
+        else
+          GlassDropdownOption(
+            opt,
+            homeWidgetDateLabel(opt),
+          ),
+      if (isCustom &&
+          !standardHomeDateFilterOptions.contains('Custom range') &&
+          !standardHomeDateFilterOptions.contains('custom'))
+        GlassDropdownOption(
+          _period,
+          activeCustomLabel,
+          icon: Icons.date_range_rounded,
+        ),
+    ];
+    final resolvedValue = isCustom
+        ? _period
+        : (standardHomeDateFilterOptions.contains(_period)
+            ? _period
+            : 'This month');
+
     return GlassDropdownPill<String>(
-      value: standardHomeDateFilterOptions.contains(_period)
-          ? _period
-          : 'This month',
-      options: [
-        for (final opt in standardHomeDateFilterOptions)
-          GlassDropdownOption(opt, opt),
-      ],
-      onChanged: (value) {
-        setState(() {
-          _period = value;
-          _scrollOffset = value == 'Last month' ? -30.0 : 0.0;
-        });
-        _savePreference(value);
+      value: resolvedValue,
+      options: options,
+      onChanged: (value) async {
+        if (value == 'Custom range' ||
+            value == 'custom' ||
+            value.startsWith('custom:')) {
+          final initial = parseCustomDateRange(value) ??
+              parseCustomDateRange(_period);
+          final picked = await showDateRangePicker(
+            context: context,
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2100),
+            initialDateRange: initial,
+            helpText: 'Select date range',
+          );
+          if (picked != null) {
+            final key = formatCustomDateRangeKey(picked);
+            setState(() {
+              _period = key;
+              _scrollOffset = 0.0;
+            });
+            _savePreference(key);
+          }
+        } else {
+          setState(() {
+            _period = value;
+            _scrollOffset = 0.0;
+          });
+          _savePreference(value);
+        }
       },
       icon: Icons.calendar_month_rounded,
       semanticLabel: 'Balance trend period',

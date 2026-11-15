@@ -139,17 +139,39 @@ class TransactionCommandStrip extends StatelessWidget {
                               label: dateLabel,
                               active: dateActive,
                               value: dateValue,
-                              options: const [
-                                GlassDropdownOption('all', 'All time'),
-                                GlassDropdownOption('today', 'Today'),
-                                GlassDropdownOption('this_week', 'This week'),
-                                GlassDropdownOption('this_month', 'This month'),
-                                GlassDropdownOption('last_month', 'Last month'),
-                                GlassDropdownOption(
-                                  'last_30_days',
-                                  'Last 30 days',
+                              options: [
+                                const GlassDropdownOption(
+                                  'this_week',
+                                  'This week',
                                 ),
-                                GlassDropdownOption('this_year', 'This year'),
+                                const GlassDropdownOption(
+                                  'this_month',
+                                  'This month',
+                                ),
+                                GlassDropdownOption(
+                                  dateValue == 'last_30_days'
+                                      ? 'last_30_days'
+                                      : '30_days',
+                                  '30 days',
+                                ),
+                                const GlassDropdownOption(
+                                  '6_months',
+                                  '6 months',
+                                ),
+                                const GlassDropdownOption(
+                                  'this_year',
+                                  'This year',
+                                ),
+                                const GlassDropdownOption('all', 'All time'),
+                                GlassDropdownOption(
+                                  dateValue.startsWith('custom:')
+                                      ? dateValue
+                                      : 'custom',
+                                  dateValue.startsWith('custom:')
+                                      ? dateLabel
+                                      : 'Custom range',
+                                  icon: Icons.date_range_rounded,
+                                ),
                               ],
                               onSelected: onDateSelected,
                             ),

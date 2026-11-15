@@ -88,6 +88,49 @@ void main() {
 
     handle.dispose();
   });
+
+  testWidgets(
+    'calendar month navigation icons do not hardcode white and adapt to light theme',
+    (tester) async {
+      final state = _ledger();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: authenticatedSampleOverrides(ledger: state),
+          child: MaterialApp(
+            theme: ThemeData.light(),
+            home: Scaffold(body: CalendarScreen(onMenuPressed: () {})),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final prevIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.byTooltip('Previous month'),
+          matching: find.byType(Icon),
+        ),
+      );
+      final nextIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.byTooltip('Next month'),
+          matching: find.byType(Icon),
+        ),
+      );
+      final todayIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.byTooltip('Current month'),
+          matching: find.byType(Icon),
+        ),
+      );
+
+      // Icons should not have hardcoded white color so they can inherit
+      // theme/legibility color in light theme
+      expect(prevIcon.color, isNot(Colors.white));
+      expect(nextIcon.color, isNot(Colors.white));
+      expect(todayIcon.color, isNot(Colors.white));
+    },
+  );
 }
 
 LedgerState _ledger() {
