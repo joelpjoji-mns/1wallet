@@ -301,6 +301,9 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
                                 .platformBrightness) ==
                         Brightness.dark);
             return g1455.GlassHost(
+              key: ValueKey(
+                'glass_host_${themeState.themeMode}_${themeState.preference}_${isDark}_${glassFinish.name}',
+              ),
               content: g1455.GlassContentDeclaration.undeclared,
               finish: glassFinish,
               appearance: isDark ? Brightness.dark : Brightness.light,

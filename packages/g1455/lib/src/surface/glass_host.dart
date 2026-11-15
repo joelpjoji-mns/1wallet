@@ -1074,6 +1074,8 @@ class _GlassHostState extends State<GlassHost> {
         widget.blurPass != oldWidget.blurPass ||
         widget.maxTextureSide != oldWidget.maxTextureSide ||
         widget.content != oldWidget.content ||
+        widget.appearance != oldWidget.appearance ||
+        widget.backdrop != oldWidget.backdrop ||
         _hardware != (oldWidget.hardware ?? GlassHardware.detect())) {
       _rebuild();
     }
@@ -1089,6 +1091,15 @@ class _GlassHostState extends State<GlassHost> {
     _pipeline.dispose();
     _oracle.dispose();
     _build();
+    _scheduleCapture();
+    SchedulerBinding.instance.ensureVisualUpdate();
+    Future<void>.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) {
+        _oracle.noteChange();
+        _scheduleCapture();
+        SchedulerBinding.instance.ensureVisualUpdate();
+      }
+    });
   }
 
   @override

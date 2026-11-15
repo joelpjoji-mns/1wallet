@@ -25,6 +25,7 @@ import '../home/home_screen.dart'
 import '../notifications/notification_engine.dart';
 import '../onboarding/onboarding_controller.dart';
 import '../../services/notification_service.dart';
+import '../../theme/theme_controller.dart';
 import '../settings/permission_setup_controller.dart';
 import '../transactions/transactions_screen.dart';
 import '../updates/app_update_provider.dart';
@@ -206,6 +207,15 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   Widget build(BuildContext context) {
+    final themeState = ref.watch(themeControllerProvider);
+    final theme = Theme.of(context);
+
+    ref.listen(themeControllerProvider, (prev, next) {
+      if (prev?.preference != next.preference) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _noteGlassChange());
+      }
+    });
+
     ref.listen<LedgerState>(ledgerProvider, (previous, next) {
       if (_shouldSyncScheduledNotifications(previous, next)) {
         NotificationService.syncScheduledNotifications(next);
@@ -296,6 +306,9 @@ class _MainShellState extends ConsumerState<MainShell>
                 right: 0,
                 bottom: 0,
                 child: BottomIslandNavBar(
+                  key: ValueKey(
+                    'island_nav_${theme.brightness}_${themeState.preference}_${glassFinish.name}',
+                  ),
                   items: tabs,
                   selectedIndex: selectedIndex,
                   onSelected: _selectTab,

@@ -849,6 +849,9 @@ Widget buildGlassMaterializeTransition(
   BorderRadius borderRadius = const BorderRadius.all(Radius.circular(16)),
   g1455.GlassFinish? finish,
 }) {
+  if (animation.isCompleted) {
+    return child;
+  }
   final curved = CurvedAnimation(
     parent: animation,
     curve: Curves.easeOutCubic,
@@ -863,6 +866,9 @@ Widget buildGlassMaterializeTransition(
     animation: curved,
     builder: (context, _) {
       final value = curved.value.clamp(0.0, 1.0);
+      if (curved.isCompleted || value >= 1.0) {
+        return child;
+      }
       return SlideTransition(
         position: slide,
         child: Opacity(

@@ -445,7 +445,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
       ],
     );
-    if (next == null) return;
+    if (next == null || next == selected) return;
+    // Wait for the modal dialog / picker route to finish popping so it isn't in the layer tree during theme rebuild
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
     await ref.read(themeControllerProvider.notifier).setPreference(next);
     if (!mounted) return;
     _showMessage('Theme preference saved.');

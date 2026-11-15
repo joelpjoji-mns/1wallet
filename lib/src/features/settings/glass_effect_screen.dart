@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -14,38 +15,153 @@ import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
 
 /// Screen allowing the user to customize the application's liquid glass finish
-/// (Regular, Clear, Frosted) and intensity (Light, Medium, Heavy) with an
-/// interactive real-time live preview.
-class GlassEffectScreen extends ConsumerWidget {
+/// (Regular, Clear, Frosted) and tune all optical properties (blur, opacity,
+/// refraction, specular sheen) with interactive sliders and a real-time live preview.
+class GlassEffectScreen extends ConsumerStatefulWidget {
   const GlassEffectScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GlassEffectScreen> createState() => _GlassEffectScreenState();
+}
+
+class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
+  Timer? _commitTimer;
+
+  late double _blur;
+  late double _backgroundOpacity;
+  late double _refractionLevel;
+  late double _specularOpacity;
+  late AppGlassFinish _currentFinish;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final prefs = ref.read(ledgerProvider).preferences;
+    _currentFinish = prefs.glassFinish;
+    _blur = prefs.glassBlurLevel;
+    _backgroundOpacity = prefs.glassBackgroundOpacity;
+    _refractionLevel = prefs.glassRefractionLevel;
+    _specularOpacity = prefs.glassSpecularOpacity;
+    _initialized = true;
+  }
+
+  @override
+  void dispose() {
+    _commitTimer?.cancel();
+    super.dispose();
+  }
+
+  void _commitOpticsImmediately() {
+    _commitTimer?.cancel();
+    ref.read(ledgerProvider.notifier).updatePreferencesWith(
+          (live) => live.withGlassCustomOptics(
+            blur: _blur,
+            backgroundOpacity: _backgroundOpacity,
+            refractionLevel: _refractionLevel,
+            specularOpacity: _specularOpacity,
+          ),
+        );
+  }
+
+  void _updateOptics({
+    double? blur,
+    double? opacity,
+    double? refraction,
+    double? specular,
+  }) {
+    setState(() {
+      if (blur != null) _blur = blur;
+      if (opacity != null) _backgroundOpacity = opacity;
+      if (refraction != null) _refractionLevel = refraction;
+      if (specular != null) _specularOpacity = specular;
+    });
+
+    _commitTimer?.cancel();
+    _commitTimer = Timer(const Duration(milliseconds: 60), () {
+      if (!mounted) return;
+      ref.read(ledgerProvider.notifier).updatePreferencesWith(
+            (live) => live.withGlassCustomOptics(
+              blur: _blur,
+              backgroundOpacity: _backgroundOpacity,
+              refractionLevel: _refractionLevel,
+              specularOpacity: _specularOpacity,
+            ),
+          );
+    });
+  }
+
+  void _selectFinish(AppGlassFinish finish) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _currentFinish = finish;
+      _blur = finish.defaultBlur;
+      _backgroundOpacity = finish.defaultBackgroundOpacity;
+      _refractionLevel = finish.defaultRefractionLevel;
+      _specularOpacity = finish.defaultSpecularOpacity;
+    });
+    _commitTimer?.cancel();
+    ref.read(ledgerProvider.notifier).updatePreferencesWith(
+          (live) => live.withGlassFinish(finish),
+        );
+  }
+
+  void _resetToDefaults() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _blur = _currentFinish.defaultBlur;
+      _backgroundOpacity = _currentFinish.defaultBackgroundOpacity;
+      _refractionLevel = _currentFinish.defaultRefractionLevel;
+      _specularOpacity = _currentFinish.defaultSpecularOpacity;
+    });
+    _commitOpticsImmediately();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ledger = ref.watch(ledgerProvider);
-    final currentFinish = ledger.preferences.glassFinish;
-    final currentIntensity = ledger.preferences.glassIntensity;
     final themeState = ref.watch(themeControllerProvider);
     final isDark = themeState.preference != AppThemePreference.light;
     final scheme = Theme.of(context).colorScheme;
 
-    final blur = currentFinish.blurForIntensity(currentIntensity);
+    // Sync from store if preference finish changed externally
+    if (_initialized && ledger.preferences.glassFinish != _currentFinish) {
+      _currentFinish = ledger.preferences.glassFinish;
+      _blur = ledger.preferences.glassBlurLevel;
+      _backgroundOpacity = ledger.preferences.glassBackgroundOpacity;
+      _refractionLevel = ledger.preferences.glassRefractionLevel;
+      _specularOpacity = ledger.preferences.glassSpecularOpacity;
+    }
 
-    final fillAlpha = currentFinish.backgroundOpacity(
-      intensity: currentIntensity,
-      isDark: isDark,
-    );
-
-    final resolvedFinish = switch (currentFinish) {
+    final resolvedFinish = switch (_currentFinish) {
       AppGlassFinish.regular => g1455.GlassFinish.regular(
           appearance: isDark ? Brightness.dark : Brightness.light,
-        ).copyWith(blurSigmaLogical: blur),
+        ).copyWith(
+          blurSigmaLogical: _blur,
+          tint: isDark
+              ? Color.fromRGBO(255, 255, 255, _backgroundOpacity.clamp(0.01, 0.90))
+              : Color.fromRGBO(0, 0, 0, (_backgroundOpacity * 0.7).clamp(0.01, 0.90)),
+          rim: isDark
+              ? Color.fromRGBO(255, 255, 255, _specularOpacity.clamp(0.05, 0.95))
+              : Color.fromRGBO(0, 0, 0, (_specularOpacity * 0.5).clamp(0.05, 0.95)),
+        ),
       AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
-          blurSigmaLogical: 0.0,
-          tint: Color.fromRGBO(255, 255, 255, fillAlpha),
+          blurSigmaLogical: _blur,
+          tint: isDark
+              ? Color.fromRGBO(255, 255, 255, _backgroundOpacity.clamp(0.0, 0.90))
+              : Color.fromRGBO(0, 0, 0, (_backgroundOpacity * 0.7).clamp(0.0, 0.90)),
+          rim: isDark
+              ? Color.fromRGBO(255, 255, 255, _specularOpacity.clamp(0.05, 0.95))
+              : Color.fromRGBO(0, 0, 0, (_specularOpacity * 0.5).clamp(0.05, 0.95)),
         ),
       AppGlassFinish.frosted => g1455.GlassFinish.frosted.copyWith(
-          blurSigmaLogical: blur,
-          tint: Color.fromRGBO(255, 255, 255, fillAlpha),
+          blurSigmaLogical: _blur,
+          tint: isDark
+              ? Color.fromRGBO(255, 255, 255, _backgroundOpacity.clamp(0.05, 0.90))
+              : Color.fromRGBO(255, 255, 255, _backgroundOpacity.clamp(0.05, 0.90)),
+          rim: isDark
+              ? Color.fromRGBO(255, 255, 255, _specularOpacity.clamp(0.05, 0.95))
+              : Color.fromRGBO(0, 0, 0, (_specularOpacity * 0.5).clamp(0.05, 0.95)),
         ),
     };
 
@@ -60,15 +176,17 @@ class GlassEffectScreen extends ConsumerWidget {
               // ── Live Interactive Glass Preview ──
               _LiveGlassPreview(
                 finish: resolvedFinish,
-                finishPref: currentFinish,
-                intensity: currentIntensity,
-                blur: blur,
+                finishPref: _currentFinish,
+                blur: _blur,
+                backgroundOpacity: _backgroundOpacity,
+                refractionLevel: _refractionLevel,
+                specularOpacity: _specularOpacity,
                 isDark: isDark,
                 scheme: scheme,
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // ── Glass Finish Options ──
+              // ── Glass Finish Presets ──
               AppGroupedSection(
                 header: 'Liquid Glass Finish',
                 children: [
@@ -78,13 +196,8 @@ class GlassEffectScreen extends ConsumerWidget {
                         'Crystal-clear optical liquid glass with zero blur & pure refraction',
                     icon: Icons.water_drop_outlined,
                     badge: 'Recommended',
-                    isSelected: currentFinish == AppGlassFinish.clear,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      ref.read(ledgerProvider.notifier).updatePreferencesWith(
-                            (live) => live.withGlassFinish(AppGlassFinish.clear),
-                          );
-                    },
+                    isSelected: _currentFinish == AppGlassFinish.clear,
+                    onTap: () => _selectFinish(AppGlassFinish.clear),
                   ),
                   const GlassDivider(),
                   _GlassFinishOptionTile(
@@ -93,14 +206,8 @@ class GlassEffectScreen extends ConsumerWidget {
                         'Apple Liquid Glass with calibrated blur & adaptive transmission',
                     icon: Icons.blur_linear_outlined,
                     badge: 'Apple Standard',
-                    isSelected: currentFinish == AppGlassFinish.regular,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      ref.read(ledgerProvider.notifier).updatePreferencesWith(
-                            (live) =>
-                                live.withGlassFinish(AppGlassFinish.regular),
-                          );
-                    },
+                    isSelected: _currentFinish == AppGlassFinish.regular,
+                    onTap: () => _selectFinish(AppGlassFinish.regular),
                   ),
                   const GlassDivider(),
                   _GlassFinishOptionTile(
@@ -109,65 +216,97 @@ class GlassEffectScreen extends ConsumerWidget {
                         'Diffused frosted glass with heavy blur & velvety frost',
                     icon: Icons.blur_on_outlined,
                     badge: 'Heavy Blur',
-                    isSelected: currentFinish == AppGlassFinish.frosted,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      ref.read(ledgerProvider.notifier).updatePreferencesWith(
-                            (live) =>
-                                live.withGlassFinish(AppGlassFinish.frosted),
-                          );
-                    },
+                    isSelected: _currentFinish == AppGlassFinish.frosted,
+                    onTap: () => _selectFinish(AppGlassFinish.frosted),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // ── Refraction Intensity / Blur Tuning ──
+              // ── Interactive Optics Sliders ──
               AppGroupedSection(
-                header: 'Optics Intensity',
+                header: 'Liquid Optics Customization',
                 children: [
-                  for (final intensity in GlassIntensity.values) ...[
-                    if (intensity != GlassIntensity.values.first)
-                      const GlassDivider(),
-                    AppGroupedTile(
-                      leading: Icon(
-                        switch (intensity) {
-                          GlassIntensity.light => Icons.looks_one_outlined,
-                          GlassIntensity.medium => Icons.looks_two_outlined,
-                          GlassIntensity.heavy => Icons.looks_3_outlined,
-                        },
-                      ),
-                      title: Text(
-                        switch (intensity) {
-                          GlassIntensity.light => 'Light',
-                          GlassIntensity.medium => 'Medium',
-                          GlassIntensity.heavy => 'Heavy',
-                        },
-                      ),
-                      subtitle: Text(
-                        switch (intensity) {
-                          GlassIntensity.light =>
-                            'Subtle frosted surface with soft blur and low opacity',
-                          GlassIntensity.medium =>
-                            'Balanced liquid glass with standard blur and refraction',
-                          GlassIntensity.heavy =>
-                            'Strong frosted glass with deeper blur and opacity',
-                        },
-                      ),
-                      trailing: currentIntensity == intensity
-                          ? Icon(
-                              Icons.check_circle_rounded,
-                              color: scheme.primary,
-                            )
-                          : null,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        ref.read(ledgerProvider.notifier).updatePreferencesWith(
-                              (live) => live.withGlassIntensity(intensity),
-                            );
-                      },
+                  // 1. Blur Radius Slider
+                  _GlassSliderTile(
+                    icon: Icons.blur_on_rounded,
+                    title: 'Blur Radius',
+                    subtitle: _blur == 0.0
+                        ? 'Crystal clear (0 px) · Zero backdrop diffusion'
+                        : 'Diffuses and softens backdrop elements behind surfaces',
+                    valueDisplay: _blur == 0.0
+                        ? '0 px (Sharp)'
+                        : '${_blur.toStringAsFixed(1)} px',
+                    value: _blur,
+                    min: 0.0,
+                    max: 35.0,
+                    divisions: 70,
+                    onChanged: (val) => _updateOptics(blur: val),
+                    onChangeEnd: (_) => _commitOpticsImmediately(),
+                  ),
+                  const GlassDivider(),
+
+                  // 2. Background Opacity Slider
+                  _GlassSliderTile(
+                    icon: Icons.opacity_rounded,
+                    title: 'Background Opacity',
+                    subtitle:
+                        'Internal liquid tint density and light transmission',
+                    valueDisplay: '${(_backgroundOpacity * 100).toInt()}%',
+                    value: _backgroundOpacity,
+                    min: 0.0,
+                    max: 0.60,
+                    divisions: 60,
+                    onChanged: (val) => _updateOptics(opacity: val),
+                    onChangeEnd: (_) => _commitOpticsImmediately(),
+                  ),
+                  const GlassDivider(),
+
+                  // 3. Refraction Strength Slider
+                  _GlassSliderTile(
+                    icon: Icons.lens_blur_rounded,
+                    title: 'Refraction Strength',
+                    subtitle:
+                        'Lens distortion curvature and refractive index scale',
+                    valueDisplay: '${_refractionLevel.toStringAsFixed(2)}x',
+                    value: _refractionLevel,
+                    min: 0.0,
+                    max: 2.0,
+                    divisions: 40,
+                    onChanged: (val) => _updateOptics(refraction: val),
+                    onChangeEnd: (_) => _commitOpticsImmediately(),
+                  ),
+                  const GlassDivider(),
+
+                  // 4. Rim Sheen / Specular Slider
+                  _GlassSliderTile(
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'Rim Sheen / Specular',
+                    subtitle:
+                        'Luminous caustic highlights along outer perimeter edges',
+                    valueDisplay: '${(_specularOpacity * 100).toInt()}%',
+                    value: _specularOpacity,
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 50,
+                    onChanged: (val) => _updateOptics(specular: val),
+                    onChangeEnd: (_) => _commitOpticsImmediately(),
+                  ),
+                  const GlassDivider(),
+
+                  // 5. Reset to Defaults Tile
+                  AppGroupedTile(
+                    leading: const Icon(Icons.restart_alt_rounded),
+                    title: const Text('Reset to Defaults'),
+                    subtitle: Text(
+                      'Restore default ${_currentFinish.label} optic values',
                     ),
-                  ],
+                    trailing: TextButton(
+                      onPressed: _resetToDefaults,
+                      child: const Text('Reset'),
+                    ),
+                    onTap: _resetToDefaults,
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.xxl),
@@ -179,34 +318,135 @@ class GlassEffectScreen extends ConsumerWidget {
   }
 }
 
+class _GlassSliderTile extends StatelessWidget {
+  const _GlassSliderTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.valueDisplay,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.onChanged,
+    this.onChangeEnd,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String valueDisplay;
+  final double value;
+  final double min;
+  final double max;
+  final int? divisions;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChangeEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: scheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: scheme.primary.withAlphaFactor(0.16),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: scheme.primary.withAlphaFactor(0.35),
+                  ),
+                ),
+                child: Text(
+                  valueDisplay,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: scheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 30),
+            child: Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white60 : Colors.black54,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: scheme.primary,
+              inactiveTrackColor: scheme.primary.withAlphaFactor(0.20),
+              thumbColor: scheme.primary,
+              overlayColor: scheme.primary.withAlphaFactor(0.15),
+              trackHeight: 4,
+            ),
+            child: Slider(
+              value: value.clamp(min, max),
+              min: min,
+              max: max,
+              divisions: divisions,
+              onChanged: onChanged,
+              onChangeEnd: onChangeEnd,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LiveGlassPreview extends StatelessWidget {
   const _LiveGlassPreview({
     required this.finish,
     required this.finishPref,
-    required this.intensity,
     required this.blur,
+    required this.backgroundOpacity,
+    required this.refractionLevel,
+    required this.specularOpacity,
     required this.isDark,
     required this.scheme,
   });
 
   final g1455.GlassFinish finish;
   final AppGlassFinish finishPref;
-  final GlassIntensity intensity;
   final double blur;
+  final double backgroundOpacity;
+  final double refractionLevel;
+  final double specularOpacity;
   final bool isDark;
   final ColorScheme scheme;
 
   @override
   Widget build(BuildContext context) {
-    final fillAlphaTop = finishPref.backgroundOpacity(
-      intensity: intensity,
-      isDark: isDark,
-    );
-    final fillAlphaBottom = (fillAlphaTop * 0.45).clamp(0.01, 0.85);
-    final borderAlpha = finishPref.borderOpacity(
-      intensity: intensity,
-      isDark: isDark,
-    );
+    final fillAlphaTop = backgroundOpacity.clamp(0.01, 0.85);
+    final fillAlphaBottom = (fillAlphaTop * 0.45).clamp(0.005, 0.70);
+    final borderAlpha = specularOpacity.clamp(0.10, 0.95);
 
     return Container(
       height: 250,
@@ -330,7 +570,7 @@ class _LiveGlassPreview extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            '${finishPref.label.toUpperCase()} · ${blur == 0 ? "0PX" : "${blur.toInt()}PX"}',
+                            '${finishPref.label.toUpperCase()} · ${blur == 0 ? "0PX" : "${blur.toStringAsFixed(1)}PX"} · ${(backgroundOpacity * 100).toInt()}%',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w900,
@@ -414,7 +654,7 @@ class _LiveGlassPreview extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
 
-                        // Card 2: HDFC Emerald (Crucial contrast card)
+                        // Card 2: HDFC Emerald
                         Expanded(
                           child: Container(
                             height: 110,
@@ -693,8 +933,8 @@ class _LiveGlassPreview extends StatelessWidget {
                                     ),
                                     child: Text(
                                       blur == 0
-                                          ? '0px Blur · Clear'
-                                          : '${blur.toInt()}px Blur · ${intensity.name.toUpperCase()}',
+                                          ? '0px Blur · Sharp'
+                                          : '${blur.toStringAsFixed(1)}px Blur · ${(backgroundOpacity * 100).toInt()}% Opacity',
                                       style: TextStyle(
                                         fontSize: 9,
                                         fontWeight: FontWeight.w700,

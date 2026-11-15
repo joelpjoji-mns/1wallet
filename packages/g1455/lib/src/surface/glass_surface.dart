@@ -695,8 +695,12 @@ class RenderGlassSurface extends RenderProxyBox implements GlassSurfaceGeometry 
   /// has to reach it, or it draws the unrefracted declaration until something
   /// else repaints it — on a still screen, for ever, since no capture comes to
   /// repaint it.
+  GlassProxyFrame? _lastPaintedFrame;
+
   void _onProxyPublished() {
+    final currentFrame = _proxy?.frameFor(this);
     if (excludedFromProxy ||
+        !identical(currentFrame, _lastPaintedFrame) ||
         (effectiveTier.readsBackdrop &&
             readsDeclaredBackdrop &&
             (!identical(_proxy?.program, _paintedProgram) || !identical(_proxy?.rippleProgram, _paintedRipple)))) {
@@ -1096,6 +1100,7 @@ class RenderGlassSurface extends RenderProxyBox implements GlassSurfaceGeometry 
       return;
     }
     final GlassSampleSource? source = _source;
+    _lastPaintedFrame = source is GlassProxyFrame ? source : null;
     if (source == null || source.slotForKey(this) == null) {
       _heldTexture.release();
       paintsWithoutProxy++;
@@ -1561,6 +1566,7 @@ class RenderGlassSurface extends RenderProxyBox implements GlassSurfaceGeometry 
     _contentLayer.layer = null;
     _ledger?.unregister(this);
     _group?.leave(this);
+    _lastPaintedFrame = null;
     _proxy?.removeListener(_onProxyPublished);
     _backdrop?.removeListener(markNeedsPaint);
     super.dispose();

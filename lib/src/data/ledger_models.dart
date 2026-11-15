@@ -328,6 +328,30 @@ enum AppGlassFinish {
 
   double get blurSigma => blurForIntensity(GlassIntensity.medium);
 
+  double get defaultBlur => switch (this) {
+    AppGlassFinish.clear => 0.0,
+    AppGlassFinish.regular => 14.0,
+    AppGlassFinish.frosted => 26.0,
+  };
+
+  double get defaultBackgroundOpacity => switch (this) {
+    AppGlassFinish.clear => 0.04,
+    AppGlassFinish.regular => 0.16,
+    AppGlassFinish.frosted => 0.35,
+  };
+
+  double get defaultRefractionLevel => switch (this) {
+    AppGlassFinish.clear => 1.0,
+    AppGlassFinish.regular => 1.0,
+    AppGlassFinish.frosted => 1.0,
+  };
+
+  double get defaultSpecularOpacity => switch (this) {
+    AppGlassFinish.clear => 0.30,
+    AppGlassFinish.regular => 0.45,
+    AppGlassFinish.frosted => 0.55,
+  };
+
   double backgroundOpacity({
     GlassIntensity intensity = GlassIntensity.medium,
     required bool isDark,
@@ -431,12 +455,12 @@ class LedgerPreferences {
     this.futureGenerationRules,
     this.glassFinish = AppGlassFinish.clear,
     this.glassIntensity = GlassIntensity.medium,
-    this.glassSpecularOpacity = 1.0,
+    this.glassSpecularOpacity = 0.30,
     this.glassSpecularSaturation = 2.0,
     this.glassRefractionLevel = 1.0,
-    this.glassBlurLevel = 9.0,
+    this.glassBlurLevel = 0.0,
     this.glassProgressiveBlurStrength = 0.0,
-    this.glassBackgroundOpacity = 0.15,
+    this.glassBackgroundOpacity = 0.04,
     this.glassInteractionStrength = 0.35,
     this.notificationInboxEnabled = true,
     this.deviceNotificationsEnabled = false,
@@ -505,7 +529,27 @@ class LedgerPreferences {
   final bool showArchivedAccounts;
 
   LedgerPreferences withGlassFinish(AppGlassFinish finish) {
-    return copyWith(glassFinish: finish);
+    return copyWith(
+      glassFinish: finish,
+      glassBlurLevel: finish.defaultBlur,
+      glassBackgroundOpacity: finish.defaultBackgroundOpacity,
+      glassRefractionLevel: finish.defaultRefractionLevel,
+      glassSpecularOpacity: finish.defaultSpecularOpacity,
+    );
+  }
+
+  LedgerPreferences withGlassCustomOptics({
+    double? blur,
+    double? backgroundOpacity,
+    double? refractionLevel,
+    double? specularOpacity,
+  }) {
+    return copyWith(
+      glassBlurLevel: blur,
+      glassBackgroundOpacity: backgroundOpacity,
+      glassRefractionLevel: refractionLevel,
+      glassSpecularOpacity: specularOpacity,
+    );
   }
 
   LedgerPreferences withGlassIntensity(GlassIntensity intensity) {

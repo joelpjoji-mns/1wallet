@@ -1039,6 +1039,7 @@ class RenderGlassGroup extends RenderProxyBox {
     if (identical(value, _proxy)) {
       return;
     }
+    _lastPaintedFrame = null;
     _proxy?.removeListener(_onProxyPublished);
     _proxy = value;
     if (attached) {
@@ -1071,13 +1072,17 @@ class RenderGlassGroup extends RenderProxyBox {
     markNeedsPaint();
   }
 
+  GlassProxyFrame? _lastPaintedFrame;
+
   /// Repaints for a new proxy, and only if this group is going to read it. See
   /// `RenderGlassSurface._onProxyPublished`.
   ///
   /// Over a declared backdrop only a program that arrived repaints it; see the
   /// surface's.
   void _onProxyPublished() {
+    final currentFrame = _capturedFrame;
     if (_group.excludedFromProxy ||
+        !identical(currentFrame, _lastPaintedFrame) ||
         (_group.tier.readsBackdrop && readsDeclaredBackdrop && !identical(_proxy?.groupProgram, _paintedProgram))) {
       markNeedsPaint();
     }
@@ -1352,6 +1357,7 @@ class RenderGlassGroup extends RenderProxyBox {
       return;
     }
     _paintedProgram = _proxy?.groupProgram;
+    _lastPaintedFrame = frame is GlassProxyFrame ? frame : null;
     if (frame == null || _proxy?.groupProgram == null) {
       _heldTexture.release();
       paintsWithoutProxy++;
@@ -1712,6 +1718,7 @@ class RenderGlassGroup extends RenderProxyBox {
     _live.remove(this);
     _backdrop?.removeListener(markNeedsPaint);
     _ledger?.unregisterCluster(_group);
+    _lastPaintedFrame = null;
     _proxy?.removeListener(_onProxyPublished);
     super.detach();
   }
@@ -1722,6 +1729,7 @@ class RenderGlassGroup extends RenderProxyBox {
     _heldTexture.release();
     _live.remove(this);
     _ledger?.unregisterCluster(_group);
+    _lastPaintedFrame = null;
     _proxy?.removeListener(_onProxyPublished);
     _backdrop?.removeListener(markNeedsPaint);
     _group._owner = null;

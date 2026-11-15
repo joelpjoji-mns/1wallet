@@ -33,31 +33,44 @@ final glassFinishProvider = Provider<g1455.GlassFinish>((ref) {
   final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
   final finishPref = prefs.glassFinish;
   final themeState = ref.watch(themeControllerProvider);
-  final isDark = themeState.preference != AppThemePreference.light;
-  final blur = finishPref.blurForIntensity(prefs.glassIntensity);
-  final fillAlpha = finishPref.backgroundOpacity(
-    intensity: prefs.glassIntensity,
-    isDark: isDark,
-  );
+  final isDark = themeState.themeMode == ThemeMode.dark ||
+      (themeState.themeMode == ThemeMode.system &&
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+              Brightness.dark);
+
+  final blur = prefs.glassBlurLevel;
+  final fillAlpha = prefs.glassBackgroundOpacity;
+  final specularAlpha = prefs.glassSpecularOpacity;
 
   return switch (finishPref) {
     AppGlassFinish.regular => g1455.GlassFinish.regular(
         appearance: isDark ? Brightness.dark : Brightness.light,
-      ).copyWith(blurSigmaLogical: blur),
-    AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
-        blurSigmaLogical: 0.0,
+      ).copyWith(
+        blurSigmaLogical: blur,
         tint: isDark
-            ? const Color.fromRGBO(255, 255, 255, 0.01)
-            : const Color.fromRGBO(0, 0, 0, 0.01),
+            ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.01, 0.90))
+            : Color.fromRGBO(0, 0, 0, (fillAlpha * 0.7).clamp(0.01, 0.90)),
         rim: isDark
-            ? const Color.fromRGBO(255, 255, 255, 0.25)
-            : const Color.fromRGBO(0, 0, 0, 0.12),
+            ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
+            : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
+      ),
+    AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
+        blurSigmaLogical: blur,
+        tint: isDark
+            ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.0, 0.90))
+            : Color.fromRGBO(0, 0, 0, (fillAlpha * 0.7).clamp(0.0, 0.90)),
+        rim: isDark
+            ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
+            : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
       ),
     AppGlassFinish.frosted => g1455.GlassFinish.frosted.copyWith(
         blurSigmaLogical: blur,
         tint: isDark
-            ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.10, 0.40))
-            : Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.15, 0.45)),
+            ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.05, 0.90))
+            : Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.05, 0.90)),
+        rim: isDark
+            ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
+            : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
       ),
   };
 });

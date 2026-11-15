@@ -54,10 +54,19 @@ class BottomIslandNavBar extends StatelessWidget {
       return AnimatedBuilder(
         animation: pageController!,
         builder: (context, _) {
+          final currentTheme = Theme.of(context);
+          final currentScheme = currentTheme.colorScheme;
+          final currentIsDark = currentTheme.brightness == Brightness.dark;
           final page = pageController!.hasClients && pageController!.page != null
               ? pageController!.page!
               : selectedIndex.toDouble();
-          return _buildContent(context, scheme, isDark, isTest, page);
+          return _buildContent(
+            context,
+            currentScheme,
+            currentIsDark,
+            isTest,
+            page,
+          );
         },
       );
     }
