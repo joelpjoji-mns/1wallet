@@ -81,12 +81,13 @@ class HomeScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.xs),
             child: g1455.GlassButtonGroup(
-              finish: ref.watch(glassFinishProvider),
+              finish: ref.watch(toolbarsGlassFinishProvider),
               items: [
                 g1455.GlassToolbarItem(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.restart_alt_rounded,
                     size: 20,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   label: 'Reset widget order',
                   onPressed: () {
@@ -94,9 +95,10 @@ class HomeScreen extends ConsumerWidget {
                   },
                 ),
                 g1455.GlassToolbarItem(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.check_rounded,
                     size: 20,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   label: 'Done reordering widgets',
                   onPressed: () =>

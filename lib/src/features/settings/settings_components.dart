@@ -228,12 +228,18 @@ class SettingsPreferencesSection extends StatelessWidget {
         const GlassDivider(),
         AppGroupedTile(
           leading: const Icon(Icons.palette_outlined),
-          title: const Text('Theme'),
-          subtitle: Text(switch (themeState.preference) {
-            AppThemePreference.system => 'System',
-            AppThemePreference.light => 'Light',
-            AppThemePreference.amoled => 'Dark',
-          }),
+          title: const Text('Theme mode'),
+          subtitle: Text(() {
+            final mode = switch (themeState.preference) {
+              AppThemePreference.system => 'System',
+              AppThemePreference.light => 'Light',
+              AppThemePreference.amoled => 'Dark',
+            };
+            final colorInfo = themeState.useSystemColor
+                ? 'System color'
+                : '${(themeState.colorIntensity * 100).round()}% intensity';
+            return '$mode · $colorInfo';
+          }()),
           showChevron: true,
           onTap: onThemeTap,
         ),

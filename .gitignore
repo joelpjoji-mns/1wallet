@@ -79,3 +79,5 @@ database-debug.log
 # Firestore rules test tooling dependencies (installed via `npm --prefix firebase install`)
 firebase/node_modules/
 node_modules/*
+.gradle/
+

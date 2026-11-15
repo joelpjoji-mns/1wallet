@@ -41,6 +41,37 @@ void main() {
     );
   });
 
+  test('custom accent color seeds the colorScheme when useSystemColor is false', () {
+    const sapphire = Color(0xFF007AFF);
+    final theme = AppTheme.light(
+      customAccentColor: sapphire,
+      useSystemColor: false,
+    );
+    expect(theme.colorScheme.primary, isNot(AppColors.primary));
+    expect(theme.colorScheme.primary.toARGB32(), isNotNull);
+
+    final amoledTheme = AppTheme.amoled(
+      customAccentColor: sapphire,
+      useSystemColor: false,
+    );
+    expect(amoledTheme.colorScheme.surface, AppColors.amoledBackground);
+  });
+
+  test('color intensity changes saturation of primary color', () {
+    const color = Color(0xFF007AFF);
+    final lowIntensity = AppTheme.adjustColorIntensity(color, 0.2);
+    final normalIntensity = AppTheme.adjustColorIntensity(color, 1.0);
+    final highIntensity = AppTheme.adjustColorIntensity(color, 1.5);
+
+    expect(normalIntensity, color);
+    final lowHsl = HSLColor.fromColor(lowIntensity);
+    final normalHsl = HSLColor.fromColor(normalIntensity);
+    final highHsl = HSLColor.fromColor(highIntensity);
+
+    expect(lowHsl.saturation, lessThan(normalHsl.saturation));
+    expect(highHsl.saturation, greaterThanOrEqualTo(normalHsl.saturation));
+  });
+
   testWidgets('category and add-record colors follow theme color scheme', (
     WidgetTester tester,
   ) async {

@@ -433,29 +433,32 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               Padding(
                 padding: const EdgeInsets.only(right: AppSpacing.sm),
                 child: g1455.GlassButtonGroup(
-                  finish: ref.watch(glassFinishProvider),
+                  finish: ref.watch(toolbarsGlassFinishProvider),
                   items: [
                     if (_selectedTransactionIds.length >= 2)
                       g1455.GlassToolbarItem(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.call_merge_rounded,
                           size: 20,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                         label: 'Merge selected transactions',
                         onPressed: _showMergeDialog,
                       ),
                     g1455.GlassToolbarItem(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline_rounded,
                         size: 20,
+                        color: Theme.of(context).colorScheme.error,
                       ),
                       label: 'Delete selected transactions',
                       onPressed: _confirmDeleteSelected,
                     ),
                     g1455.GlassToolbarItem(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         size: 20,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                       label: 'Clear selection',
                       onPressed: () =>

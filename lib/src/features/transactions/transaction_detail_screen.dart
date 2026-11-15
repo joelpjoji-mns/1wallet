@@ -69,21 +69,23 @@ class _TransactionDetailScreenState
         Padding(
           padding: const EdgeInsets.only(right: AppSpacing.sm),
           child: g1455.GlassButtonGroup(
-            finish: ref.watch(glassFinishProvider),
+            finish: ref.watch(toolbarsGlassFinishProvider),
             items: [
               g1455.GlassToolbarItem(
-                icon: const Icon(
+                icon: Icon(
                   Icons.edit_outlined,
                   size: 20,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 label: 'Edit transaction',
                 onPressed: () =>
                     context.push('/add?transactionId=${transaction.id}'),
               ),
               g1455.GlassToolbarItem(
-                icon: const Icon(
+                icon: Icon(
                   Icons.delete_outline_rounded,
                   size: 20,
+                  color: Theme.of(context).colorScheme.error,
                 ),
                 label: 'Delete transaction',
                 onPressed: () => _confirmDelete(context, ref, transaction),
@@ -347,14 +349,15 @@ class _TransactionDetailScreenState
                 Row(
                   children: [
                     g1455.GlassButtonGroup(
-                      finish: ref.watch(glassFinishProvider),
+                      finish: ref.watch(toolbarsGlassFinishProvider),
                       items: [
                         g1455.GlassToolbarItem(
                           icon: _isAttaching
                               ? const AppInlineSpinner(size: 16)
-                              : const Icon(
+                              : Icon(
                                   Icons.camera_alt_outlined,
                                   size: 20,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                           label: 'Scan receipt',
                           onPressed: _isAttaching
@@ -367,9 +370,10 @@ class _TransactionDetailScreenState
                         g1455.GlassToolbarItem(
                           icon: _isAttaching
                               ? const AppInlineSpinner(size: 16)
-                              : const Icon(
+                              : Icon(
                                   Icons.image_outlined,
                                   size: 20,
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                           label: 'Photo from gallery',
                           onPressed: _isAttaching

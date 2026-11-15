@@ -1021,7 +1021,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   ),
                                   const Spacer(),
                                   g1455.GlassMenuAnchor(
-                                    finish: ref.watch(glassFinishProvider),
+                                    finish: ref.watch(dropdownMenuGlassFinishProvider),
                                     items: [
                                       g1455.GlassMenuItem(
                                         label: 'Take photo',

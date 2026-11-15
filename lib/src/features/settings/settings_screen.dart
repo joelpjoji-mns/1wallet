@@ -19,6 +19,7 @@ import 'offline_mode_section.dart';
 import 'permission_setup_controller.dart';
 import 'settings_components.dart';
 import 'glass_effect_screen.dart';
+import 'theme_mode_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -129,8 +130,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     },
                     onBaseCurrencyTap: () => context.push('/currencies'),
                     onLocaleTap: () => _showLocalePicker(state),
-                    onThemeTap: () =>
-                        _showThemePicker(ref, themeState.preference),
+                    onThemeTap: () {
+                      if (GoRouter.maybeOf(context) != null) {
+                        context.push('/settings/theme');
+                      } else {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ThemeModeScreen(),
+                          ),
+                        );
+                      }
+                    },
                     onHideSkippedChanged: (value) {
                       ref
                           .read(ledgerProvider.notifier)
@@ -418,42 +428,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _showMessage('Locale updated.');
   }
 
-  Future<void> _showThemePicker(
-    WidgetRef ref,
-    AppThemePreference selected,
-  ) async {
-    final next = await showFullScreenPicker<AppThemePreference>(
-      context: context,
-      title: 'Theme mode',
-      searchable: false,
-      selectedValue: selected,
-      options: [
-        for (final preference in AppThemePreference.values)
-          PickerOption(
-            value: preference,
-            title: _themePreferenceLabel(preference),
-            subtitle: switch (preference) {
-              AppThemePreference.system => 'Follow device light/dark mode',
-              AppThemePreference.light => 'Bright Material 3 surfaces',
-              AppThemePreference.amoled => 'True-black OLED surfaces',
-            },
-            icon: switch (preference) {
-              AppThemePreference.system => Icons.brightness_auto_outlined,
-              AppThemePreference.light => Icons.light_mode_outlined,
-              AppThemePreference.amoled => Icons.dark_mode_outlined,
-            },
-          ),
-      ],
-    );
-    if (next == null || next == selected) return;
-    // Wait for the modal dialog / picker route to finish popping so it isn't in the layer tree during theme rebuild
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    await ref.read(themeControllerProvider.notifier).setPreference(next);
-    if (!mounted) return;
-    _showMessage('Theme preference saved.');
-  }
-
   Future<void> _editOfflineName(
     BuildContext context,
     WidgetRef ref,
@@ -508,14 +482,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showMessage(String message) => showAppSnackBar(context, message);
-
-  String _themePreferenceLabel(AppThemePreference preference) {
-    return switch (preference) {
-      AppThemePreference.system => 'System',
-      AppThemePreference.light => 'Light',
-      AppThemePreference.amoled => 'Dark',
-    };
-  }
 
   String _localeLabel(String locale) {
     return switch (locale) {

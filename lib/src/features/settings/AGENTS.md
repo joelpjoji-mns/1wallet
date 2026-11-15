@@ -16,6 +16,8 @@ Manages application configuration, user preferences, security lock toggles, loca
 | `account_deletion_controller.dart` | Multi-step safety controller for wiping local state and deleting user accounts from Firebase Firestore. |
 | `device_permissions_screen.dart` | Auditing granted/denied device permissions (SMS, Notifications, Camera). |
 | `permissions_setup_screen.dart` & `permission_setup_controller.dart` | Interactive onboarding permissions wizard explaining why permissions are needed. Completion is keyed by `AuthState.ownerId` (`'local-user'` offline). `copyCompletion` carries it over on an offline → Google upgrade. |
+| `theme_mode_screen.dart` | Dedicated theme customization screen with interactive live preview, Light / Dark (AMOLED) / System mode pickers, Material You system wallpaper color matching toggle, curated accent color swatches, custom hex picker, and color intensity slider (20% - 180%). |
+| `glass_effect_screen.dart` | Dedicated liquid optics customization screen with per-component surface selector (Island Bar, Action Button (FAB), Dropdown & Menus, Toolbars & Buttons, Cards & Surfaces), Clear vs Regular finish presets (Frosted removed), interactive optic sliders (blur, background opacity, refraction, rim sheen), and live component-specific preview. |
 
 ---
 

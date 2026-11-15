@@ -792,7 +792,7 @@ class HeaderIconButton extends StatelessWidget {
                   : Icon(
                       icon,
                       size: 22,
-                      color: destructive ? scheme.error : null,
+                      color: destructive ? scheme.error : scheme.onSurface,
                     ),
             ),
           ),

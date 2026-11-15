@@ -129,6 +129,51 @@ void main() {
       expect(prevIcon.color, isNot(Colors.white));
       expect(nextIcon.color, isNot(Colors.white));
       expect(todayIcon.color, isNot(Colors.white));
+      expect(prevIcon.color, ThemeData.light().colorScheme.onSurface);
+      expect(nextIcon.color, ThemeData.light().colorScheme.onSurface);
+      expect(todayIcon.color, ThemeData.light().colorScheme.onSurface);
+    },
+  );
+
+  testWidgets(
+    'calendar month navigation icons adapt to dark theme',
+    (tester) async {
+      final state = _ledger();
+      final darkTheme = ThemeData.dark();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: authenticatedSampleOverrides(ledger: state),
+          child: MaterialApp(
+            theme: darkTheme,
+            home: Scaffold(body: CalendarScreen(onMenuPressed: () {})),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final prevIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.byTooltip('Previous month'),
+          matching: find.byType(Icon),
+        ),
+      );
+      final nextIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.byTooltip('Next month'),
+          matching: find.byType(Icon),
+        ),
+      );
+      final todayIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.byTooltip('Current month'),
+          matching: find.byType(Icon),
+        ),
+      );
+
+      expect(prevIcon.color, darkTheme.colorScheme.onSurface);
+      expect(nextIcon.color, darkTheme.colorScheme.onSurface);
+      expect(todayIcon.color, darkTheme.colorScheme.onSurface);
     },
   );
 }

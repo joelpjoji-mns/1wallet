@@ -121,6 +121,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final expense = _cachedExpense;
     final net = _cachedNet;
 
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final locale = state.preferences.locale.replaceAll('_', '-');
     final selectedAccount = accountById(state, _accountFilter);
     final hasCategoryFilter =
@@ -165,14 +167,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ),
               const SizedBox(width: AppSpacing.xs),
               g1455.GlassButtonGroup(
-                finish: ref.watch(glassFinishProvider),
+                finish: ref.watch(toolbarsGlassFinishProvider),
                 items: [
                   g1455.GlassToolbarItem(
-                    icon: const Tooltip(
+                    icon: Tooltip(
                       message: 'Previous month',
                       child: Icon(
                         Icons.chevron_left_rounded,
                         size: 20,
+                        color: scheme.onSurface,
                       ),
                     ),
                     label: 'Previous month',
@@ -184,11 +187,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     ),
                   ),
                   g1455.GlassToolbarItem(
-                    icon: const Tooltip(
+                    icon: Tooltip(
                       message: 'Current month',
                       child: Icon(
                         Icons.today_rounded,
                         size: 18,
+                        color: scheme.onSurface,
                       ),
                     ),
                     label: 'Current month',
@@ -200,11 +204,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     ),
                   ),
                   g1455.GlassToolbarItem(
-                    icon: const Tooltip(
+                    icon: Tooltip(
                       message: 'Next month',
                       child: Icon(
                         Icons.chevron_right_rounded,
                         size: 20,
+                        color: scheme.onSurface,
                       ),
                     ),
                     label: 'Next month',
@@ -311,7 +316,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   child: Center(
                     child: Text(
                       day,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),

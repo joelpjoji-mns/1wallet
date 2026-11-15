@@ -3,29 +3,145 @@ import 'package:flutter/cupertino.dart';
 
 import '../design/tokens.dart';
 
-abstract final class AppTheme {
-  static ThemeData light({ColorScheme? systemColorScheme}) =>
-      _theme(Brightness.light, systemColorScheme: systemColorScheme);
+class ThemeAccentOption {
+  const ThemeAccentOption({
+    required this.name,
+    required this.color,
+  });
 
-  static ThemeData amoled({ColorScheme? systemColorScheme}) => _theme(
+  final String name;
+  final Color color;
+}
+
+abstract final class AppThemeAccents {
+  static const crimson = Color(0xFFFA233B); // Apple Music Red (Default)
+  static const sapphire = Color(0xFF007AFF); // iOS Blue
+  static const violet = Color(0xFF7C3AED); // Electric Violet
+  static const emerald = Color(0xFF10B981); // Emerald Green
+  static const orange = Color(0xFFFF6B00); // Sunset Orange
+  static const rose = Color(0xFFF43F5E); // Rose Pink
+  static const cyan = Color(0xFF06B6D4); // Ocean Cyan
+  static const indigo = Color(0xFF4F46E5); // Royal Indigo
+  static const amber = Color(0xFFF59E0B); // Amber Gold
+  static const magenta = Color(0xFFEC4899); // Bubblegum Magenta
+  static const slate = Color(0xFF64748B); // Nordic Slate
+
+  static const List<ThemeAccentOption> options = [
+    ThemeAccentOption(name: 'Crimson', color: crimson),
+    ThemeAccentOption(name: 'Sapphire', color: sapphire),
+    ThemeAccentOption(name: 'Violet', color: violet),
+    ThemeAccentOption(name: 'Emerald', color: emerald),
+    ThemeAccentOption(name: 'Orange', color: orange),
+    ThemeAccentOption(name: 'Rose', color: rose),
+    ThemeAccentOption(name: 'Cyan', color: cyan),
+    ThemeAccentOption(name: 'Indigo', color: indigo),
+    ThemeAccentOption(name: 'Amber', color: amber),
+    ThemeAccentOption(name: 'Magenta', color: magenta),
+    ThemeAccentOption(name: 'Slate', color: slate),
+  ];
+}
+
+abstract final class AppTheme {
+  static Color adjustColorIntensity(Color color, double intensity) {
+    if (intensity == 1.0) return color;
+    final hsl = HSLColor.fromColor(color);
+    final newSaturation = (hsl.saturation * intensity).clamp(0.0, 1.0);
+    return hsl.withSaturation(newSaturation).toColor();
+  }
+
+  static ThemeData light({
+    ColorScheme? systemColorScheme,
+    Color? customAccentColor,
+    double colorIntensity = 1.0,
+    bool useSystemColor = true,
+  }) => _theme(
+    Brightness.light,
+    systemColorScheme: systemColorScheme,
+    customAccentColor: customAccentColor,
+    colorIntensity: colorIntensity,
+    useSystemColor: useSystemColor,
+  );
+
+  static ThemeData amoled({
+    ColorScheme? systemColorScheme,
+    Color? customAccentColor,
+    double colorIntensity = 1.0,
+    bool useSystemColor = true,
+  }) => _theme(
     Brightness.dark,
     amoled: true,
     systemColorScheme: systemColorScheme,
+    customAccentColor: customAccentColor,
+    colorIntensity: colorIntensity,
+    useSystemColor: useSystemColor,
   );
 
   static ThemeData _theme(
     Brightness brightness, {
     bool amoled = false,
     ColorScheme? systemColorScheme,
+    Color? customAccentColor,
+    double colorIntensity = 1.0,
+    bool useSystemColor = true,
   }) {
     final dark = brightness == Brightness.dark;
-    final baseScheme =
-        systemColorScheme != null && systemColorScheme.brightness == brightness
-        ? systemColorScheme
-        : ColorScheme.fromSeed(
-            seedColor: AppColors.primary,
-            brightness: brightness,
-          );
+
+    final effectiveSeedColor = adjustColorIntensity(
+      customAccentColor ?? AppColors.primary,
+      colorIntensity,
+    );
+
+    ColorScheme baseScheme;
+    if (useSystemColor &&
+        systemColorScheme != null &&
+        systemColorScheme.brightness == brightness) {
+      if (colorIntensity == 1.0) {
+        baseScheme = systemColorScheme;
+      } else {
+        baseScheme = systemColorScheme.copyWith(
+          primary: adjustColorIntensity(
+            systemColorScheme.primary,
+            colorIntensity,
+          ),
+          secondary: adjustColorIntensity(
+            systemColorScheme.secondary,
+            colorIntensity,
+          ),
+          tertiary: adjustColorIntensity(
+            systemColorScheme.tertiary,
+            colorIntensity,
+          ),
+          primaryContainer: adjustColorIntensity(
+            systemColorScheme.primaryContainer,
+            colorIntensity,
+          ),
+          secondaryContainer: adjustColorIntensity(
+            systemColorScheme.secondaryContainer,
+            colorIntensity,
+          ),
+          tertiaryContainer: adjustColorIntensity(
+            systemColorScheme.tertiaryContainer,
+            colorIntensity,
+          ),
+        );
+      }
+    } else {
+      baseScheme = ColorScheme.fromSeed(
+        seedColor: effectiveSeedColor,
+        brightness: brightness,
+      );
+      if (colorIntensity != 1.0) {
+        baseScheme = baseScheme.copyWith(
+          primary: adjustColorIntensity(baseScheme.primary, colorIntensity),
+          secondary: adjustColorIntensity(baseScheme.secondary, colorIntensity),
+          tertiary: adjustColorIntensity(baseScheme.tertiary, colorIntensity),
+          primaryContainer: adjustColorIntensity(
+            baseScheme.primaryContainer,
+            colorIntensity,
+          ),
+        );
+      }
+    }
 
     final scheme = baseScheme.copyWith(
       primaryContainer: dark
@@ -80,6 +196,7 @@ abstract final class AppTheme {
           : AppColors.lightBackground,
       visualDensity: VisualDensity.standard,
       textTheme: textTheme,
+      iconTheme: IconThemeData(color: scheme.onSurface),
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,

@@ -56,12 +56,13 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: g1455.GlassButtonGroup(
-              finish: ref.watch(glassFinishProvider),
+              finish: ref.watch(toolbarsGlassFinishProvider),
               items: [
                 g1455.GlassToolbarItem(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.refresh_rounded,
                     size: 20,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   label: 'Refresh rates',
                   onPressed: () async {

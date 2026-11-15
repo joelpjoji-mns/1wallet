@@ -179,8 +179,16 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
   Widget build(BuildContext context) {
     final themeState = ref.watch(themeControllerProvider);
     final activeTheme = themeState.themeMode == ThemeMode.light
-        ? AppTheme.light()
-        : AppTheme.amoled();
+        ? AppTheme.light(
+            customAccentColor: themeState.customAccentColor,
+            colorIntensity: themeState.colorIntensity,
+            useSystemColor: themeState.useSystemColor,
+          )
+        : AppTheme.amoled(
+            customAccentColor: themeState.customAccentColor,
+            colorIntensity: themeState.colorIntensity,
+            useSystemColor: themeState.useSystemColor,
+          );
 
     ref.listen(startupStateProvider, (prev, next) {
       if (!next.isPending && next.destination == StartupDestination.home) {
@@ -198,8 +206,16 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
 
     ref.listen(themeControllerProvider, (prev, next) {
       final newTheme = next.themeMode == ThemeMode.light
-          ? AppTheme.light()
-          : AppTheme.amoled();
+          ? AppTheme.light(
+              customAccentColor: next.customAccentColor,
+              colorIntensity: next.colorIntensity,
+              useSystemColor: next.useSystemColor,
+            )
+          : AppTheme.amoled(
+              customAccentColor: next.customAccentColor,
+              colorIntensity: next.colorIntensity,
+              useSystemColor: next.useSystemColor,
+            );
       NativeWidgetSyncService.syncWidgets(
         ref.read(ledgerProvider),
         theme: newTheme,
@@ -281,8 +297,18 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           title: '1Wallet',
           debugShowCheckedModeBanner: false,
           routerConfig: router,
-          theme: AppTheme.light(systemColorScheme: lightDynamic),
-          darkTheme: AppTheme.amoled(systemColorScheme: darkDynamic),
+          theme: AppTheme.light(
+            systemColorScheme: themeState.useSystemColor ? lightDynamic : null,
+            customAccentColor: themeState.customAccentColor,
+            colorIntensity: themeState.colorIntensity,
+            useSystemColor: themeState.useSystemColor,
+          ),
+          darkTheme: AppTheme.amoled(
+            systemColorScheme: themeState.useSystemColor ? darkDynamic : null,
+            customAccentColor: themeState.customAccentColor,
+            colorIntensity: themeState.colorIntensity,
+            useSystemColor: themeState.useSystemColor,
+          ),
           themeMode: themeState.themeMode,
           builder: (context, child) {
             if (child == null) return const SizedBox.shrink();
@@ -302,7 +328,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
                         Brightness.dark);
             return g1455.GlassHost(
               key: ValueKey(
-                'glass_host_${themeState.themeMode}_${themeState.preference}_${isDark}_${glassFinish.name}',
+                'glass_host_${themeState.themeMode}_${themeState.preference}_${themeState.customAccentColor?.toARGB32()}_${themeState.colorIntensity}_${themeState.useSystemColor}_${isDark}_${glassFinish.name}',
               ),
               content: g1455.GlassContentDeclaration.undeclared,
               finish: glassFinish,
@@ -310,7 +336,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               backdrop: isDark
                   ? const Color(0xFF000000)
                   : const Color(0xFFF9F9F9),
-              richBackdrop: true,
+              richBackdrop: false,
               child: appLock,
             );
           },

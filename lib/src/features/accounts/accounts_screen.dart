@@ -61,20 +61,22 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         Padding(
           padding: const EdgeInsets.only(right: AppSpacing.sm),
           child: g1455.GlassButtonGroup(
-            finish: ref.watch(glassFinishProvider),
+            finish: ref.watch(toolbarsGlassFinishProvider),
             items: [
               g1455.GlassToolbarItem(
-                icon: const Icon(
+                icon: Icon(
                   Icons.credit_card_outlined,
                   size: 20,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 label: 'Cards',
                 onPressed: () => context.push('/cards'),
               ),
               g1455.GlassToolbarItem(
-                icon: const Icon(
+                icon: Icon(
                   Icons.account_balance_outlined,
                   size: 20,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 label: 'Loans',
                 onPressed: () => context.push('/loans'),

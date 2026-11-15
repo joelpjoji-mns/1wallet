@@ -260,6 +260,11 @@ Map<String, Object?> _preferencesToJson(LedgerPreferences preferences) {
     'glassProgressiveBlurStrength': preferences.glassProgressiveBlurStrength,
     'glassBackgroundOpacity': preferences.glassBackgroundOpacity,
     'glassInteractionStrength': preferences.glassInteractionStrength,
+    if (preferences.glassComponentOptics.isNotEmpty)
+      'glassComponentOptics': {
+        for (final entry in preferences.glassComponentOptics.entries)
+          entry.key: entry.value.toJson(),
+      },
     'notificationInboxEnabled': preferences.notificationInboxEnabled,
     'deviceNotificationsEnabled': preferences.deviceNotificationsEnabled,
     'channelScheduledEnabled': preferences.channelScheduledEnabled,
@@ -380,6 +385,24 @@ LedgerPreferences _preferencesFromJson(Map<String, dynamic> json) {
       json['glassInteractionStrength'],
       fallback: fallback.glassInteractionStrength,
     ),
+    glassComponentOptics: () {
+      final rawMap = json['glassComponentOptics'];
+      if (rawMap is! Map) return fallback.glassComponentOptics;
+      final map = <String, GlassComponentOptics>{};
+      for (final entry in rawMap.entries) {
+        final key = entry.key?.toString();
+        if (key == null) continue;
+        final val = entry.value;
+        if (val is Map) {
+          final target = GlassComponentTarget.fromString(key);
+          map[key] = GlassComponentOptics.fromJson(
+            val.cast<String, dynamic>(),
+            fallback: fallback.opticsFor(target),
+          );
+        }
+      }
+      return map;
+    }(),
     notificationInboxEnabled: _bool(
       json['notificationInboxEnabled'],
       fallback: fallback.notificationInboxEnabled,

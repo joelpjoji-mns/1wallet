@@ -28,21 +28,16 @@ import 'backup_codec.dart';
 const _ledgerStorageKey = 'one_wallet_flutter.ledger.v1';
 const _lastActiveUserIdKey = 'last_active_user_id';
 
-/// System-wide liquid glass finish derived from user preferences and theme appearance.
-final glassFinishProvider = Provider<g1455.GlassFinish>((ref) {
-  final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
-  final finishPref = prefs.glassFinish;
-  final themeState = ref.watch(themeControllerProvider);
-  final isDark = themeState.themeMode == ThemeMode.dark ||
-      (themeState.themeMode == ThemeMode.system &&
-          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-              Brightness.dark);
+/// Resolves a g1455 [GlassFinish] from [GlassComponentOptics] and current brightness.
+g1455.GlassFinish resolveGlassFinish(
+  GlassComponentOptics optics, {
+  required bool isDark,
+}) {
+  final fillAlpha = optics.backgroundOpacity;
+  final specularAlpha = optics.specularOpacity;
+  final blur = optics.blur;
 
-  final blur = prefs.glassBlurLevel;
-  final fillAlpha = prefs.glassBackgroundOpacity;
-  final specularAlpha = prefs.glassSpecularOpacity;
-
-  return switch (finishPref) {
+  return switch (optics.finish) {
     AppGlassFinish.regular => g1455.GlassFinish.regular(
         appearance: isDark ? Brightness.dark : Brightness.light,
       ).copyWith(
@@ -63,17 +58,71 @@ final glassFinishProvider = Provider<g1455.GlassFinish>((ref) {
             ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
             : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
       ),
-    AppGlassFinish.frosted => g1455.GlassFinish.frosted.copyWith(
-        blurSigmaLogical: blur,
-        tint: isDark
-            ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.05, 0.90))
-            : Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.05, 0.90)),
-        rim: isDark
-            ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
-            : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
-      ),
   };
+}
+
+/// Liquid glass finish for the floating bottom navigation island bar.
+final islandBarGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
+  final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
+  final optics = prefs.opticsFor(GlassComponentTarget.islandBar);
+  final themeState = ref.watch(themeControllerProvider);
+  final isDark = themeState.themeMode == ThemeMode.dark ||
+      (themeState.themeMode == ThemeMode.system &&
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+              Brightness.dark);
+  return resolveGlassFinish(optics, isDark: isDark);
 });
+
+/// Liquid glass finish for the floating action button (FAB).
+final fabGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
+  final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
+  final optics = prefs.opticsFor(GlassComponentTarget.fab);
+  final themeState = ref.watch(themeControllerProvider);
+  final isDark = themeState.themeMode == ThemeMode.dark ||
+      (themeState.themeMode == ThemeMode.system &&
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+              Brightness.dark);
+  return resolveGlassFinish(optics, isDark: isDark);
+});
+
+/// Liquid glass finish for dropdown menus, popup menus, and menu anchors.
+final dropdownMenuGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
+  final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
+  final optics = prefs.opticsFor(GlassComponentTarget.dropdownMenu);
+  final themeState = ref.watch(themeControllerProvider);
+  final isDark = themeState.themeMode == ThemeMode.dark ||
+      (themeState.themeMode == ThemeMode.system &&
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+              Brightness.dark);
+  return resolveGlassFinish(optics, isDark: isDark);
+});
+
+/// Liquid glass finish for toolbars, segmented buttons, and header action pills.
+final toolbarsGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
+  final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
+  final optics = prefs.opticsFor(GlassComponentTarget.toolbars);
+  final themeState = ref.watch(themeControllerProvider);
+  final isDark = themeState.themeMode == ThemeMode.dark ||
+      (themeState.themeMode == ThemeMode.system &&
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+              Brightness.dark);
+  return resolveGlassFinish(optics, isDark: isDark);
+});
+
+/// Liquid glass finish for general glass surfaces, cards, and base layers.
+final generalGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
+  final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
+  final optics = prefs.opticsFor(GlassComponentTarget.general);
+  final themeState = ref.watch(themeControllerProvider);
+  final isDark = themeState.themeMode == ThemeMode.dark ||
+      (themeState.themeMode == ThemeMode.system &&
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+              Brightness.dark);
+  return resolveGlassFinish(optics, isDark: isDark);
+});
+
+/// System-wide liquid glass finish (defaults to general/cards finish).
+final glassFinishProvider = generalGlassFinishProvider;
 
 @immutable
 class LedgerUserIdentity {
