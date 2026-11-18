@@ -56,9 +56,7 @@ class HomeWidgetCard extends StatelessWidget {
                 icon: icon,
                 iconColor: resolvedIconColor,
                 onTap: onIconTap ?? onAction,
-                tooltip: actionLabel != null
-                    ? '$title: $actionLabel'
-                    : title,
+                tooltip: actionLabel != null ? '$title: $actionLabel' : title,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -104,8 +102,7 @@ class HomeWidgetCard extends StatelessWidget {
                       : null,
                   quality: GlassQuality.minimal,
                 ),
-              ] else if (dateFilter != null &&
-                  onDateFilterChanged != null) ...[
+              ] else if (dateFilter != null && onDateFilterChanged != null) ...[
                 const SizedBox(width: AppSpacing.xs),
                 _buildDateDropdown(context),
               ] else if (actionLabel != null &&
@@ -155,8 +152,9 @@ class HomeWidgetCard extends StatelessWidget {
   Widget _buildDateDropdown(BuildContext context) {
     final filter = dateFilter!;
     final isCustom = filter.startsWith('custom:');
-    final activeCustomLabel =
-        isCustom ? homeWidgetDateLabel(filter) : 'Custom range';
+    final activeCustomLabel = isCustom
+        ? homeWidgetDateLabel(filter)
+        : 'Custom range';
 
     final options = <GlassDropdownOption<String>>[
       for (final option in dateFilterOptions)
@@ -167,10 +165,7 @@ class HomeWidgetCard extends StatelessWidget {
             icon: Icons.date_range_rounded,
           )
         else
-          GlassDropdownOption(
-            option,
-            homeWidgetDateLabel(option),
-          ),
+          GlassDropdownOption(option, homeWidgetDateLabel(option)),
       if (isCustom &&
           !dateFilterOptions.contains('Custom range') &&
           !dateFilterOptions.contains('custom'))
@@ -184,10 +179,10 @@ class HomeWidgetCard extends StatelessWidget {
     final resolvedValue = isCustom
         ? filter
         : (dateFilterOptions.contains(filter)
-            ? filter
-            : (dateFilterOptions.isNotEmpty
-                ? dateFilterOptions.first
-                : filter));
+              ? filter
+              : (dateFilterOptions.isNotEmpty
+                    ? dateFilterOptions.first
+                    : filter));
 
     return GlassDropdownPill<String>(
       value: resolvedValue,
@@ -197,8 +192,8 @@ class HomeWidgetCard extends StatelessWidget {
         if (selected == 'Custom range' ||
             selected == 'custom' ||
             selected.startsWith('custom:')) {
-          final initial = parseCustomDateRange(selected) ??
-              parseCustomDateRange(filter);
+          final initial =
+              parseCustomDateRange(selected) ?? parseCustomDateRange(filter);
           final picked = await showDateRangePicker(
             context: context,
             firstDate: DateTime(2000),

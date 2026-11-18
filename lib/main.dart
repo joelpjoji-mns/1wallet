@@ -49,11 +49,7 @@ Future<void> main() async {
   if (firebaseProjectId != null) {
     unawaited(prefs.setString('firebase_project_id', firebaseProjectId));
   }
-  await Future.wait([
-    dateFormattingWarmup,
-    glassWarmup,
-    g1455Warmup,
-  ]);
+  await Future.wait([dateFormattingWarmup, glassWarmup, g1455Warmup]);
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],

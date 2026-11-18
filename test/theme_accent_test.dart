@@ -41,21 +41,24 @@ void main() {
     );
   });
 
-  test('custom accent color seeds the colorScheme when useSystemColor is false', () {
-    const sapphire = Color(0xFF007AFF);
-    final theme = AppTheme.light(
-      customAccentColor: sapphire,
-      useSystemColor: false,
-    );
-    expect(theme.colorScheme.primary, isNot(AppColors.primary));
-    expect(theme.colorScheme.primary.toARGB32(), isNotNull);
+  test(
+    'custom accent color seeds the colorScheme when useSystemColor is false',
+    () {
+      const sapphire = Color(0xFF007AFF);
+      final theme = AppTheme.light(
+        customAccentColor: sapphire,
+        useSystemColor: false,
+      );
+      expect(theme.colorScheme.primary, isNot(AppColors.primary));
+      expect(theme.colorScheme.primary.toARGB32(), isNotNull);
 
-    final amoledTheme = AppTheme.amoled(
-      customAccentColor: sapphire,
-      useSystemColor: false,
-    );
-    expect(amoledTheme.colorScheme.surface, AppColors.amoledBackground);
-  });
+      final amoledTheme = AppTheme.amoled(
+        customAccentColor: sapphire,
+        useSystemColor: false,
+      );
+      expect(amoledTheme.colorScheme.surface, AppColors.amoledBackground);
+    },
+  );
 
   test('color intensity changes saturation of primary color', () {
     const color = Color(0xFF007AFF);

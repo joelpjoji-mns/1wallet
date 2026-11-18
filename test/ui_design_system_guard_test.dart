@@ -64,9 +64,7 @@ final _featureRules = <_Rule>[
     'named Material colour',
     RegExp(r'\bColors\.(?!transparent\b|white\b|black\b)[a-z]\w*'),
     'use a ColorScheme role or scheme.positive',
-    allow: {
-      _glassOptics: 'interactive glass optics lab & preview canvas',
-    },
+    allow: {_glassOptics: 'interactive glass optics lab & preview canvas'},
   ),
   _Rule(
     'inline SnackBar',

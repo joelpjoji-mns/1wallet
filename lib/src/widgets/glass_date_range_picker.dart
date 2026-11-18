@@ -85,14 +85,12 @@ class _GlassDateRangePickerDialogState
   static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   void _prevMonth() => setState(
-        () => _displayMonth =
-            DateTime(_displayMonth.year, _displayMonth.month - 1),
-      );
+    () => _displayMonth = DateTime(_displayMonth.year, _displayMonth.month - 1),
+  );
 
   void _nextMonth() => setState(
-        () => _displayMonth =
-            DateTime(_displayMonth.year, _displayMonth.month + 1),
-      );
+    () => _displayMonth = DateTime(_displayMonth.year, _displayMonth.month + 1),
+  );
 
   void _onDayTapped(DateTime day) {
     setState(() {
@@ -124,15 +122,13 @@ class _GlassDateRangePickerDialogState
 
   bool _isStart(DateTime day) => _start != null && day == _start;
 
-  bool _isEnd(DateTime day) =>
-      _end != null && day == _end && _end != _start;
+  bool _isEnd(DateTime day) => _end != null && day == _end && _end != _start;
 
   // ── calendar grid ────────────────────────────────────────────────────────
 
   Widget _buildCalendar(ColorScheme cs) {
     final firstDay = _displayMonth;
-    final daysInMonth =
-        DateTime(firstDay.year, firstDay.month + 1, 0).day;
+    final daysInMonth = DateTime(firstDay.year, firstDay.month + 1, 0).day;
     // Monday-first week offset (Mon=0 ... Sun=6)
     final startWeekday = (firstDay.weekday - 1) % 7;
 
@@ -161,15 +157,17 @@ class _GlassDateRangePickerDialogState
     }
     for (var d = 1; d <= daysInMonth; d++) {
       final day = DateTime(firstDay.year, firstDay.month, d);
-      cells.add(_DayCell(
-        day: day,
-        isStart: _isStart(day),
-        isEnd: _isEnd(day),
-        inRange: _inRange(day),
-        onTap: () => _onDayTapped(day),
-        colorScheme: cs,
-        isSingleMode: widget.singleMode,
-      ));
+      cells.add(
+        _DayCell(
+          day: day,
+          isStart: _isStart(day),
+          isEnd: _isEnd(day),
+          inRange: _inRange(day),
+          onTap: () => _onDayTapped(day),
+          colorScheme: cs,
+          isSingleMode: widget.singleMode,
+        ),
+      );
     }
 
     return Column(
@@ -201,8 +199,7 @@ class _GlassDateRangePickerDialogState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final monthLabel =
-        _monthName(_displayMonth.month, _displayMonth.year);
+    final monthLabel = _monthName(_displayMonth.month, _displayMonth.year);
 
     final canApply = widget.singleMode
         ? _start != null
@@ -226,9 +223,9 @@ class _GlassDateRangePickerDialogState
                 child: Text(
                   monthLabel,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               IconButton(
@@ -256,8 +253,9 @@ class _GlassDateRangePickerDialogState
                     ? () {
                         final s = _start!;
                         final e = _end ?? _start!;
-                        Navigator.of(context)
-                            .pop(DateTimeRange(start: s, end: e));
+                        Navigator.of(
+                          context,
+                        ).pop(DateTimeRange(start: s, end: e));
                       }
                     : null,
                 child: const Text('Apply'),
@@ -332,10 +330,7 @@ class _DayCell extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.all(1),
-        decoration: BoxDecoration(
-          color: bg,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
         child: Center(
           child: Text(
             '${day.day}',

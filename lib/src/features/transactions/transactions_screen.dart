@@ -981,8 +981,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Future<void> _onDateSelected(String value) async {
     if (value == 'custom' || value.startsWith('custom:')) {
       final currentFilter = ref.read(transactionsDateFilterProvider);
-      final initial = parseCustomDateRange(value) ??
-          parseCustomDateRange(currentFilter);
+      final initial =
+          parseCustomDateRange(value) ?? parseCustomDateRange(currentFilter);
       final picked = await showDateRangePicker(
         context: context,
         firstDate: DateTime(2000),
@@ -1283,16 +1283,22 @@ bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
       return !date.isBefore(start) && date.isBefore(end);
     }(),
     'this_month' => date.year == current.year && date.month == current.month,
-    'last_30_days' || '30_days' => !day.isBefore(
-      DateTime(
-        current.year,
-        current.month,
-        current.day,
-      ).subtract(const Duration(days: 30)),
-    ) && !date.isAfter(DateTime(current.year, current.month, current.day, 23, 59, 59, 999)),
-    '6_months' => !day.isBefore(
-      DateTime(current.year, current.month - 6, current.day),
-    ) && !date.isAfter(DateTime(current.year, current.month, current.day, 23, 59, 59, 999)),
+    'last_30_days' || '30_days' =>
+      !day.isBefore(
+            DateTime(
+              current.year,
+              current.month,
+              current.day,
+            ).subtract(const Duration(days: 30)),
+          ) &&
+          !date.isAfter(
+            DateTime(current.year, current.month, current.day, 23, 59, 59, 999),
+          ),
+    '6_months' =>
+      !day.isBefore(DateTime(current.year, current.month - 6, current.day)) &&
+          !date.isAfter(
+            DateTime(current.year, current.month, current.day, 23, 59, 59, 999),
+          ),
     'this_year' => date.year == current.year,
     _ => true,
   };

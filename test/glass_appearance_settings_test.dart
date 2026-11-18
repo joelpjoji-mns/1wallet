@@ -21,67 +21,112 @@ void main() {
   });
 
   group('Glass intensity and component optics preferences model & codec', () {
-    test('default preferences have clear finish, medium intensity and standard values', () {
-      const prefs = LedgerPreferences();
-      expect(prefs.glassFinish, AppGlassFinish.clear);
-      expect(prefs.glassIntensity, GlassIntensity.medium);
-      expect(prefs.glassBlurLevel, 0.0);
-      expect(prefs.glassBackgroundOpacity, 0.04);
-      expect(prefs.glassRefractionLevel, 1.0);
-      expect(prefs.glassInteractionStrength, 0.35);
-      expect(prefs.glassSpecularOpacity, 0.30);
-      expect(prefs.glassComponentOptics, isEmpty);
-    });
+    test(
+      'default preferences have clear finish, medium intensity and standard values',
+      () {
+        const prefs = LedgerPreferences();
+        expect(prefs.glassFinish, AppGlassFinish.clear);
+        expect(prefs.glassIntensity, GlassIntensity.medium);
+        expect(prefs.glassBlurLevel, 0.0);
+        expect(prefs.glassBackgroundOpacity, 0.04);
+        expect(prefs.glassRefractionLevel, 1.0);
+        expect(prefs.glassInteractionStrength, 0.35);
+        expect(prefs.glassSpecularOpacity, 0.30);
+        expect(prefs.glassComponentOptics, isEmpty);
+      },
+    );
 
-    test('withGlassFinish updates glass finish to regular and clear, frosted migrates to regular', () {
-      const base = LedgerPreferences();
-      expect(base.withGlassFinish(AppGlassFinish.regular).glassFinish, AppGlassFinish.regular);
-      expect(base.withGlassFinish(AppGlassFinish.clear).glassFinish, AppGlassFinish.clear);
-      expect(AppGlassFinish.fromString('frosted'), AppGlassFinish.regular);
-    });
+    test(
+      'withGlassFinish updates glass finish to regular and clear, frosted migrates to regular',
+      () {
+        const base = LedgerPreferences();
+        expect(
+          base.withGlassFinish(AppGlassFinish.regular).glassFinish,
+          AppGlassFinish.regular,
+        );
+        expect(
+          base.withGlassFinish(AppGlassFinish.clear).glassFinish,
+          AppGlassFinish.clear,
+        );
+        expect(AppGlassFinish.fromString('frosted'), AppGlassFinish.regular);
+      },
+    );
 
-    test('per-component optics customization works independently for each target', () {
-      const base = LedgerPreferences();
+    test(
+      'per-component optics customization works independently for each target',
+      () {
+        const base = LedgerPreferences();
 
-      // Default optics for components
-      final defaultIsland = base.opticsFor(GlassComponentTarget.islandBar);
-      expect(defaultIsland.finish, AppGlassFinish.clear);
-      expect(defaultIsland.blur, 0.0);
+        // Default optics for components
+        final defaultIsland = base.opticsFor(GlassComponentTarget.islandBar);
+        expect(defaultIsland.finish, AppGlassFinish.clear);
+        expect(defaultIsland.blur, 0.0);
 
-      final defaultFab = base.opticsFor(GlassComponentTarget.fab);
-      expect(defaultFab.finish, AppGlassFinish.regular);
-      expect(defaultFab.blur, 14.0);
+        final defaultFab = base.opticsFor(GlassComponentTarget.fab);
+        expect(defaultFab.finish, AppGlassFinish.regular);
+        expect(defaultFab.blur, 14.0);
 
-      // Customize Island Bar
-      final updatedIsland = base.withComponentOptics(
-        GlassComponentTarget.islandBar,
-        finish: AppGlassFinish.regular,
-        blur: 10.0,
-        backgroundOpacity: 0.18,
-      );
-      expect(updatedIsland.opticsFor(GlassComponentTarget.islandBar).finish, AppGlassFinish.regular);
-      expect(updatedIsland.opticsFor(GlassComponentTarget.islandBar).blur, 10.0);
-      expect(updatedIsland.opticsFor(GlassComponentTarget.islandBar).backgroundOpacity, 0.18);
-      // FAB remains unchanged
-      expect(updatedIsland.opticsFor(GlassComponentTarget.fab).blur, 14.0);
+        // Customize Island Bar
+        final updatedIsland = base.withComponentOptics(
+          GlassComponentTarget.islandBar,
+          finish: AppGlassFinish.regular,
+          blur: 10.0,
+          backgroundOpacity: 0.18,
+        );
+        expect(
+          updatedIsland.opticsFor(GlassComponentTarget.islandBar).finish,
+          AppGlassFinish.regular,
+        );
+        expect(
+          updatedIsland.opticsFor(GlassComponentTarget.islandBar).blur,
+          10.0,
+        );
+        expect(
+          updatedIsland
+              .opticsFor(GlassComponentTarget.islandBar)
+              .backgroundOpacity,
+          0.18,
+        );
+        // FAB remains unchanged
+        expect(updatedIsland.opticsFor(GlassComponentTarget.fab).blur, 14.0);
 
-      // Customize Dropdown Menu
-      final updatedMenu = updatedIsland.withComponentOptics(
-        GlassComponentTarget.dropdownMenu,
-        blur: 22.0,
-        backgroundOpacity: 0.30,
-      );
-      expect(updatedMenu.opticsFor(GlassComponentTarget.dropdownMenu).blur, 22.0);
-      expect(updatedMenu.opticsFor(GlassComponentTarget.dropdownMenu).backgroundOpacity, 0.30);
-      expect(updatedMenu.opticsFor(GlassComponentTarget.islandBar).blur, 10.0);
+        // Customize Dropdown Menu
+        final updatedMenu = updatedIsland.withComponentOptics(
+          GlassComponentTarget.dropdownMenu,
+          blur: 22.0,
+          backgroundOpacity: 0.30,
+        );
+        expect(
+          updatedMenu.opticsFor(GlassComponentTarget.dropdownMenu).blur,
+          22.0,
+        );
+        expect(
+          updatedMenu
+              .opticsFor(GlassComponentTarget.dropdownMenu)
+              .backgroundOpacity,
+          0.30,
+        );
+        expect(
+          updatedMenu.opticsFor(GlassComponentTarget.islandBar).blur,
+          10.0,
+        );
 
-      // Reset Island Bar to defaults
-      final resetIsland = updatedMenu.resetComponentOptics(GlassComponentTarget.islandBar);
-      expect(resetIsland.opticsFor(GlassComponentTarget.islandBar).blur, 0.0);
-      expect(resetIsland.opticsFor(GlassComponentTarget.islandBar).finish, AppGlassFinish.clear);
-      // Menu still retains its custom optics
-      expect(resetIsland.opticsFor(GlassComponentTarget.dropdownMenu).blur, 22.0);
-    });
+        // Reset Island Bar to defaults
+        final resetIsland = updatedMenu.resetComponentOptics(
+          GlassComponentTarget.islandBar,
+        );
+        expect(resetIsland.opticsFor(GlassComponentTarget.islandBar).blur, 0.0);
+        expect(
+          resetIsland.opticsFor(GlassComponentTarget.islandBar).finish,
+          AppGlassFinish.clear,
+        );
+        // Menu still retains its custom optics
+        expect(
+          resetIsland.opticsFor(GlassComponentTarget.dropdownMenu).blur,
+          22.0,
+        );
+      },
+    );
 
     test(
       'withGlassIntensity updates all glass parameters for light, medium, and heavy',
@@ -114,32 +159,49 @@ void main() {
       },
     );
 
-    test('LedgerCodec round-trips glassIntensity, glassFinish, and per-component optics', () {
-      final initial = emptyLedgerState().copyWith(
-        preferences: const LedgerPreferences()
-            .withGlassFinish(AppGlassFinish.regular)
-            .withGlassIntensity(GlassIntensity.heavy)
-            .withComponentOptics(
-              GlassComponentTarget.islandBar,
-              blur: 8.5,
-              backgroundOpacity: 0.12,
-            )
-            .withComponentOptics(
-              GlassComponentTarget.fab,
-              finish: AppGlassFinish.clear,
-              blur: 0.0,
-            ),
-      );
-      final json = encodeLedgerState(initial);
-      final decoded = decodeLedgerState(json);
+    test(
+      'LedgerCodec round-trips glassIntensity, glassFinish, and per-component optics',
+      () {
+        final initial = emptyLedgerState().copyWith(
+          preferences: const LedgerPreferences()
+              .withGlassFinish(AppGlassFinish.regular)
+              .withGlassIntensity(GlassIntensity.heavy)
+              .withComponentOptics(
+                GlassComponentTarget.islandBar,
+                blur: 8.5,
+                backgroundOpacity: 0.12,
+              )
+              .withComponentOptics(
+                GlassComponentTarget.fab,
+                finish: AppGlassFinish.clear,
+                blur: 0.0,
+              ),
+        );
+        final json = encodeLedgerState(initial);
+        final decoded = decodeLedgerState(json);
 
-      expect(decoded.preferences.glassIntensity, GlassIntensity.heavy);
-      expect(decoded.preferences.glassFinish, AppGlassFinish.regular);
-      expect(decoded.preferences.opticsFor(GlassComponentTarget.islandBar).blur, 8.5);
-      expect(decoded.preferences.opticsFor(GlassComponentTarget.islandBar).backgroundOpacity, 0.12);
-      expect(decoded.preferences.opticsFor(GlassComponentTarget.fab).finish, AppGlassFinish.clear);
-      expect(decoded.preferences.opticsFor(GlassComponentTarget.fab).blur, 0.0);
-    });
+        expect(decoded.preferences.glassIntensity, GlassIntensity.heavy);
+        expect(decoded.preferences.glassFinish, AppGlassFinish.regular);
+        expect(
+          decoded.preferences.opticsFor(GlassComponentTarget.islandBar).blur,
+          8.5,
+        );
+        expect(
+          decoded.preferences
+              .opticsFor(GlassComponentTarget.islandBar)
+              .backgroundOpacity,
+          0.12,
+        );
+        expect(
+          decoded.preferences.opticsFor(GlassComponentTarget.fab).finish,
+          AppGlassFinish.clear,
+        );
+        expect(
+          decoded.preferences.opticsFor(GlassComponentTarget.fab).blur,
+          0.0,
+        );
+      },
+    );
 
     test(
       'LedgerCodec falls back to deduced intensity on legacy JSON without glassIntensity',
@@ -226,11 +288,19 @@ void main() {
         await tester.tap(find.text('Regular').first);
         await tester.pumpAndSettle();
         expect(
-          container.read(ledgerProvider).preferences.opticsFor(GlassComponentTarget.islandBar).finish,
+          container
+              .read(ledgerProvider)
+              .preferences
+              .opticsFor(GlassComponentTarget.islandBar)
+              .finish,
           AppGlassFinish.regular,
         );
         expect(
-          container.read(ledgerProvider).preferences.opticsFor(GlassComponentTarget.islandBar).blur,
+          container
+              .read(ledgerProvider)
+              .preferences
+              .opticsFor(GlassComponentTarget.islandBar)
+              .blur,
           14.0,
         );
 
@@ -240,13 +310,20 @@ void main() {
 
         // Finish options still present, header updated
         expect(find.text('Action Button (FAB) Finish'), findsOneWidget);
-        expect(find.text('Action Button (FAB) Optics Customization'), findsOneWidget);
+        expect(
+          find.text('Action Button (FAB) Optics Customization'),
+          findsOneWidget,
+        );
 
         // Select Clear finish for FAB
         await tester.tap(find.text('Clear').first);
         await tester.pumpAndSettle();
         expect(
-          container.read(ledgerProvider).preferences.opticsFor(GlassComponentTarget.fab).finish,
+          container
+              .read(ledgerProvider)
+              .preferences
+              .opticsFor(GlassComponentTarget.fab)
+              .finish,
           AppGlassFinish.clear,
         );
 

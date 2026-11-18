@@ -124,80 +124,92 @@ void main() {
 
     await controller.setUseSystemColor(false);
     expect(controller.state.useSystemColor, false);
-    expect(prefs.getBool('one_wallet_flutter.theme.use_system_color.v1'), false);
-
-    store.failWrites = true;
-    await expectLater(
-      controller.setUseSystemColor(true),
-      throwsException,
-    );
-    expect(controller.state.useSystemColor, false);
-  });
-
-  test('setCustomAccentColor persists, disables useSystemColor, and rolls back on failure', () async {
-    final prefs = await SharedPreferences.getInstance();
-    final controller = ThemeController(prefs);
-
-    const testColor = Color(0xFF007AFF);
-    await controller.setCustomAccentColor(testColor);
-
-    expect(controller.state.customAccentColor, testColor);
-    expect(controller.state.useSystemColor, false);
     expect(
-      prefs.getInt('one_wallet_flutter.theme.accent_color.v1'),
-      testColor.toARGB32(),
+      prefs.getBool('one_wallet_flutter.theme.use_system_color.v1'),
+      false,
     );
-    expect(prefs.getBool('one_wallet_flutter.theme.use_system_color.v1'), false);
 
     store.failWrites = true;
-    const anotherColor = Color(0xFF10B981);
-    await expectLater(
-      controller.setCustomAccentColor(anotherColor),
-      throwsException,
-    );
-    expect(controller.state.customAccentColor, testColor);
+    await expectLater(controller.setUseSystemColor(true), throwsException);
+    expect(controller.state.useSystemColor, false);
   });
 
-  test('setColorIntensity clamps, persists, and rolls back on failure', () async {
-    final prefs = await SharedPreferences.getInstance();
-    final controller = ThemeController(prefs);
-    expect(controller.state.colorIntensity, 1.0);
+  test(
+    'setCustomAccentColor persists, disables useSystemColor, and rolls back on failure',
+    () async {
+      final prefs = await SharedPreferences.getInstance();
+      final controller = ThemeController(prefs);
 
-    await controller.setColorIntensity(1.5);
-    expect(controller.state.colorIntensity, 1.5);
-    expect(prefs.getDouble('one_wallet_flutter.theme.color_intensity.v1'), 1.5);
+      const testColor = Color(0xFF007AFF);
+      await controller.setCustomAccentColor(testColor);
 
-    // Clamps out-of-bounds values
-    await controller.setColorIntensity(3.0);
-    expect(controller.state.colorIntensity, 1.8);
+      expect(controller.state.customAccentColor, testColor);
+      expect(controller.state.useSystemColor, false);
+      expect(
+        prefs.getInt('one_wallet_flutter.theme.accent_color.v1'),
+        testColor.toARGB32(),
+      );
+      expect(
+        prefs.getBool('one_wallet_flutter.theme.use_system_color.v1'),
+        false,
+      );
 
-    store.failWrites = true;
-    await expectLater(
-      controller.setColorIntensity(0.5),
-      throwsException,
-    );
-    expect(controller.state.colorIntensity, 1.8);
-  });
+      store.failWrites = true;
+      const anotherColor = Color(0xFF10B981);
+      await expectLater(
+        controller.setCustomAccentColor(anotherColor),
+        throwsException,
+      );
+      expect(controller.state.customAccentColor, testColor);
+    },
+  );
 
-  test('resetToDefaults restores AMOLED, system color, and default intensity', () async {
-    final prefs = await SharedPreferences.getInstance();
-    final controller = ThemeController(prefs);
+  test(
+    'setColorIntensity clamps, persists, and rolls back on failure',
+    () async {
+      final prefs = await SharedPreferences.getInstance();
+      final controller = ThemeController(prefs);
+      expect(controller.state.colorIntensity, 1.0);
 
-    await controller.setPreference(AppThemePreference.light);
-    await controller.setCustomAccentColor(const Color(0xFF10B981));
-    await controller.setColorIntensity(1.4);
+      await controller.setColorIntensity(1.5);
+      expect(controller.state.colorIntensity, 1.5);
+      expect(
+        prefs.getDouble('one_wallet_flutter.theme.color_intensity.v1'),
+        1.5,
+      );
 
-    await controller.resetToDefaults();
-    expect(controller.state.preference, AppThemePreference.amoled);
-    expect(controller.state.useSystemColor, true);
-    expect(controller.state.customAccentColor, isNull);
-    expect(controller.state.colorIntensity, 1.0);
+      // Clamps out-of-bounds values
+      await controller.setColorIntensity(3.0);
+      expect(controller.state.colorIntensity, 1.8);
 
-    // On cold boot with stored values
-    final newController = ThemeController(prefs);
-    expect(newController.state.preference, AppThemePreference.amoled);
-    expect(newController.state.useSystemColor, true);
-    expect(newController.state.customAccentColor, isNull);
-    expect(newController.state.colorIntensity, 1.0);
-  });
+      store.failWrites = true;
+      await expectLater(controller.setColorIntensity(0.5), throwsException);
+      expect(controller.state.colorIntensity, 1.8);
+    },
+  );
+
+  test(
+    'resetToDefaults restores AMOLED, system color, and default intensity',
+    () async {
+      final prefs = await SharedPreferences.getInstance();
+      final controller = ThemeController(prefs);
+
+      await controller.setPreference(AppThemePreference.light);
+      await controller.setCustomAccentColor(const Color(0xFF10B981));
+      await controller.setColorIntensity(1.4);
+
+      await controller.resetToDefaults();
+      expect(controller.state.preference, AppThemePreference.amoled);
+      expect(controller.state.useSystemColor, true);
+      expect(controller.state.customAccentColor, isNull);
+      expect(controller.state.colorIntensity, 1.0);
+
+      // On cold boot with stored values
+      final newController = ThemeController(prefs);
+      expect(newController.state.preference, AppThemePreference.amoled);
+      expect(newController.state.useSystemColor, true);
+      expect(newController.state.customAccentColor, isNull);
+      expect(newController.state.colorIntensity, 1.0);
+    },
+  );
 }

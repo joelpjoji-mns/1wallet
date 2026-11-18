@@ -128,8 +128,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
     if (value == 'Custom range' ||
         value == 'custom' ||
         value.startsWith('custom:')) {
-      final initial = parseCustomDateRange(value) ??
-          parseCustomDateRange(_period);
+      final initial =
+          parseCustomDateRange(value) ?? parseCustomDateRange(_period);
       final picked = await showDateRangePicker(
         context: context,
         firstDate: DateTime(2000),
@@ -228,8 +228,9 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               ),
               () {
                 final isCustom = _period.startsWith('custom:');
-                final activeCustomLabel =
-                    isCustom ? homeWidgetDateLabel(_period) : 'Custom range';
+                final activeCustomLabel = isCustom
+                    ? homeWidgetDateLabel(_period)
+                    : 'Custom range';
                 final options = [
                   for (final opt in standardHomeDateFilterOptions)
                     if (opt == 'Custom range' || opt == 'custom')
@@ -252,8 +253,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                 final resolvedValue = isCustom
                     ? _period
                     : (standardHomeDateFilterOptions.contains(_period)
-                        ? _period
-                        : 'This month');
+                          ? _period
+                          : 'This month');
                 return GlassDropdownPill<String>(
                   value: resolvedValue,
                   options: options,
@@ -314,90 +315,90 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               );
             },
           ),
-                  const SizedBox(height: AppSpacing.xs),
-                  SizedBox(
-                    height: 24,
-                    child: currencyBreakdown.isNotEmpty
-                        ? SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                for (final money in currencyBreakdown) ...[
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.xs,
-                                      vertical: AppSpacing.xxxs,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: scheme.surfaceContainerHigh,
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadii.pill,
-                                      ),
-                                      border: Border.all(color: scheme.outlineVariant),
-                                    ),
-                                    child: PrivacyText(
-                                      '${money.currency} ${formatMoney(money, widget.state.preferences.locale)}',
-                                      style: Theme.of(context).textTheme.labelSmall
-                                          ?.copyWith(
-                                            color: scheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ),
-                                  if (money != currencyBreakdown.last)
-                                    const SizedBox(width: AppSpacing.xs),
-                                ],
-                              ],
+          const SizedBox(height: AppSpacing.xs),
+          SizedBox(
+            height: 24,
+            child: currencyBreakdown.isNotEmpty
+                ? SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final money in currencyBreakdown) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                              vertical: AppSpacing.xxxs,
                             ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            ref.read(transactionsTypeFilterProvider.notifier).state =
-                                'income';
-                            ref.read(transactionsDateFilterProvider.notifier).state =
-                                _mapPeriodToDateFilter(_period);
-                            widget.onTabSelected(1);
-                          },
-                          borderRadius: BorderRadius.circular(AppRadii.md),
-                          child: HomeFlowPanel(
-                            label: 'Income',
-                            value: flow.income,
-                            locale: widget.state.preferences.locale,
-                            tone: MetricTone.positive,
+                            decoration: BoxDecoration(
+                              color: scheme.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
+                              border: Border.all(color: scheme.outlineVariant),
+                            ),
+                            child: PrivacyText(
+                              '${money.currency} ${formatMoney(money, widget.state.preferences.locale)}',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () {
-                            ref.read(transactionsTypeFilterProvider.notifier).state =
-                                'expense';
-                            ref.read(transactionsDateFilterProvider.notifier).state =
-                                _mapPeriodToDateFilter(_period);
-                            widget.onTabSelected(1);
-                          },
-                          borderRadius: BorderRadius.circular(AppRadii.md),
-                          child: HomeFlowPanel(
-                            label: 'Expense',
-                            value: flow.expense,
-                            locale: widget.state.preferences.locale,
-                            tone: MetricTone.danger,
-                          ),
-                        ),
-                      ),
-                    ],
+                          if (money != currencyBreakdown.last)
+                            const SizedBox(width: AppSpacing.xs),
+                        ],
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    ref.read(transactionsTypeFilterProvider.notifier).state =
+                        'income';
+                    ref.read(transactionsDateFilterProvider.notifier).state =
+                        _mapPeriodToDateFilter(_period);
+                    widget.onTabSelected(1);
+                  },
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  child: HomeFlowPanel(
+                    label: 'Income',
+                    value: flow.income,
+                    locale: widget.state.preferences.locale,
+                    tone: MetricTone.positive,
                   ),
-                ],
+                ),
               ),
-            );
-          }
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    ref.read(transactionsTypeFilterProvider.notifier).state =
+                        'expense';
+                    ref.read(transactionsDateFilterProvider.notifier).state =
+                        _mapPeriodToDateFilter(_period);
+                    widget.onTabSelected(1);
+                  },
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  child: HomeFlowPanel(
+                    label: 'Expense',
+                    value: flow.expense,
+                    locale: widget.state.preferences.locale,
+                    tone: MetricTone.danger,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   String _mapPeriodToDateFilter(String period) {
     if (period.startsWith('custom:')) return period;
@@ -551,7 +552,9 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
         duration: const Duration(milliseconds: 320),
         child: recent.isEmpty
             ? KeyedSubtree(
-                key: ValueKey('recent_empty_${selectedAccountId ?? "all"}_$period'),
+                key: ValueKey(
+                  'recent_empty_${selectedAccountId ?? "all"}_$period',
+                ),
                 child: EmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: selectedAccount != null
@@ -563,7 +566,9 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
                 ),
               )
             : KeyedSubtree(
-                key: ValueKey('recent_list_${selectedAccountId ?? "all"}_${recent.length}'),
+                key: ValueKey(
+                  'recent_list_${selectedAccountId ?? "all"}_${recent.length}',
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 275),
                   child: Scrollbar(
@@ -1497,8 +1502,9 @@ class _BalanceTrendHomeWidgetState
 
   Widget _buildDropdown() {
     final isCustom = _period.startsWith('custom:');
-    final activeCustomLabel =
-        isCustom ? homeWidgetDateLabel(_period) : 'Custom range';
+    final activeCustomLabel = isCustom
+        ? homeWidgetDateLabel(_period)
+        : 'Custom range';
     final options = <GlassDropdownOption<String>>[
       for (final opt in standardHomeDateFilterOptions)
         if (opt == 'Custom range' || opt == 'custom')
@@ -1508,10 +1514,7 @@ class _BalanceTrendHomeWidgetState
             icon: Icons.date_range_rounded,
           )
         else
-          GlassDropdownOption(
-            opt,
-            homeWidgetDateLabel(opt),
-          ),
+          GlassDropdownOption(opt, homeWidgetDateLabel(opt)),
       if (isCustom &&
           !standardHomeDateFilterOptions.contains('Custom range') &&
           !standardHomeDateFilterOptions.contains('custom'))
@@ -1524,8 +1527,8 @@ class _BalanceTrendHomeWidgetState
     final resolvedValue = isCustom
         ? _period
         : (standardHomeDateFilterOptions.contains(_period)
-            ? _period
-            : 'This month');
+              ? _period
+              : 'This month');
 
     return GlassDropdownPill<String>(
       value: resolvedValue,
@@ -1534,8 +1537,8 @@ class _BalanceTrendHomeWidgetState
         if (value == 'Custom range' ||
             value == 'custom' ||
             value.startsWith('custom:')) {
-          final initial = parseCustomDateRange(value) ??
-              parseCustomDateRange(_period);
+          final initial =
+              parseCustomDateRange(value) ?? parseCustomDateRange(_period);
           final picked = await showDateRangePicker(
             context: context,
             firstDate: DateTime(2000),
@@ -2039,7 +2042,9 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
       child: GlassMaterializeSwitcher(
         duration: const Duration(milliseconds: 320),
         child: KeyedSubtree(
-          key: ValueKey('upcoming_${selectedAccountId ?? "all"}_${scheduled.length}'),
+          key: ValueKey(
+            'upcoming_${selectedAccountId ?? "all"}_${scheduled.length}',
+          ),
           child: Column(
             children: [
               Row(
@@ -2735,8 +2740,7 @@ class _AccountTile extends ConsumerWidget {
       }
     }
 
-    final isSelected =
-        ref.watch(homeSelectedAccountProvider) == account.id;
+    final isSelected = ref.watch(homeSelectedAccountProvider) == account.id;
 
     return Material(
       color: Colors.transparent,
@@ -2756,115 +2760,116 @@ class _AccountTile extends ConsumerWidget {
           }
         },
         child: Container(
-            // A fixed `height` clips/overflows once accessibility text scaling
-            // makes the name/balance/currency rows taller than 60 logical
-            // pixels; a `minHeight` lets the tile grow instead (the surrounding
-            // `Wrap` sizes each row to its tallest tile, so this is safe here).
-            constraints: const BoxConstraints(minHeight: 60),
-            padding: const EdgeInsets.all(AppSpacing.xs),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              border: isSelected
-                  ? Border.all(color: foreground, width: 2.2)
-                  : Border.all(
-                      color: foreground.withValues(alpha: 0.20),
-                      width: 0.8,
+          // A fixed `height` clips/overflows once accessibility text scaling
+          // makes the name/balance/currency rows taller than 60 logical
+          // pixels; a `minHeight` lets the tile grow instead (the surrounding
+          // `Wrap` sizes each row to its tallest tile, so this is safe here).
+          constraints: const BoxConstraints(minHeight: 60),
+          padding: const EdgeInsets.all(AppSpacing.xs),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: isSelected
+                ? Border.all(color: foreground, width: 2.2)
+                : Border.all(
+                    color: foreground.withValues(alpha: 0.20),
+                    width: 0.8,
+                  ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    accountIcon(account),
+                    color: foreground.withValues(alpha: 0.78),
+                    size: 13,
+                  ),
+                  const SizedBox(width: AppSpacing.xxxs),
+                  Expanded(
+                    child: Text(
+                      account.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: foreground,
+                        height: 1.1,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
+                  ),
+                  if (isSelected) ...[
                     Icon(
-                      accountIcon(account),
-                      color: foreground.withValues(alpha: 0.78),
+                      Icons.check_circle_rounded,
+                      color: foreground,
                       size: 13,
                     ),
                     const SizedBox(width: AppSpacing.xxxs),
-                    Expanded(
-                      child: Text(
-                        account.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: foreground,
-                          height: 1.1,
-                          fontWeight: FontWeight.w900,
+                  ],
+                  // Currency badge for foreign accounts. Capped and scaled down
+                  // so very large accessibility text can't push it past the
+                  // narrow tile.
+                  if (isForeignCurrency)
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 48),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xxs,
+                        vertical: AppSpacing.xxxs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: foreground.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        border: Border.all(
+                          color: foreground.withValues(alpha: 0.24),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          nativeBalance.currency,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: foreground.withValues(alpha: 0.86),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                              ),
                         ),
                       ),
                     ),
-                    if (isSelected) ...[
-                      Icon(
-                        Icons.check_circle_rounded,
-                        color: foreground,
-                        size: 13,
-                      ),
-                      const SizedBox(width: AppSpacing.xxxs),
-                    ],
-                    // Currency badge for foreign accounts. Capped and scaled down
-                    // so very large accessibility text can't push it past the
-                    // narrow tile.
-                    if (isForeignCurrency)
-                      Container(
-                        constraints: const BoxConstraints(maxWidth: 48),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xxs,
-                          vertical: AppSpacing.xxxs,
-                        ),
-                        decoration: BoxDecoration(
-                          color: foreground.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                          border: Border.all(
-                            color: foreground.withValues(alpha: 0.24),
-                            width: 0.5,
-                          ),
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            nativeBalance.currency,
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: foreground.withValues(alpha: 0.86),
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xxxs),
+              // Display in base currency
+              PrivacyText(
+                primaryLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: foreground.withValues(alpha: 0.94),
+                  height: 1.1,
+                  letterSpacing: -0.3,
+                  fontWeight: FontWeight.w900,
                 ),
-                const SizedBox(height: AppSpacing.xxxs),
-                // Display in base currency
+              ),
+              if (secondaryLabel != null)
                 PrivacyText(
-                  primaryLabel,
+                  secondaryLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: foreground.withValues(alpha: 0.94),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: foreground.withValues(alpha: 0.63),
                     height: 1.1,
-                    letterSpacing: -0.3,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (secondaryLabel != null)
-                  PrivacyText(
-                    secondaryLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: foreground.withValues(alpha: 0.63),
-                      height: 1.1,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 }
 

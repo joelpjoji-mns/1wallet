@@ -167,8 +167,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             builder: (context, controller) => IconButton(
               tooltip: 'Capture tools',
               icon: const Icon(Icons.tune_rounded),
-              onPressed:
-                  controller.isOpen ? controller.close : controller.open,
+              onPressed: controller.isOpen ? controller.close : controller.open,
             ),
           ),
         ],

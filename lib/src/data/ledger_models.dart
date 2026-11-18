@@ -387,10 +387,13 @@ enum GlassComponentTarget {
     return switch (value.toLowerCase()) {
       'islandbar' || 'island_bar' => GlassComponentTarget.islandBar,
       'fab' || 'floating_action_button' => GlassComponentTarget.fab,
-      'dropdownmenu' || 'dropdown_menu' || 'dropdown' || 'menu' =>
-        GlassComponentTarget.dropdownMenu,
-      'toolbars' || 'toolbar' || 'button_groups' =>
-        GlassComponentTarget.toolbars,
+      'dropdownmenu' ||
+      'dropdown_menu' ||
+      'dropdown' ||
+      'menu' => GlassComponentTarget.dropdownMenu,
+      'toolbars' ||
+      'toolbar' ||
+      'button_groups' => GlassComponentTarget.toolbars,
       'general' || 'surfaces' || 'cards' => GlassComponentTarget.general,
       _ => fallback,
     };
@@ -470,40 +473,40 @@ class GlassComponentOptics {
   static GlassComponentOptics defaultFor(GlassComponentTarget target) {
     return switch (target) {
       GlassComponentTarget.islandBar => const GlassComponentOptics(
-          finish: AppGlassFinish.clear,
-          blur: 0.0,
-          backgroundOpacity: 0.04,
-          refractionLevel: 1.0,
-          specularOpacity: 0.30,
-        ),
+        finish: AppGlassFinish.clear,
+        blur: 0.0,
+        backgroundOpacity: 0.04,
+        refractionLevel: 1.0,
+        specularOpacity: 0.30,
+      ),
       GlassComponentTarget.fab => const GlassComponentOptics(
-          finish: AppGlassFinish.regular,
-          blur: 14.0,
-          backgroundOpacity: 0.22,
-          refractionLevel: 1.0,
-          specularOpacity: 0.55,
-        ),
+        finish: AppGlassFinish.regular,
+        blur: 14.0,
+        backgroundOpacity: 0.22,
+        refractionLevel: 1.0,
+        specularOpacity: 0.55,
+      ),
       GlassComponentTarget.dropdownMenu => const GlassComponentOptics(
-          finish: AppGlassFinish.regular,
-          blur: 16.0,
-          backgroundOpacity: 0.20,
-          refractionLevel: 1.0,
-          specularOpacity: 0.45,
-        ),
+        finish: AppGlassFinish.regular,
+        blur: 16.0,
+        backgroundOpacity: 0.20,
+        refractionLevel: 1.0,
+        specularOpacity: 0.45,
+      ),
       GlassComponentTarget.toolbars => const GlassComponentOptics(
-          finish: AppGlassFinish.regular,
-          blur: 12.0,
-          backgroundOpacity: 0.16,
-          refractionLevel: 1.0,
-          specularOpacity: 0.40,
-        ),
+        finish: AppGlassFinish.regular,
+        blur: 12.0,
+        backgroundOpacity: 0.16,
+        refractionLevel: 1.0,
+        specularOpacity: 0.40,
+      ),
       GlassComponentTarget.general => const GlassComponentOptics(
-          finish: AppGlassFinish.clear,
-          blur: 0.0,
-          backgroundOpacity: 0.04,
-          refractionLevel: 1.0,
-          specularOpacity: 0.30,
-        ),
+        finish: AppGlassFinish.clear,
+        blur: 0.0,
+        backgroundOpacity: 0.04,
+        refractionLevel: 1.0,
+        specularOpacity: 0.30,
+      ),
     };
   }
 
@@ -528,13 +531,13 @@ class GlassComponentOptics {
       blur: (json['blur'] as num?)?.toDouble() ?? fallback.blur,
       backgroundOpacity:
           (json['backgroundOpacity'] as num?)?.toDouble() ??
-              fallback.backgroundOpacity,
+          fallback.backgroundOpacity,
       refractionLevel:
           (json['refractionLevel'] as num?)?.toDouble() ??
-              fallback.refractionLevel,
+          fallback.refractionLevel,
       specularOpacity:
           (json['specularOpacity'] as num?)?.toDouble() ??
-              fallback.specularOpacity,
+          fallback.specularOpacity,
     );
   }
 
@@ -551,12 +554,12 @@ class GlassComponentOptics {
 
   @override
   int get hashCode => Object.hash(
-        finish,
-        blur,
-        backgroundOpacity,
-        refractionLevel,
-        specularOpacity,
-      );
+    finish,
+    blur,
+    backgroundOpacity,
+    refractionLevel,
+    specularOpacity,
+  );
 }
 
 enum GlassIntensity {
@@ -878,8 +881,7 @@ class LedgerPreferences {
           glassBackgroundOpacity ?? this.glassBackgroundOpacity,
       glassInteractionStrength:
           glassInteractionStrength ?? this.glassInteractionStrength,
-      glassComponentOptics:
-          glassComponentOptics ?? this.glassComponentOptics,
+      glassComponentOptics: glassComponentOptics ?? this.glassComponentOptics,
       notificationInboxEnabled:
           notificationInboxEnabled ?? this.notificationInboxEnabled,
       deviceNotificationsEnabled:

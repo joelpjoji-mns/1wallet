@@ -627,9 +627,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
               TextField(
                 controller: _confirmationController,
                 autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'DELETE',
-                ),
+                decoration: const InputDecoration(hintText: 'DELETE'),
               ),
             ],
             if (isBusy) ...[

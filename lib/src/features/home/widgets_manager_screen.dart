@@ -283,8 +283,9 @@ class _LiveWidgetPreview extends ConsumerWidget {
     String datePreset,
   ) async {
     final isCustom = datePreset.startsWith('custom:');
-    final activeCustomLabel =
-        isCustom ? homeWidgetDateLabel(datePreset) : 'Custom range';
+    final activeCustomLabel = isCustom
+        ? homeWidgetDateLabel(datePreset)
+        : 'Custom range';
     final presets = allowedDatePresetsForHomeWidget(widgetId.storageKey);
 
     final next = await showFullScreenPicker<String>(

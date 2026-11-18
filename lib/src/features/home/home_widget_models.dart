@@ -108,7 +108,11 @@ DateTimeRange homeWidgetDateRange(String period) {
     if (range != null) {
       return DateTimeRange(
         start: range.start,
-        end: DateTime(range.end.year, range.end.month, range.end.day).add(const Duration(days: 1)),
+        end: DateTime(
+          range.end.year,
+          range.end.month,
+          range.end.day,
+        ).add(const Duration(days: 1)),
       );
     }
   }
@@ -194,7 +198,15 @@ DateTime homeWidgetFutureLimit(String period) {
   if (period.startsWith('custom:') || period.startsWith('Custom:')) {
     final range = parseCustomDateRange(period);
     if (range != null) {
-      return DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59, 999);
+      return DateTime(
+        range.end.year,
+        range.end.month,
+        range.end.day,
+        23,
+        59,
+        59,
+        999,
+      );
     }
   }
   switch (period) {

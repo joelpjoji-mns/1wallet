@@ -1226,9 +1226,7 @@ class _GlassHostState extends State<GlassHost> {
             wanted.top.isInfinite) {
           continue;
         }
-        final Rect clamped = scene != null && scene.overlaps(wanted)
-            ? wanted.intersect(scene)
-            : wanted;
+        final Rect clamped = scene != null && scene.overlaps(wanted) ? wanted.intersect(scene) : wanted;
         if (clamped.isEmpty ||
             clamped.width <= 0 ||
             clamped.height <= 0 ||

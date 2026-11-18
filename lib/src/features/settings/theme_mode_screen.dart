@@ -51,9 +51,7 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
 
   Future<void> _resetTheme() async {
     HapticFeedback.selectionClick();
-    await ref
-        .read(themeControllerProvider.notifier)
-        .resetToDefaults();
+    await ref.read(themeControllerProvider.notifier).resetToDefaults();
     if (!mounted) return;
     showAppSnackBar(context, 'Theme reset to default.');
   }
@@ -198,7 +196,8 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
               _ModeTile(
                 icon: Icons.dark_mode_outlined,
                 title: 'Dark (AMOLED)',
-                subtitle: 'Pitch-black OLED surfaces for maximum battery saving',
+                subtitle:
+                    'Pitch-black OLED surfaces for maximum battery saving',
                 selected: themeState.preference == AppThemePreference.amoled,
                 onTap: () {
                   HapticFeedback.selectionClick();
@@ -252,11 +251,13 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
                           _AccentSwatch(
                             color: option.color,
                             name: option.name,
-                            selected: !themeState.useSystemColor &&
+                            selected:
+                                !themeState.useSystemColor &&
                                 (themeState.customAccentColor?.toARGB32() ==
                                         option.color.toARGB32() ||
                                     (themeState.customAccentColor == null &&
-                                        option.color == AppThemeAccents.crimson)),
+                                        option.color ==
+                                            AppThemeAccents.crimson)),
                             onTap: () {
                               HapticFeedback.selectionClick();
                               ref
@@ -264,9 +265,7 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
                                   .setCustomAccentColor(option.color);
                             },
                           ),
-                        _CustomColorButton(
-                          onTap: _showCustomColorDialog,
-                        ),
+                        _CustomColorButton(onTap: _showCustomColorDialog),
                       ],
                     ),
                   ],
@@ -340,8 +339,9 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
                         activeTrackColor: scheme.primary,
-                        inactiveTrackColor:
-                            scheme.primary.withAlphaFactor(0.20),
+                        inactiveTrackColor: scheme.primary.withAlphaFactor(
+                          0.20,
+                        ),
                         thumbColor: scheme.primary,
                         overlayColor: scheme.primary.withAlphaFactor(0.15),
                         trackHeight: 4,
@@ -494,11 +494,7 @@ class _AccentSwatch extends StatelessWidget {
                 : null,
           ),
           child: selected
-              ? const Icon(
-                  Icons.check_rounded,
-                  color: Colors.white,
-                  size: 22,
-                )
+              ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
               : null,
         ),
       ),
@@ -526,10 +522,7 @@ class _CustomColorButton extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: scheme.surfaceContainerHighest,
-            border: Border.all(
-              color: scheme.outlineVariant,
-              width: 1.5,
-            ),
+            border: Border.all(color: scheme.outlineVariant, width: 1.5),
           ),
           child: Icon(
             Icons.colorize_rounded,
@@ -662,9 +655,7 @@ class _ThemeLivePreview extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(
-                color: scheme.primary.withAlphaFactor(0.30),
-              ),
+              border: Border.all(color: scheme.primary.withAlphaFactor(0.30)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

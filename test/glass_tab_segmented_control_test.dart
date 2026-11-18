@@ -4,8 +4,9 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 void main() {
-  testWidgets('GlassTabSegmentedControl animates continuously with page drag',
-      (tester) async {
+  testWidgets('GlassTabSegmentedControl animates continuously with page drag', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: DefaultTabController(
@@ -36,8 +37,9 @@ void main() {
 
     // Initially at Keypad (page 0)
     expect(find.text('Keypad View'), findsOneWidget);
-    AnimatedGlassIndicator indicator =
-        tester.widget(find.byType(AnimatedGlassIndicator));
+    AnimatedGlassIndicator indicator = tester.widget(
+      find.byType(AnimatedGlassIndicator),
+    );
     expect(indicator.alignment, const AlignmentDirectional(-1.0, 0));
 
     // Start dragging leftward from page 0 towards page 1

@@ -39,8 +39,12 @@ class AddRecordTypeTabs extends StatelessWidget {
               Text(
                 'Expense',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: selectedIndex == 0 ? FontWeight.w700 : FontWeight.w600,
-                  color: selectedIndex == 0 ? scheme.error : scheme.onSurfaceVariant,
+                  fontWeight: selectedIndex == 0
+                      ? FontWeight.w700
+                      : FontWeight.w600,
+                  color: selectedIndex == 0
+                      ? scheme.error
+                      : scheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -51,13 +55,21 @@ class AddRecordTypeTabs extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.arrow_downward_rounded, size: 16, color: scheme.tertiary),
+              Icon(
+                Icons.arrow_downward_rounded,
+                size: 16,
+                color: scheme.tertiary,
+              ),
               const SizedBox(width: AppSpacing.xxs),
               Text(
                 'Income',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: selectedIndex == 1 ? FontWeight.w700 : FontWeight.w600,
-                  color: selectedIndex == 1 ? scheme.tertiary : scheme.onSurfaceVariant,
+                  fontWeight: selectedIndex == 1
+                      ? FontWeight.w700
+                      : FontWeight.w600,
+                  color: selectedIndex == 1
+                      ? scheme.tertiary
+                      : scheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -73,8 +85,12 @@ class AddRecordTypeTabs extends StatelessWidget {
               Text(
                 'Transfer',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: selectedIndex == 2 ? FontWeight.w700 : FontWeight.w600,
-                  color: selectedIndex == 2 ? scheme.primary : scheme.onSurfaceVariant,
+                  fontWeight: selectedIndex == 2
+                      ? FontWeight.w700
+                      : FontWeight.w600,
+                  color: selectedIndex == 2
+                      ? scheme.primary
+                      : scheme.onSurfaceVariant,
                 ),
               ),
             ],

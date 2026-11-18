@@ -357,15 +357,17 @@ class _TransactionDetailScreenState
                               : Icon(
                                   Icons.camera_alt_outlined,
                                   size: 20,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                           label: 'Scan receipt',
                           onPressed: _isAttaching
                               ? null
                               : () => _attachReceipt(
-                                    transaction,
-                                    ImageSource.camera,
-                                  ),
+                                  transaction,
+                                  ImageSource.camera,
+                                ),
                         ),
                         g1455.GlassToolbarItem(
                           icon: _isAttaching
@@ -373,15 +375,17 @@ class _TransactionDetailScreenState
                               : Icon(
                                   Icons.image_outlined,
                                   size: 20,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                 ),
                           label: 'Photo from gallery',
                           onPressed: _isAttaching
                               ? null
                               : () => _attachReceipt(
-                                    transaction,
-                                    ImageSource.gallery,
-                                  ),
+                                  transaction,
+                                  ImageSource.gallery,
+                                ),
                         ),
                       ],
                     ),

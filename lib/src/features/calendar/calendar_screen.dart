@@ -662,7 +662,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         balanceDisplay,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: balanceMinor < 0 ? scheme.error : scheme.primary,
+                          color: balanceMinor < 0
+                              ? scheme.error
+                              : scheme.primary,
                         ),
                       ),
                     ],
@@ -944,8 +946,8 @@ class _DayCell extends StatelessWidget {
           color: isToday
               ? scheme.primaryContainer.withValues(alpha: 0.55)
               : (inMonth
-                  ? scheme.surfaceContainer.withValues(alpha: 0.70)
-                  : scheme.surfaceContainer.withValues(alpha: 0.25)),
+                    ? scheme.surfaceContainer.withValues(alpha: 0.70)
+                    : scheme.surfaceContainer.withValues(alpha: 0.25)),
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
             color: isToday

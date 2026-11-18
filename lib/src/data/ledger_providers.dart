@@ -38,7 +38,8 @@ g1455.GlassFinish resolveGlassFinish(
   final blur = optics.blur;
 
   return switch (optics.finish) {
-    AppGlassFinish.regular => g1455.GlassFinish.regular(
+    AppGlassFinish.regular =>
+      g1455.GlassFinish.regular(
         appearance: isDark ? Brightness.dark : Brightness.light,
       ).copyWith(
         blurSigmaLogical: blur,
@@ -50,14 +51,14 @@ g1455.GlassFinish resolveGlassFinish(
             : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
       ),
     AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
-        blurSigmaLogical: blur,
-        tint: isDark
-            ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.0, 0.90))
-            : Color.fromRGBO(0, 0, 0, (fillAlpha * 0.7).clamp(0.0, 0.90)),
-        rim: isDark
-            ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
-            : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
-      ),
+      blurSigmaLogical: blur,
+      tint: isDark
+          ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.0, 0.90))
+          : Color.fromRGBO(0, 0, 0, (fillAlpha * 0.7).clamp(0.0, 0.90)),
+      rim: isDark
+          ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
+          : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
+    ),
   };
 }
 
@@ -66,7 +67,8 @@ final islandBarGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
   final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
   final optics = prefs.opticsFor(GlassComponentTarget.islandBar);
   final themeState = ref.watch(themeControllerProvider);
-  final isDark = themeState.themeMode == ThemeMode.dark ||
+  final isDark =
+      themeState.themeMode == ThemeMode.dark ||
       (themeState.themeMode == ThemeMode.system &&
           WidgetsBinding.instance.platformDispatcher.platformBrightness ==
               Brightness.dark);
@@ -78,7 +80,8 @@ final fabGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
   final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
   final optics = prefs.opticsFor(GlassComponentTarget.fab);
   final themeState = ref.watch(themeControllerProvider);
-  final isDark = themeState.themeMode == ThemeMode.dark ||
+  final isDark =
+      themeState.themeMode == ThemeMode.dark ||
       (themeState.themeMode == ThemeMode.system &&
           WidgetsBinding.instance.platformDispatcher.platformBrightness ==
               Brightness.dark);
@@ -90,7 +93,8 @@ final dropdownMenuGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
   final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
   final optics = prefs.opticsFor(GlassComponentTarget.dropdownMenu);
   final themeState = ref.watch(themeControllerProvider);
-  final isDark = themeState.themeMode == ThemeMode.dark ||
+  final isDark =
+      themeState.themeMode == ThemeMode.dark ||
       (themeState.themeMode == ThemeMode.system &&
           WidgetsBinding.instance.platformDispatcher.platformBrightness ==
               Brightness.dark);
@@ -102,7 +106,8 @@ final toolbarsGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
   final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
   final optics = prefs.opticsFor(GlassComponentTarget.toolbars);
   final themeState = ref.watch(themeControllerProvider);
-  final isDark = themeState.themeMode == ThemeMode.dark ||
+  final isDark =
+      themeState.themeMode == ThemeMode.dark ||
       (themeState.themeMode == ThemeMode.system &&
           WidgetsBinding.instance.platformDispatcher.platformBrightness ==
               Brightness.dark);
@@ -114,7 +119,8 @@ final generalGlassFinishProvider = Provider<g1455.GlassFinish>((ref) {
   final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
   final optics = prefs.opticsFor(GlassComponentTarget.general);
   final themeState = ref.watch(themeControllerProvider);
-  final isDark = themeState.themeMode == ThemeMode.dark ||
+  final isDark =
+      themeState.themeMode == ThemeMode.dark ||
       (themeState.themeMode == ThemeMode.system &&
           WidgetsBinding.instance.platformDispatcher.platformBrightness ==
               Brightness.dark);

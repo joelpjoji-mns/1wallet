@@ -18,9 +18,7 @@ void main() {
         if (controller != null)
           themeControllerProvider.overrideWith((ref) => controller),
       ],
-      child: const MaterialApp(
-        home: ThemeModeScreen(),
-      ),
+      child: const MaterialApp(home: ThemeModeScreen()),
     );
   }
 

@@ -320,10 +320,13 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               return appLock;
             }
             final glassFinish = ref.watch(glassFinishProvider);
-            final isDark = themeState.themeMode == ThemeMode.dark ||
+            final isDark =
+                themeState.themeMode == ThemeMode.dark ||
                 (themeState.themeMode == ThemeMode.system &&
                     (MediaQuery.maybePlatformBrightnessOf(context) ??
-                            WidgetsBinding.instance.platformDispatcher
+                            WidgetsBinding
+                                .instance
+                                .platformDispatcher
                                 .platformBrightness) ==
                         Brightness.dark);
             return g1455.GlassHost(

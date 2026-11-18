@@ -6,10 +6,7 @@ import 'package:flutter/cupertino.dart';
 import '../design/tokens.dart';
 
 class ThemeAccentOption {
-  const ThemeAccentOption({
-    required this.name,
-    required this.color,
-  });
+  const ThemeAccentOption({required this.name, required this.color});
 
   final String name;
   final Color color;
@@ -67,8 +64,11 @@ abstract final class AppTheme {
     final newSaturation = (hsl.saturation * t).clamp(0.0, 1.0);
     // Target lightness: near-black for dark themes, near-white for light themes
     final targetLightness = brightness == Brightness.dark ? 0.12 : 0.92;
-    final newLightness =
-        lerpDouble(targetLightness, hsl.lightness, t)!.clamp(0.0, 1.0);
+    final newLightness = lerpDouble(
+      targetLightness,
+      hsl.lightness,
+      t,
+    )!.clamp(0.0, 1.0);
     return hsl
         .withSaturation(newSaturation)
         .withLightness(newLightness)
@@ -234,18 +234,24 @@ abstract final class AppTheme {
           displayColor: scheme.onSurface,
         )
         .copyWith(
-          labelLarge: (dark
-                  ? Typography.material2021().white.labelLarge
-                  : Typography.material2021().black.labelLarge)
-              ?.copyWith(color: scheme.onSurface, fontFamily: 'Inter'),
-          labelMedium: (dark
-                  ? Typography.material2021().white.labelMedium
-                  : Typography.material2021().black.labelMedium)
-              ?.copyWith(color: scheme.onSurface, fontFamily: 'Inter'),
-          labelSmall: (dark
-                  ? Typography.material2021().white.labelSmall
-                  : Typography.material2021().black.labelSmall)
-              ?.copyWith(color: scheme.onSurfaceVariant, fontFamily: 'Inter'),
+          labelLarge:
+              (dark
+                      ? Typography.material2021().white.labelLarge
+                      : Typography.material2021().black.labelLarge)
+                  ?.copyWith(color: scheme.onSurface, fontFamily: 'Inter'),
+          labelMedium:
+              (dark
+                      ? Typography.material2021().white.labelMedium
+                      : Typography.material2021().black.labelMedium)
+                  ?.copyWith(color: scheme.onSurface, fontFamily: 'Inter'),
+          labelSmall:
+              (dark
+                      ? Typography.material2021().white.labelSmall
+                      : Typography.material2021().black.labelSmall)
+                  ?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontFamily: 'Inter',
+                  ),
         );
 
     return ThemeData(
@@ -403,10 +409,7 @@ abstract final class AppTheme {
             : AppColors.lightBackground,
         textTheme: CupertinoTextThemeData(
           primaryColor: scheme.primary,
-          textStyle: TextStyle(
-            color: scheme.onSurface,
-            fontFamily: 'Inter',
-          ),
+          textStyle: TextStyle(color: scheme.onSurface, fontFamily: 'Inter'),
           navActionTextStyle: TextStyle(
             color: scheme.primary,
             fontFamily: 'Inter',

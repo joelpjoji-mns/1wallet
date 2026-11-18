@@ -84,10 +84,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                   },
                 ),
                 g1455.GlassToolbarItem(
-                  icon: const Icon(
-                    Icons.currency_exchange_rounded,
-                    size: 20,
-                  ),
+                  icon: const Icon(Icons.currency_exchange_rounded, size: 20),
                   label: 'Choose display currency',
                   onPressed: () => _chooseDisplayCurrency(context, ref, state),
                 ),

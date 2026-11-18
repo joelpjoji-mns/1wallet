@@ -72,9 +72,11 @@ class ThemeController extends StateNotifier<AppThemeState> {
   final SharedPreferences? _preferences;
 
   static const _storageKey = 'one_wallet_flutter.theme.preference.v1';
-  static const _useSystemColorKey = 'one_wallet_flutter.theme.use_system_color.v1';
+  static const _useSystemColorKey =
+      'one_wallet_flutter.theme.use_system_color.v1';
   static const _accentColorKey = 'one_wallet_flutter.theme.accent_color.v1';
-  static const _colorIntensityKey = 'one_wallet_flutter.theme.color_intensity.v1';
+  static const _colorIntensityKey =
+      'one_wallet_flutter.theme.color_intensity.v1';
 
   Future<void> setPreference(AppThemePreference preference) async {
     final previousPreference = state.preference;
@@ -125,12 +127,17 @@ class ThemeController extends StateNotifier<AppThemeState> {
           useSystemColor: previousUseSystem,
         );
       }
-      debugPrint('ThemeController.setCustomAccentColor failed to persist: $error');
+      debugPrint(
+        'ThemeController.setCustomAccentColor failed to persist: $error',
+      );
       rethrow;
     }
   }
 
-  Future<void> setColorIntensity(double intensity, {bool persist = true}) async {
+  Future<void> setColorIntensity(
+    double intensity, {
+    bool persist = true,
+  }) async {
     final clamped = intensity.clamp(0.2, 1.8);
     final previousIntensity = state.colorIntensity;
     state = state.copyWith(colorIntensity: clamped, isLoaded: true);

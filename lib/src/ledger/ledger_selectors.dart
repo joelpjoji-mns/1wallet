@@ -458,8 +458,11 @@ Money totalBalance(
     final range = parseCustomDateRange(period);
     if (range != null) {
       start = range.start;
-      end = DateTime(range.end.year, range.end.month, range.end.day)
-          .add(const Duration(days: 1));
+      end = DateTime(
+        range.end.year,
+        range.end.month,
+        range.end.day,
+      ).add(const Duration(days: 1));
     } else {
       start = DateTime(now.year, now.month);
       end = DateTime(now.year, now.month + 1);

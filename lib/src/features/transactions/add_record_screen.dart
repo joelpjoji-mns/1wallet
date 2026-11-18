@@ -541,9 +541,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   maxLines: 3,
                                   decoration: const InputDecoration(
                                     labelText: 'Notes',
-                                    prefixIcon: Icon(
-                                      Icons.notes_outlined,
-                                    ),
+                                    prefixIcon: Icon(Icons.notes_outlined),
                                   ),
                                 );
                               },
@@ -1021,7 +1019,9 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                   ),
                                   const Spacer(),
                                   g1455.GlassMenuAnchor(
-                                    finish: ref.watch(dropdownMenuGlassFinishProvider),
+                                    finish: ref.watch(
+                                      dropdownMenuGlassFinishProvider,
+                                    ),
                                     items: [
                                       g1455.GlassMenuItem(
                                         label: 'Take photo',
@@ -1044,19 +1044,20 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                         ),
                                       ),
                                     ],
-                                    builder: (context, controller) => IconButton(
-                                      tooltip: 'Add photo',
-                                      icon: Icon(
-                                        Icons.add_photo_alternate_outlined,
-                                        size: 20,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                      ),
-                                      onPressed: controller.isOpen
-                                          ? controller.close
-                                          : controller.open,
-                                    ),
+                                    builder: (context, controller) =>
+                                        IconButton(
+                                          tooltip: 'Add photo',
+                                          icon: Icon(
+                                            Icons.add_photo_alternate_outlined,
+                                            size: 20,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                          onPressed: controller.isOpen
+                                              ? controller.close
+                                              : controller.open,
+                                        ),
                                   ),
                                 ],
                               ),

@@ -47,8 +47,9 @@ class BottomIslandNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isTest =
-        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    final isTest = WidgetsBinding.instance.runtimeType.toString().contains(
+      'Test',
+    );
 
     if (pageController != null) {
       return AnimatedBuilder(
@@ -57,7 +58,8 @@ class BottomIslandNavBar extends StatelessWidget {
           final currentTheme = Theme.of(context);
           final currentScheme = currentTheme.colorScheme;
           final currentIsDark = currentTheme.brightness == Brightness.dark;
-          final page = pageController!.hasClients && pageController!.page != null
+          final page =
+              pageController!.hasClients && pageController!.page != null
               ? pageController!.page!
               : selectedIndex.toDouble();
           return _buildContent(
@@ -103,8 +105,9 @@ class BottomIslandNavBar extends StatelessWidget {
                 ? (1.0 - (page - 2.0).abs()).clamp(0.0, 1.0)
                 : 0.0;
 
-            final normalWidth =
-                totalWidth.clamp(320.0, AppSizes.islandMaxWidth).toDouble();
+            final normalWidth = totalWidth
+                .clamp(320.0, AppSizes.islandMaxWidth)
+                .toDouble();
             final compactWidth = (totalWidth - 76)
                 .clamp(240.0, AppSizes.islandMaxWidth - 76)
                 .toDouble();
@@ -118,7 +121,8 @@ class BottomIslandNavBar extends StatelessWidget {
 
             const normalFabBottom = AppSizes.bottomBar + AppSizes.bottomBarGap;
             const compactFabBottom = (AppSizes.bottomBar - 64.0) / 2;
-            final fabBottom = normalFabBottom +
+            final fabBottom =
+                normalFabBottom +
                 (compactFabBottom - normalFabBottom) * calendarProgress;
 
             final containerHeight = action != null ? 176.0 : AppSizes.bottomBar;
@@ -168,7 +172,8 @@ class BottomIslandNavBar extends StatelessWidget {
                               final finishName =
                                   finish?.name.toLowerCase() ?? 'clear';
                               final isFrosted =
-                                  finishName.contains('frosted') || blur >= 20.0;
+                                  finishName.contains('frosted') ||
+                                  blur >= 20.0;
                               final isClear =
                                   finishName.contains('clear') || blur == 0.0;
                               final isRegular = !isFrosted && !isClear;
@@ -176,28 +181,32 @@ class BottomIslandNavBar extends StatelessWidget {
                               final fillAlphaTop = isFrosted
                                   ? (isDark ? 0.38 : 0.45)
                                   : (isRegular
-                                      ? (isDark ? 0.22 : 0.20)
-                                      : (isDark ? 0.16 : 0.14));
+                                        ? (isDark ? 0.22 : 0.20)
+                                        : (isDark ? 0.16 : 0.14));
                               final fillAlphaBottom = isFrosted
                                   ? (isDark ? 0.16 : 0.20)
                                   : (isRegular
-                                      ? (isDark ? 0.08 : 0.10)
-                                      : (isDark ? 0.06 : 0.07));
+                                        ? (isDark ? 0.08 : 0.10)
+                                        : (isDark ? 0.06 : 0.07));
                               final borderAlpha = isFrosted
                                   ? (isDark ? 0.20 : 0.24)
                                   : (isRegular
-                                      ? (isDark ? 0.12 : 0.15)
-                                      : (isDark ? 0.08 : 0.10));
+                                        ? (isDark ? 0.12 : 0.15)
+                                        : (isDark ? 0.08 : 0.10));
                               final borderColor = isDark
                                   ? Colors.white.withAlphaFactor(borderAlpha)
                                   : (isClear
-                                      ? scheme.outlineVariant.withAlphaFactor(0.35)
-                                      : scheme.outlineVariant.withAlphaFactor(0.45));
+                                        ? scheme.outlineVariant.withAlphaFactor(
+                                            0.35,
+                                          )
+                                        : scheme.outlineVariant.withAlphaFactor(
+                                            0.45,
+                                          ));
                               final shadowAlpha = isFrosted
                                   ? (isDark ? 0.38 : 0.16)
                                   : (isRegular
-                                      ? (isDark ? 0.30 : 0.10)
-                                      : (isDark ? 0.24 : 0.08));
+                                        ? (isDark ? 0.30 : 0.10)
+                                        : (isDark ? 0.24 : 0.08));
 
                               final pillRadius = BorderRadius.circular(
                                 AppSizes.bottomBarContentHeight / 2,
@@ -214,7 +223,9 @@ class BottomIslandNavBar extends StatelessWidget {
                                       color: borderColor,
                                       width: 0.8,
                                     ),
-                                    gradient: (fillAlphaTop > 0 || fillAlphaBottom > 0)
+                                    gradient:
+                                        (fillAlphaTop > 0 ||
+                                            fillAlphaBottom > 0)
                                         ? LinearGradient(
                                             begin: Alignment.topCenter,
                                             end: Alignment.bottomCenter,
@@ -239,13 +250,13 @@ class BottomIslandNavBar extends StatelessWidget {
                                     ],
                                   ),
                                   child: Stack(
-                                      children: [
-                                        // Smooth animated active tab indicator pill following page drag in real-time
-                                        if (items.isNotEmpty)
-                                          Align(
-                                            alignment: Alignment(
-                                              items.length > 1
-                                                  ? -1.0 +
+                                    children: [
+                                      // Smooth animated active tab indicator pill following page drag in real-time
+                                      if (items.isNotEmpty)
+                                        Align(
+                                          alignment: Alignment(
+                                            items.length > 1
+                                                ? -1.0 +
                                                       (page.clamp(
                                                                 0.0,
                                                                 items.length -
@@ -254,94 +265,94 @@ class BottomIslandNavBar extends StatelessWidget {
                                                               (items.length -
                                                                   1.0)) *
                                                           2.0
-                                                  : 0.0,
-                                              0.0,
-                                            ),
-                                            child: FractionallySizedBox(
-                                              widthFactor: 1.0 / items.length,
-                                              heightFactor: 1.0,
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 3,
-                                                  vertical: 5,
-                                                ),
-                                                child: DecoratedBox(
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      begin: Alignment.topLeft,
-                                                      end: Alignment
-                                                          .bottomRight,
-                                                      colors: [
-                                                        brightPrimary
-                                                            .withAlphaFactor(
-                                                          isDark
-                                                              ? 0.55
-                                                              : 0.28,
-                                                        ),
-                                                        brightPrimary
-                                                            .withAlphaFactor(
-                                                          isDark
-                                                              ? 0.32
-                                                              : 0.16,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                      (AppSizes.bottomBarContentHeight -
-                                                              8) /
-                                                          2,
-                                                    ),
-                                                    border: Border.all(
-                                                      color: brightPrimary
+                                                : 0.0,
+                                            0.0,
+                                          ),
+                                          child: FractionallySizedBox(
+                                            widthFactor: 1.0 / items.length,
+                                            heightFactor: 1.0,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 3,
+                                                    vertical: 5,
+                                                  ),
+                                              child: DecoratedBox(
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      brightPrimary
                                                           .withAlphaFactor(
-                                                        isDark ? 0.40 : 0.30,
-                                                      ),
-                                                      width: 0.8,
-                                                    ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: brightPrimary
-                                                            .withAlphaFactor(
-                                                          isDark
-                                                              ? 0.40
-                                                              : 0.20,
-                                                        ),
-                                                        blurRadius: 14,
-                                                        spreadRadius: 1,
-                                                      ),
+                                                            isDark
+                                                                ? 0.55
+                                                                : 0.28,
+                                                          ),
+                                                      brightPrimary
+                                                          .withAlphaFactor(
+                                                            isDark
+                                                                ? 0.32
+                                                                : 0.16,
+                                                          ),
                                                     ],
                                                   ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        (AppSizes.bottomBarContentHeight -
+                                                                8) /
+                                                            2,
+                                                      ),
+                                                  border: Border.all(
+                                                    color: brightPrimary
+                                                        .withAlphaFactor(
+                                                          isDark ? 0.40 : 0.30,
+                                                        ),
+                                                    width: 0.8,
+                                                  ),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: brightPrimary
+                                                          .withAlphaFactor(
+                                                            isDark
+                                                                ? 0.40
+                                                                : 0.20,
+                                                          ),
+                                                      blurRadius: 14,
+                                                      spreadRadius: 1,
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        // Tab items row
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            for (int i = 0; i < items.length; i++)
-                                              Expanded(
-                                                child: _IslandTabButton(
-                                                  item: items[i],
-                                                  isSelected: activeTab == i,
-                                                  onTap: () => onSelected(
-                                                    items[i].pageIndex ?? i,
-                                                  ),
+                                        ),
+                                      // Tab items row
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          for (int i = 0; i < items.length; i++)
+                                            Expanded(
+                                              child: _IslandTabButton(
+                                                item: items[i],
+                                                isSelected: activeTab == i,
+                                                onTap: () => onSelected(
+                                                  items[i].pageIndex ?? i,
                                                 ),
                                               ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
-                                );
+                                ),
+                              );
 
                               return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2,
+                                ),
                                 child: islandSurface,
                               );
                             }(),
@@ -431,8 +442,9 @@ class _IslandTabButton extends StatelessWidget {
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: color,
-                  fontFamily:
-                      Theme.of(context).textTheme.labelSmall?.fontFamily,
+                  fontFamily: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.fontFamily,
                 ),
               ),
             ],

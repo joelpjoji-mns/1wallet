@@ -73,7 +73,9 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
 
   void _commitOpticsImmediately() {
     _commitTimer?.cancel();
-    ref.read(ledgerProvider.notifier).updatePreferencesWith(
+    ref
+        .read(ledgerProvider.notifier)
+        .updatePreferencesWith(
           (live) => live.withComponentOptics(
             _selectedTarget,
             finish: _currentFinish,
@@ -101,7 +103,9 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
     _commitTimer?.cancel();
     _commitTimer = Timer(const Duration(milliseconds: 60), () {
       if (!mounted) return;
-      ref.read(ledgerProvider.notifier).updatePreferencesWith(
+      ref
+          .read(ledgerProvider.notifier)
+          .updatePreferencesWith(
             (live) => live.withComponentOptics(
               _selectedTarget,
               finish: _currentFinish,
@@ -124,7 +128,9 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
       _specularOpacity = finish.defaultSpecularOpacity;
     });
     _commitTimer?.cancel();
-    ref.read(ledgerProvider.notifier).updatePreferencesWith(
+    ref
+        .read(ledgerProvider.notifier)
+        .updatePreferencesWith(
           (live) => live.withComponentOptics(
             _selectedTarget,
             finish: finish,
@@ -147,7 +153,9 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
       _specularOpacity = defaultOptics.specularOpacity;
     });
     _commitTimer?.cancel();
-    ref.read(ledgerProvider.notifier).updatePreferencesWith(
+    ref
+        .read(ledgerProvider.notifier)
+        .updatePreferencesWith(
           (live) => live.resetComponentOptics(_selectedTarget),
         );
   }
@@ -155,9 +163,9 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
   void _resetAllToDefaults() {
     HapticFeedback.heavyImpact();
     for (final target in GlassComponentTarget.values) {
-      ref.read(ledgerProvider.notifier).updatePreferencesWith(
-            (live) => live.resetComponentOptics(target),
-          );
+      ref
+          .read(ledgerProvider.notifier)
+          .updatePreferencesWith((live) => live.resetComponentOptics(target));
     }
     final defaultOptics = GlassComponentOptics.defaultFor(_selectedTarget);
     setState(() {
@@ -195,26 +203,57 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
     }
 
     final resolvedFinish = switch (_currentFinish) {
-      AppGlassFinish.regular => g1455.GlassFinish.regular(
+      AppGlassFinish.regular =>
+        g1455.GlassFinish.regular(
           appearance: isDark ? Brightness.dark : Brightness.light,
         ).copyWith(
           blurSigmaLogical: _blur,
           tint: isDark
-              ? Color.fromRGBO(255, 255, 255, _backgroundOpacity.clamp(0.01, 0.90))
-              : Color.fromRGBO(0, 0, 0, (_backgroundOpacity * 0.7).clamp(0.01, 0.90)),
+              ? Color.fromRGBO(
+                  255,
+                  255,
+                  255,
+                  _backgroundOpacity.clamp(0.01, 0.90),
+                )
+              : Color.fromRGBO(
+                  0,
+                  0,
+                  0,
+                  (_backgroundOpacity * 0.7).clamp(0.01, 0.90),
+                ),
           rim: isDark
-              ? Color.fromRGBO(255, 255, 255, _specularOpacity.clamp(0.05, 0.95))
-              : Color.fromRGBO(0, 0, 0, (_specularOpacity * 0.5).clamp(0.05, 0.95)),
+              ? Color.fromRGBO(
+                  255,
+                  255,
+                  255,
+                  _specularOpacity.clamp(0.05, 0.95),
+                )
+              : Color.fromRGBO(
+                  0,
+                  0,
+                  0,
+                  (_specularOpacity * 0.5).clamp(0.05, 0.95),
+                ),
         ),
       AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
-          blurSigmaLogical: _blur,
-          tint: isDark
-              ? Color.fromRGBO(255, 255, 255, _backgroundOpacity.clamp(0.0, 0.90))
-              : Color.fromRGBO(0, 0, 0, (_backgroundOpacity * 0.7).clamp(0.0, 0.90)),
-          rim: isDark
-              ? Color.fromRGBO(255, 255, 255, _specularOpacity.clamp(0.05, 0.95))
-              : Color.fromRGBO(0, 0, 0, (_specularOpacity * 0.5).clamp(0.05, 0.95)),
-        ),
+        blurSigmaLogical: _blur,
+        tint: isDark
+            ? Color.fromRGBO(255, 255, 255, _backgroundOpacity.clamp(0.0, 0.90))
+            : Color.fromRGBO(
+                0,
+                0,
+                0,
+                (_backgroundOpacity * 0.7).clamp(0.0, 0.90),
+              ),
+        rim: isDark
+            ? Color.fromRGBO(255, 255, 255, _specularOpacity.clamp(0.05, 0.95))
+            : Color.fromRGBO(
+                0,
+                0,
+                0,
+                (_specularOpacity * 0.5).clamp(0.05, 0.95),
+              ),
+      ),
     };
 
     return RouteScaffold(
@@ -422,15 +461,15 @@ class _ComponentSelector extends StatelessWidget {
                     color: isSelected
                         ? scheme.primary.withAlphaFactor(isDark ? 0.28 : 0.18)
                         : (isDark
-                            ? Colors.white.withAlphaFactor(0.06)
-                            : Colors.black.withAlphaFactor(0.04)),
+                              ? Colors.white.withAlphaFactor(0.06)
+                              : Colors.black.withAlphaFactor(0.04)),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected
                           ? scheme.primary
                           : (isDark
-                              ? Colors.white.withAlphaFactor(0.12)
-                              : Colors.black.withAlphaFactor(0.08)),
+                                ? Colors.white.withAlphaFactor(0.12)
+                                : Colors.black.withAlphaFactor(0.08)),
                       width: isSelected ? 1.5 : 1.0,
                     ),
                     boxShadow: isSelected
@@ -458,8 +497,9 @@ class _ComponentSelector extends StatelessWidget {
                         target.shortLabel,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight:
-                              isSelected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                           color: isSelected
                               ? scheme.primary
                               : (isDark ? Colors.white : Colors.black87),
@@ -723,10 +763,14 @@ class _LiveGlassPreview extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withAlphaFactor(isDark ? 0.10 : 0.40),
+                            color: Colors.white.withAlphaFactor(
+                              isDark ? 0.10 : 0.40,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Colors.white.withAlphaFactor(isDark ? 0.20 : 0.60),
+                              color: Colors.white.withAlphaFactor(
+                                isDark ? 0.20 : 0.60,
+                              ),
                             ),
                           ),
                           child: Text(
@@ -759,26 +803,33 @@ class _LiveGlassPreview extends StatelessWidget {
                               gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFF1976D2),
-                                  Color(0xFF0D47A1),
-                                ],
+                                colors: [Color(0xFF1976D2), Color(0xFF0D47A1)],
                               ),
                             ),
                             child: const Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.credit_card_rounded,
-                                    color: Colors.white, size: 16),
+                                Icon(
+                                  Icons.credit_card_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                                 Spacer(),
-                                Text('Checking',
-                                    style: TextStyle(
-                                        fontSize: 10, color: Colors.white70)),
-                                Text('\$1,460.00',
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white)),
+                                Text(
+                                  'Checking',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                Text(
+                                  '\$1,460.00',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -793,26 +844,33 @@ class _LiveGlassPreview extends StatelessWidget {
                               gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFF00C853),
-                                  Color(0xFF007E33),
-                                ],
+                                colors: [Color(0xFF00C853), Color(0xFF007E33)],
                               ),
                             ),
                             child: const Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.account_balance_rounded,
-                                    color: Colors.white, size: 16),
+                                Icon(
+                                  Icons.account_balance_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                                 Spacer(),
-                                Text('Savings',
-                                    style: TextStyle(
-                                        fontSize: 10, color: Colors.white70)),
-                                Text('+\$7,370.00',
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white)),
+                                Text(
+                                  'Savings',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                Text(
+                                  '+\$7,370.00',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -827,26 +885,33 @@ class _LiveGlassPreview extends StatelessWidget {
                               gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFFFF3D00),
-                                  Color(0xFFDD2C00),
-                                ],
+                                colors: [Color(0xFFFF3D00), Color(0xFFDD2C00)],
                               ),
                             ),
                             child: const Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.shopping_bag_rounded,
-                                    color: Colors.white, size: 16),
+                                Icon(
+                                  Icons.shopping_bag_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                                 Spacer(),
-                                Text('Groceries',
-                                    style: TextStyle(
-                                        fontSize: 10, color: Colors.white70)),
-                                Text('-\$96.50',
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white)),
+                                Text(
+                                  'Groceries',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                Text(
+                                  '-\$96.50',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -981,7 +1046,11 @@ class _LiveGlassPreview extends StatelessWidget {
               children: [
                 _navPreviewItem(Icons.home_rounded, 'Home', true),
                 _navPreviewItem(Icons.receipt_long_rounded, 'Records', false),
-                _navPreviewItem(Icons.calendar_month_rounded, 'Calendar', false),
+                _navPreviewItem(
+                  Icons.calendar_month_rounded,
+                  'Calendar',
+                  false,
+                ),
                 _navPreviewItem(Icons.wallet_rounded, 'Accounts', false),
               ],
             ),
@@ -998,9 +1067,7 @@ class _LiveGlassPreview extends StatelessWidget {
           ? BoxDecoration(
               color: scheme.primary.withAlphaFactor(0.20),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: scheme.primary.withAlphaFactor(0.35),
-              ),
+              border: Border.all(color: scheme.primary.withAlphaFactor(0.35)),
             )
           : null,
       child: Row(
@@ -1009,7 +1076,9 @@ class _LiveGlassPreview extends StatelessWidget {
           Icon(
             icon,
             size: 20,
-            color: active ? scheme.primary : (isDark ? Colors.white60 : Colors.black54),
+            color: active
+                ? scheme.primary
+                : (isDark ? Colors.white60 : Colors.black54),
           ),
           if (active) ...[
             const SizedBox(width: 4),
@@ -1056,8 +1125,12 @@ class _LiveGlassPreview extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    scheme.primary.withAlphaFactor(fillAlphaTop.clamp(0.40, 0.90)),
-                    scheme.primary.withAlphaFactor(fillAlphaBottom.clamp(0.25, 0.70)),
+                    scheme.primary.withAlphaFactor(
+                      fillAlphaTop.clamp(0.40, 0.90),
+                    ),
+                    scheme.primary.withAlphaFactor(
+                      fillAlphaBottom.clamp(0.25, 0.70),
+                    ),
                   ],
                 ),
                 boxShadow: [
@@ -1115,13 +1188,19 @@ class _LiveGlassPreview extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _menuPreviewOption(Icons.add_circle_outline_rounded, 'Add record'),
+                _menuPreviewOption(
+                  Icons.add_circle_outline_rounded,
+                  'Add record',
+                ),
                 Container(
                   width: 1,
                   height: 24,
                   color: Colors.white.withAlphaFactor(0.20),
                 ),
-                _menuPreviewOption(Icons.document_scanner_outlined, 'Scan receipt'),
+                _menuPreviewOption(
+                  Icons.document_scanner_outlined,
+                  'Scan receipt',
+                ),
                 Container(
                   width: 1,
                   height: 24,

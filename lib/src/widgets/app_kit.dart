@@ -152,7 +152,12 @@ class GlassDropdownPill<T> extends ConsumerWidget {
     final optics = prefs.opticsFor(GlassComponentTarget.dropdownMenu);
     final glassColor = isDark
         ? Color.fromRGBO(30, 30, 30, optics.backgroundOpacity.clamp(0.5, 0.95))
-        : Color.fromRGBO(255, 255, 255, optics.backgroundOpacity.clamp(0.7, 0.98));
+        : Color.fromRGBO(
+            255,
+            255,
+            255,
+            optics.backgroundOpacity.clamp(0.7, 0.98),
+          );
     final settings = LiquidGlassSettings(
       blur: optics.blur,
       glassColor: glassColor,
@@ -170,12 +175,14 @@ class GlassDropdownPill<T> extends ConsumerWidget {
             titleStyle: TextStyle(
               color: option.value == value ? scheme.primary : scheme.onSurface,
               fontSize: 14,
-              fontWeight:
-                  option.value == value ? FontWeight.w700 : FontWeight.w500,
+              fontWeight: option.value == value
+                  ? FontWeight.w700
+                  : FontWeight.w500,
               fontFamily: 'Inter',
             ),
-            iconColor:
-                option.value == value ? scheme.primary : scheme.onSurface,
+            iconColor: option.value == value
+                ? scheme.primary
+                : scheme.onSurface,
             icon: Icon(
               option.icon ??
                   (option.value == value
@@ -472,12 +479,14 @@ class IslandFloatingActionButton extends StatelessWidget {
 
     final primaryAccent = scheme.primary;
     final brightPrimary = isDark
-        ? (ThemeData.estimateBrightnessForColor(primaryAccent) == Brightness.dark
-            ? Color.lerp(primaryAccent, Colors.white, 0.15)!
-            : primaryAccent)
+        ? (ThemeData.estimateBrightnessForColor(primaryAccent) ==
+                  Brightness.dark
+              ? Color.lerp(primaryAccent, Colors.white, 0.15)!
+              : primaryAccent)
         : primaryAccent;
 
-    final baseFinish = finish ??
+    final baseFinish =
+        finish ??
         g1455.GlassFinish.regular(
           appearance: isDark ? Brightness.dark : Brightness.light,
         );
@@ -674,11 +683,7 @@ class AppMenuAction extends StatelessWidget {
           borderRadius: buttonRadius,
           onTap: onPressed,
           child: Center(
-            child: Icon(
-              Icons.menu_rounded,
-              size: 22,
-              color: scheme.onSurface,
-            ),
+            child: Icon(Icons.menu_rounded, size: 22, color: scheme.onSurface),
           ),
         ),
       ),
@@ -914,10 +919,7 @@ class GlassMaterializeSwitcher extends StatelessWidget {
       layoutBuilder: (currentChild, previousChildren) {
         return Stack(
           alignment: Alignment.topCenter,
-          children: <Widget>[
-            ...previousChildren,
-            ?currentChild,
-          ],
+          children: <Widget>[...previousChildren, ?currentChild],
         );
       },
       transitionBuilder: (child, animation) => buildGlassMaterializeTransition(
@@ -1284,7 +1286,9 @@ class _PremiumSearchInputState extends State<PremiumSearchInput> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final iconColor = isDark ? Colors.white.withValues(alpha: 0.90) : scheme.primary;
+    final iconColor = isDark
+        ? Colors.white.withValues(alpha: 0.90)
+        : scheme.primary;
     return GlassSearchBar(
       controller: _controller,
       placeholder: widget.hintText,
@@ -1362,14 +1366,17 @@ class _AppGlassTextFieldState extends State<AppGlassTextField> {
   TextEditingController? _internalController;
   TextEditingController get _effectiveController =>
       widget.controller ??
-      (_internalController ??= TextEditingController(text: widget.initialValue));
+      (_internalController ??= TextEditingController(
+        text: widget.initialValue,
+      ));
 
   @override
   void didUpdateWidget(AppGlassTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.controller == null && oldWidget.controller != null) {
-      _internalController =
-          TextEditingController.fromValue(oldWidget.controller!.value);
+      _internalController = TextEditingController.fromValue(
+        oldWidget.controller!.value,
+      );
     } else if (widget.controller != null && oldWidget.controller == null) {
       _internalController?.dispose();
       _internalController = null;
@@ -1390,7 +1397,10 @@ class _AppGlassTextFieldState extends State<AppGlassTextField> {
     if (suffix == null && widget.decoration.suffixText != null) {
       suffix = Padding(
         padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
-        child: Center(widthFactor: 1, child: Text(widget.decoration.suffixText!)),
+        child: Center(
+          widthFactor: 1,
+          child: Text(widget.decoration.suffixText!),
+        ),
       );
     }
 
@@ -1407,7 +1417,8 @@ class _AppGlassTextFieldState extends State<AppGlassTextField> {
       keyboardType:
           widget.keyboardType ?? (isMultiline ? TextInputType.multiline : null),
       textInputAction:
-          widget.textInputAction ?? (isMultiline ? TextInputAction.newline : null),
+          widget.textInputAction ??
+          (isMultiline ? TextInputAction.newline : null),
       inputFormatters: widget.inputFormatters,
       minLines: widget.minLines,
       maxLines: widget.maxLines,
@@ -1422,8 +1433,9 @@ class _AppGlassTextFieldState extends State<AppGlassTextField> {
       padding: isMultiline
           ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
           : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      iconAlignment:
-          isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      iconAlignment: isMultiline
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
       placeholderStyle: TextStyle(
         color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
         fontFamily: theme.textTheme.bodyLarge?.fontFamily,
@@ -1438,7 +1450,8 @@ class _AppGlassTextFieldState extends State<AppGlassTextField> {
       useOwnLayer: true,
     );
 
-    if (widget.decoration.errorText != null || widget.decoration.helperText != null) {
+    if (widget.decoration.errorText != null ||
+        widget.decoration.helperText != null) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1561,15 +1574,15 @@ class GlassTabSegmentedControl extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.20)
         : Colors.white.withValues(alpha: 0.95);
 
-    final animation = tabController.animation ??
+    final animation =
+        tabController.animation ??
         AlwaysStoppedAnimation<double>(tabController.index.toDouble());
 
     return AnimatedBuilder(
       animation: animation,
       builder: (context, _) {
         final total = segments.length;
-        final animValue =
-            animation.value.clamp(0.0, (total - 1).toDouble());
+        final animValue = animation.value.clamp(0.0, (total - 1).toDouble());
         final alignmentX = total > 1
             ? -1.0 + (animValue / (total - 1)) * 2.0
             : 0.0;
@@ -1668,8 +1681,7 @@ class GlassTabSegmentedControl extends StatelessWidget {
     final activeFactor = 1.0 - distance;
     final activeColor = scheme.onSurface;
     final inactiveColor = scheme.onSurfaceVariant;
-    final currentColor =
-        Color.lerp(inactiveColor, activeColor, activeFactor)!;
+    final currentColor = Color.lerp(inactiveColor, activeColor, activeFactor)!;
     final isSelected = activeFactor > 0.5;
 
     if (segment.icon != null && segment.label != null) {
@@ -1678,10 +1690,7 @@ class GlassTabSegmentedControl extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconTheme(
-            data: IconThemeData(
-              color: currentColor,
-              size: 16,
-            ),
+            data: IconThemeData(color: currentColor, size: 16),
             child: segment.icon!,
           ),
           const SizedBox(width: AppSpacing.xs),
@@ -1697,10 +1706,7 @@ class GlassTabSegmentedControl extends StatelessWidget {
       );
     } else if (segment.icon != null) {
       return IconTheme(
-        data: IconThemeData(
-          color: currentColor,
-          size: 18,
-        ),
+        data: IconThemeData(color: currentColor, size: 18),
         child: segment.icon!,
       );
     } else {

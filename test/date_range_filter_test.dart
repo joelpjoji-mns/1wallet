@@ -40,36 +40,39 @@ void main() {
       expect(label, contains('Jun 20, 2026'));
     });
 
-    testWidgets('FilterPill displays standardized options without today or last month',
-        (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: FilterPill(
-              icon: Icons.date_range_outlined,
-              label: 'All time',
-              active: false,
-              value: 'all',
-              options: [
-                GlassDropdownOption('this_week', 'This week'),
-                GlassDropdownOption('this_month', 'This month'),
-                GlassDropdownOption('30_days', '30 days'),
-                GlassDropdownOption('6_months', '6 months'),
-                GlassDropdownOption('this_year', 'This year'),
-                GlassDropdownOption('all', 'All time'),
-                GlassDropdownOption('custom', 'Custom range'),
-              ],
+    testWidgets(
+      'FilterPill displays standardized options without today or last month',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: FilterPill(
+                icon: Icons.date_range_outlined,
+                label: 'All time',
+                active: false,
+                value: 'all',
+                options: [
+                  GlassDropdownOption('this_week', 'This week'),
+                  GlassDropdownOption('this_month', 'This month'),
+                  GlassDropdownOption('30_days', '30 days'),
+                  GlassDropdownOption('6_months', '6 months'),
+                  GlassDropdownOption('this_year', 'This year'),
+                  GlassDropdownOption('all', 'All time'),
+                  GlassDropdownOption('custom', 'Custom range'),
+                ],
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      // Verify pill renders
-      expect(find.text('All time'), findsOneWidget);
-    });
+        // Verify pill renders
+        expect(find.text('All time'), findsOneWidget);
+      },
+    );
 
-    testWidgets('TransactionsScreen filters correctly with custom date range',
-        (tester) async {
+    testWidgets('TransactionsScreen filters correctly with custom date range', (
+      tester,
+    ) async {
       final state = LedgerState(
         version: 1,
         userId: 'user-1',
@@ -123,11 +126,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: Scaffold(
-              body: TransactionsScreen(
-                onMenuPressed: () {},
-              ),
-            ),
+            home: Scaffold(body: TransactionsScreen(onMenuPressed: () {})),
           ),
         ),
       );
