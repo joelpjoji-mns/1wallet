@@ -1,9 +1,12 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+import '../data/ledger_models.dart';
+import '../data/ledger_providers.dart';
 import '../design/tokens.dart';
 
 /// A horizontal drag gesture recognizer that only claims gestures moving to the right
@@ -117,7 +120,7 @@ class GlassDropdownOption<T> {
 }
 
 /// Compact glass dropdown used for short, non-searchable option lists.
-class GlassDropdownPill<T> extends StatelessWidget {
+class GlassDropdownPill<T> extends ConsumerWidget {
   const GlassDropdownPill({
     required this.value,
     required this.options,
@@ -136,20 +139,43 @@ class GlassDropdownPill<T> extends StatelessWidget {
   final double maxLabelWidth;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final matching = options.where((option) => option.value == value);
     final selected = matching.isEmpty ? null : matching.first;
     final label =
         selected?.label ?? (options.isEmpty ? '' : options.first.label);
+
+    // Read dropdown optics from user preferences and build LiquidGlassSettings
+    final prefs = ref.watch(ledgerProvider.select((s) => s.preferences));
+    final optics = prefs.opticsFor(GlassComponentTarget.dropdownMenu);
+    final glassColor = isDark
+        ? Color.fromRGBO(30, 30, 30, optics.backgroundOpacity.clamp(0.5, 0.95))
+        : Color.fromRGBO(255, 255, 255, optics.backgroundOpacity.clamp(0.7, 0.98));
+    final settings = LiquidGlassSettings(
+      blur: optics.blur,
+      glassColor: glassColor,
+    );
+
     return GlassMenu(
       menuWidth: 220,
       quality: GlassQuality.standard,
+      settings: settings,
       items: [
         for (final option in options)
           GlassMenuItem(
             title: option.label,
             isSelected: option.value == value,
+            titleStyle: TextStyle(
+              color: option.value == value ? scheme.primary : scheme.onSurface,
+              fontSize: 14,
+              fontWeight:
+                  option.value == value ? FontWeight.w700 : FontWeight.w500,
+              fontFamily: 'Inter',
+            ),
+            iconColor:
+                option.value == value ? scheme.primary : scheme.onSurface,
             icon: Icon(
               option.icon ??
                   (option.value == value
@@ -163,43 +189,55 @@ class GlassDropdownPill<T> extends StatelessWidget {
             onTap: () => onChanged(option.value),
           ),
       ],
-      triggerBuilder: (context, toggleMenu) => GlassButton.custom(
-        onTap: toggleMenu,
-        label: semanticLabel ?? label,
-        quality: GlassQuality.standard,
-        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.pill),
-        useOwnLayer: true,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.xs,
+      triggerBuilder: (context, toggleMenu) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark
+              ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
+              : scheme.surfaceContainerHigh.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.4),
+            width: 0.8,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 15, color: scheme.primary),
-                const SizedBox(width: AppSpacing.xxs),
-              ],
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxLabelWidth),
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: scheme.onSurface,
-                    fontWeight: FontWeight.w700,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            onTap: toggleMenu,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 15, color: scheme.primary),
+                    const SizedBox(width: AppSpacing.xxs),
+                  ],
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxLabelWidth),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: AppSpacing.xxxs),
+                  Icon(
+                    Icons.expand_more_rounded,
+                    size: 17,
+                    color: scheme.onSurface,
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.xxxs),
-              Icon(
-                Icons.expand_more_rounded,
-                size: 17,
-                color: scheme.onSurfaceVariant,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -469,8 +507,10 @@ class IslandFloatingActionButton extends StatelessWidget {
             ],
           ),
           border: Border.all(
-            color: Colors.white.withAlphaFactor(isDark ? 0.50 : 0.70),
-            width: 1.2,
+            color: isDark
+                ? Colors.white.withAlphaFactor(0.20)
+                : brightPrimary.withAlphaFactor(0.35),
+            width: 0.8,
           ),
           boxShadow: [
             BoxShadow(
@@ -611,51 +651,33 @@ class AppMenuAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final finish = g1455.GlassTheme.maybeOf(context)?.finish;
+    final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final buttonRadius = BorderRadius.circular(14);
+    final buttonRadius = BorderRadius.circular(12);
 
-    Widget menuButton = g1455.GlassSurface(
-      borderRadius: buttonRadius,
-      finish: finish,
-      labelled: false,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          borderRadius: buttonRadius,
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withAlphaFactor(0.25)
-                : Colors.black.withAlphaFactor(0.08),
-            width: 1.0,
-          ),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withAlphaFactor(isDark ? 0.10 : 0.14),
-              Colors.white.withAlphaFactor(isDark ? 0.02 : 0.04),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlphaFactor(isDark ? 0.18 : 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    Widget menuButton = Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        borderRadius: buttonRadius,
+        color: isDark
+            ? scheme.surfaceContainerHigh.withValues(alpha: 0.5)
+            : scheme.surfaceContainerHigh.withValues(alpha: 0.7),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.35),
+          width: 0.8,
         ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            borderRadius: buttonRadius,
-            onTap: onPressed,
-            child: const Center(
-              child: Icon(
-                Icons.menu_rounded,
-                size: 22,
-              ),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: buttonRadius,
+          onTap: onPressed,
+          child: Center(
+            child: Icon(
+              Icons.menu_rounded,
+              size: 22,
+              color: scheme.onSurface,
             ),
           ),
         ),
@@ -745,56 +767,36 @@ class HeaderIconButton extends StatelessWidget {
 
   Widget _buildButton(BuildContext context) {
     final badgeCount = badge ?? 0;
-    final finish = g1455.GlassTheme.maybeOf(context)?.finish;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
-    final buttonRadius = BorderRadius.circular(14);
+    final buttonRadius = BorderRadius.circular(12);
 
-    Widget iconButton = g1455.GlassSurface(
-      borderRadius: buttonRadius,
-      finish: finish,
-      labelled: false,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          borderRadius: buttonRadius,
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withAlphaFactor(0.25)
-                : Colors.black.withAlphaFactor(0.08),
-            width: 1.0,
-          ),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withAlphaFactor(isDark ? 0.10 : 0.14),
-              Colors.white.withAlphaFactor(isDark ? 0.02 : 0.04),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlphaFactor(isDark ? 0.18 : 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    Widget iconButton = Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        borderRadius: buttonRadius,
+        color: isDark
+            ? scheme.surfaceContainerHigh.withValues(alpha: 0.5)
+            : scheme.surfaceContainerHigh.withValues(alpha: 0.7),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.35),
+          width: 0.8,
         ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            borderRadius: buttonRadius,
-            onTap: onPressed,
-            child: Center(
-              child: loading
-                  ? const AppInlineSpinner()
-                  : Icon(
-                      icon,
-                      size: 22,
-                      color: destructive ? scheme.error : scheme.onSurface,
-                    ),
-            ),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: buttonRadius,
+          onTap: onPressed,
+          child: Center(
+            child: loading
+                ? const AppInlineSpinner()
+                : Icon(
+                    icon,
+                    size: 22,
+                    color: destructive ? scheme.error : scheme.onSurface,
+                  ),
           ),
         ),
       ),

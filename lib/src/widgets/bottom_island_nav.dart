@@ -184,15 +184,15 @@ class BottomIslandNavBar extends StatelessWidget {
                                       ? (isDark ? 0.08 : 0.10)
                                       : (isDark ? 0.06 : 0.07));
                               final borderAlpha = isFrosted
-                                  ? (isDark ? 0.55 : 0.65)
+                                  ? (isDark ? 0.20 : 0.24)
                                   : (isRegular
-                                      ? (isDark ? 0.38 : 0.45)
-                                      : (isDark ? 0.30 : 0.35));
+                                      ? (isDark ? 0.12 : 0.15)
+                                      : (isDark ? 0.08 : 0.10));
                               final borderColor = isDark
                                   ? Colors.white.withAlphaFactor(borderAlpha)
                                   : (isClear
-                                      ? scheme.outline.withAlphaFactor(0.20)
-                                      : Colors.white.withAlphaFactor(borderAlpha));
+                                      ? scheme.outlineVariant.withAlphaFactor(0.35)
+                                      : scheme.outlineVariant.withAlphaFactor(0.45));
                               final shadowAlpha = isFrosted
                                   ? (isDark ? 0.38 : 0.16)
                                   : (isRegular
@@ -212,7 +212,7 @@ class BottomIslandNavBar extends StatelessWidget {
                                     borderRadius: pillRadius,
                                     border: Border.all(
                                       color: borderColor,
-                                      width: 1.0,
+                                      width: 0.8,
                                     ),
                                     gradient: (fillAlphaTop > 0 || fillAlphaBottom > 0)
                                         ? LinearGradient(
@@ -296,9 +296,9 @@ class BottomIslandNavBar extends StatelessWidget {
                                                     border: Border.all(
                                                       color: brightPrimary
                                                           .withAlphaFactor(
-                                                        isDark ? 0.85 : 0.60,
+                                                        isDark ? 0.40 : 0.30,
                                                       ),
-                                                      width: 1.2,
+                                                      width: 0.8,
                                                     ),
                                                     boxShadow: [
                                                       BoxShadow(

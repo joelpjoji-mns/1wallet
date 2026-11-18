@@ -347,10 +347,10 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
                         trackHeight: 4,
                       ),
                       child: Slider(
-                        value: _intensity.clamp(0.2, 1.8),
-                        min: 0.2,
+                        value: _intensity.clamp(0.0, 1.8),
+                        min: 0.0,
                         max: 1.8,
-                        divisions: 16,
+                        divisions: 18,
                         onChanged: _onIntensityChanged,
                         onChangeEnd: _onIntensityChangeEnd,
                       ),

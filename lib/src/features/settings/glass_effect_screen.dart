@@ -965,7 +965,7 @@ class _LiveGlassPreview extends StatelessWidget {
               borderRadius: pillRadius,
               border: Border.all(
                 color: Colors.white.withAlphaFactor(borderAlpha),
-                width: 1.2,
+                width: 0.8,
               ),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -1050,7 +1050,7 @@ class _LiveGlassPreview extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: Colors.white.withAlphaFactor(borderAlpha),
-                  width: 1.5,
+                  width: 0.8,
                 ),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -1101,7 +1101,7 @@ class _LiveGlassPreview extends StatelessWidget {
               borderRadius: menuRadius,
               border: Border.all(
                 color: Colors.white.withAlphaFactor(borderAlpha),
-                width: 1.2,
+                width: 0.8,
               ),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -1176,7 +1176,7 @@ class _LiveGlassPreview extends StatelessWidget {
               borderRadius: toolbarRadius,
               border: Border.all(
                 color: Colors.white.withAlphaFactor(borderAlpha),
-                width: 1.0,
+                width: 0.8,
               ),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -1254,7 +1254,7 @@ class _LiveGlassPreview extends StatelessWidget {
               borderRadius: cardRadius,
               border: Border.all(
                 color: Colors.white.withAlphaFactor(borderAlpha),
-                width: 1.2,
+                width: 0.8,
               ),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
