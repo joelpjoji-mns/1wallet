@@ -438,6 +438,20 @@ abstract final class AppTheme {
           color: scheme.onSurfaceVariant,
         ),
       ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: scheme.surfaceContainerHigh,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadii.xl),
+          ),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant.withValues(alpha: 0.35),
+        thickness: 0.8,
+        space: 1,
+      ),
       cardTheme: CardThemeData(
         elevation: 1,
         color: scheme.surfaceContainerLow,
@@ -451,15 +465,21 @@ abstract final class AppTheme {
         fillColor: scheme.surfaceContainerLow,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
-          borderSide: BorderSide(color: scheme.outlineVariant),
+          borderSide: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.4),
+            width: 0.8,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
-          borderSide: BorderSide(color: scheme.outlineVariant),
+          borderSide: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.4),
+            width: 0.8,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
-          borderSide: BorderSide(color: scheme.primary, width: 1.4),
+          borderSide: BorderSide(color: scheme.primary, width: 1.2),
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(

@@ -491,56 +491,56 @@ class IslandFloatingActionButton extends StatelessWidget {
           appearance: isDark ? Brightness.dark : Brightness.light,
         );
     final effectiveFinish = baseFinish.copyWith(
-      tint: brightPrimary.withAlphaFactor(isDark ? 0.22 : 0.16),
+      tint: brightPrimary.withAlphaFactor(isDark ? 0.15 : 0.10),
     );
 
     Widget button = g1455.GlassSurface(
       borderRadius: BorderRadius.circular(32),
       finish: effectiveFinish,
       labelled: false,
-      child: Container(
+      child: SizedBox(
         width: 64,
         height: 64,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              brightPrimary.withAlphaFactor(isDark ? 0.58 : 0.50),
-              Color.lerp(
-                brightPrimary,
-                isDark ? Colors.black : Colors.black87,
-                0.28,
-              )!.withAlphaFactor(isDark ? 0.44 : 0.38),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                brightPrimary.withAlphaFactor(isDark ? 0.50 : 0.42),
+                Color.lerp(
+                  brightPrimary,
+                  isDark ? Colors.black : Colors.black87,
+                  0.28,
+                )!.withAlphaFactor(isDark ? 0.38 : 0.32),
+              ],
+            ),
+            border: Border.all(
+              color: brightPrimary.withAlphaFactor(isDark ? 0.25 : 0.25),
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: brightPrimary.withAlphaFactor(isDark ? 0.25 : 0.18),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withAlphaFactor(0.20)
-                : brightPrimary.withAlphaFactor(0.35),
-            width: 0.8,
+          child: GlassButton(
+            icon: Icon(icon, color: Colors.white, size: 34),
+            label: tooltip ?? 'Action',
+            onTap: onPressed,
+            width: 64,
+            height: 64,
+            iconSize: 34,
+            iconColor: scheme.primary,
+            useOwnLayer: false,
+            style: GlassButtonStyle.transparent,
+            quality: GlassQuality.minimal,
+            shape: const LiquidOval(),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: brightPrimary.withAlphaFactor(isDark ? 0.35 : 0.25),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: GlassButton(
-          icon: Icon(icon, color: Colors.white, size: 34),
-          label: tooltip ?? 'Action',
-          onTap: onPressed,
-          width: 64,
-          height: 64,
-          iconSize: 34,
-          iconColor: scheme.primary,
-          useOwnLayer: false,
-          style: GlassButtonStyle.transparent,
-          quality: GlassQuality.minimal,
-          shape: const LiquidOval(),
         ),
       ),
     );
@@ -673,8 +673,8 @@ class AppMenuAction extends StatelessWidget {
             ? scheme.surfaceContainerHigh.withValues(alpha: 0.5)
             : scheme.surfaceContainerHigh.withValues(alpha: 0.7),
         border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.35),
-          width: 0.8,
+          color: scheme.outlineVariant.withValues(alpha: 0.25),
+          width: 0.5,
         ),
       ),
       child: Material(
@@ -785,8 +785,8 @@ class HeaderIconButton extends StatelessWidget {
             ? scheme.surfaceContainerHigh.withValues(alpha: 0.5)
             : scheme.surfaceContainerHigh.withValues(alpha: 0.7),
         border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.35),
-          width: 0.8,
+          color: scheme.outlineVariant.withValues(alpha: 0.25),
+          width: 0.5,
         ),
       ),
       child: Material(
@@ -2193,23 +2193,17 @@ extension AppSnackBarMessenger on ScaffoldMessengerState {
 /// of re-stating colour/radius/border values.
 abstract final class AppSurfaces {
   static Color panelBorderColor(BuildContext context) =>
-      Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.55);
+      Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.40);
 
   static BoxDecoration panel(
     BuildContext context, {
     double radius = AppRadii.md,
     Color? color,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return BoxDecoration(
       color: color ?? Theme.of(context).colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(radius),
-      border: Border.all(
-        color: isDark
-            ? Colors.white.withAlphaFactor(0.12)
-            : panelBorderColor(context),
-        width: 0.8,
-      ),
+      border: Border.all(color: panelBorderColor(context), width: 0.8),
     );
   }
 
