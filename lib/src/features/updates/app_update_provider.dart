@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/notification_service.dart';
@@ -1743,7 +1744,12 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
   Future<void> installUpdate() async {
     final apkPath = state.downloadedApkPath;
-    if (apkPath == null) return;
+    if (apkPath == null) {
+      if (state.latestRelease?.apk != null) {
+        await downloadUpdate();
+      }
+      return;
+    }
 
     state = state.copyWith(status: UpdateStatus.installing);
     try {
@@ -1752,6 +1758,23 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
           'Downloaded APK was not found. Please download it again.',
         );
       }
+
+      if (!kIsWeb && Platform.isAndroid) {
+        final installPermission =
+            await Permission.requestInstallPackages.status;
+        if (!installPermission.isGranted) {
+          final requested = await Permission.requestInstallPackages.request();
+          if (!requested.isGranted) {
+            state = state.copyWith(
+              status: UpdateStatus.downloaded,
+              errorMessage:
+                  'Please enable "Install unknown apps" for 1wallet in Android settings to complete the update.',
+            );
+            return;
+          }
+        }
+      }
+
       final result = await OpenFilex.open(
         apkPath,
         type: 'application/vnd.android.package-archive',

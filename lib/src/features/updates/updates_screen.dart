@@ -239,6 +239,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     } else if (state.status == UpdateStatus.downloaded) {
       statusTitle = 'Update Ready to Install';
       statusSubtitle =
+          state.errorMessage ??
           'Version ${state.latestRelease?.versionName ?? ''} is downloaded';
       icon = Icons.download_done_rounded;
       color = scheme.positive;
