@@ -1,0 +1,6 @@
+- Initial production release of 1Wallet for Google Play
+- Offline-first double entry ledger and expense tracking
+- Biometric security and PIN app lock
+- On-device receipt OCR scanning
+- Multi-currency support and actionable spending charts
+- Bank SMS and transaction notification capture

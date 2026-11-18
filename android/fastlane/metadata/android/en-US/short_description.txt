@@ -1,0 +1,1 @@
+Offline-first personal finance tracker, expense manager, and smart ledger.

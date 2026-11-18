@@ -1,0 +1,34 @@
+Take complete control of your personal finances with 1Wallet — an offline-first, privacy-focused expense manager and double-entry ledger designed for everyday budgeting, expense tracking, and wealth management.
+
+Why 1Wallet?
+Most finance apps sell your financial habits or force you into continuous cloud subscriptions. 1Wallet is built from the ground up on an offline-first architecture: your financial data belongs exclusively to you and remains safely stored on your device.
+
+Key Features:
+
+📊 Smart Ledger & Double-Entry Integrity
+- Track accounts, cash wallets, credit cards, bank accounts, and loans with mathematical precision.
+- Multi-currency accounts with accurate exchange rate tracking and balance conversions.
+- Transfer balancing between accounts with no discrepancies or floating-point rounding errors.
+
+🧾 On-Device Receipt OCR Scanning
+- Scan paper receipts directly with your camera.
+- On-device text recognition extracts merchant name, date, and transaction totals instantly without sending images to third-party servers.
+
+📩 Automatic Transaction Capture (SMS & Notifications)
+- Seamlessly capture incoming bank SMS alerts and transaction push notifications from supported payment and banking apps.
+- Spend less time manually typing expenses and more time growing your savings.
+
+🔒 Biometric Security & Complete Privacy
+- Secure your financial journal with Biometric Authentication (Fingerprint / Face Unlock) or a custom security PIN.
+- Optional AES-256 encrypted backups.
+- Optional end-to-end cloud sync with Google Sign-In so your data is always safe, even if you switch phones.
+
+📈 Actionable Insights & Budgeting
+- Visual breakdowns of your monthly income, spending by category, net worth trends, and cash flows.
+- Visual charts, custom categories, tags, and customizable budget goals to keep you on target.
+
+📄 Easy Statement Import & Export
+- Import transactions from bank statements via PDF or CSV.
+- Export full transaction history and backups anytime.
+
+Designed for speed, security, and financial peace of mind. Download 1Wallet today and master your money!
