@@ -353,7 +353,7 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(AppRadii.md),
           side: BorderSide(
             color: scheme.outlineVariant.withValues(alpha: 0.4),
-            width: 0.8,
+            width: 0.5,
           ),
         ),
         textStyle: textTheme.bodyMedium?.copyWith(
@@ -371,7 +371,7 @@ abstract final class AppTheme {
               borderRadius: BorderRadius.circular(AppRadii.md),
               side: BorderSide(
                 color: scheme.outlineVariant.withValues(alpha: 0.4),
-                width: 0.8,
+                width: 0.5,
               ),
             ),
           ),
@@ -386,7 +386,7 @@ abstract final class AppTheme {
               borderRadius: BorderRadius.circular(AppRadii.md),
               side: BorderSide(
                 color: scheme.outlineVariant.withValues(alpha: 0.4),
-                width: 0.8,
+                width: 0.5,
               ),
             ),
           ),
@@ -396,6 +396,31 @@ abstract final class AppTheme {
         style: ButtonStyle(
           foregroundColor: WidgetStatePropertyAll(scheme.onSurface),
           iconColor: WidgetStatePropertyAll(scheme.onSurface),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: scheme.surfaceContainerHigh,
+        selectedColor: scheme.primaryContainer,
+        disabledColor: scheme.surfaceContainerHigh.withValues(alpha: 0.38),
+        deleteIconColor: scheme.onSurfaceVariant,
+        labelStyle: textTheme.labelMedium?.copyWith(
+          color: scheme.onSurface,
+          fontWeight: FontWeight.w600,
+        ),
+        secondaryLabelStyle: textTheme.labelMedium?.copyWith(
+          color: scheme.onPrimaryContainer,
+          fontWeight: FontWeight.w600,
+        ),
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.4),
+          width: 0.5,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xxs,
         ),
       ),
       cupertinoOverrideTheme: CupertinoThemeData(

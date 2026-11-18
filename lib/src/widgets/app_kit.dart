@@ -204,7 +204,7 @@ class GlassDropdownPill<T> extends ConsumerWidget {
           borderRadius: BorderRadius.circular(AppRadii.pill),
           border: Border.all(
             color: scheme.outlineVariant.withValues(alpha: 0.4),
-            width: 0.8,
+            width: 0.5,
           ),
         ),
         child: Material(
@@ -933,7 +933,7 @@ class GlassMaterializeSwitcher extends StatelessWidget {
   }
 }
 
-/// Shared cross-platform action control backed by Liquid Glass.
+/// Shared cross-platform action control for widget actions, cards, and chrome.
 class AppActionButton extends StatelessWidget {
   const AppActionButton({
     required this.label,
@@ -955,53 +955,79 @@ class AppActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isInteractive = enabled && onPressed != null;
+
     final bg = prominent
         ? scheme.primary
-        : scheme.surfaceContainerHighest.withValues(alpha: 0.65);
+        : (isDark
+              ? scheme.primary.withValues(alpha: 0.16)
+              : scheme.primary.withValues(alpha: 0.10));
     final fg = prominent ? scheme.onPrimary : scheme.primary;
+    final border = prominent
+        ? null
+        : Border.all(
+            color: scheme.primary.withValues(alpha: isDark ? 0.25 : 0.20),
+            width: 0.5,
+          );
 
-    final content = Container(
-      height: compact ? 36 : 48,
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? AppSpacing.sm : AppSpacing.lg,
-      ),
-      decoration: BoxDecoration(
-        color: enabled && onPressed != null ? bg : bg.withValues(alpha: 0.38),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: compact ? 16 : 18, color: fg),
-            const SizedBox(width: AppSpacing.xs),
-          ],
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  (compact
-                          ? Theme.of(context).textTheme.labelMedium
-                          : Theme.of(context).textTheme.labelLarge)
-                      ?.copyWith(color: fg, fontWeight: FontWeight.w700),
+    final borderRadius = BorderRadius.circular(AppRadii.pill);
+
+    return Semantics(
+      button: true,
+      enabled: isInteractive,
+      label: label,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isInteractive ? bg : bg.withValues(alpha: 0.38),
+          borderRadius: borderRadius,
+          border: border,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: borderRadius,
+            onTap: isInteractive ? onPressed : null,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? AppSpacing.sm : AppSpacing.lg,
+                vertical: compact ? 6 : 10,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(
+                      icon,
+                      size: compact ? 15 : 18,
+                      color: isInteractive ? fg : fg.withValues(alpha: 0.38),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          (compact
+                                  ? Theme.of(context).textTheme.labelMedium
+                                  : Theme.of(context).textTheme.labelLarge)
+                              ?.copyWith(
+                                color: isInteractive
+                                    ? fg
+                                    : fg.withValues(alpha: 0.38),
+                                fontWeight: FontWeight.w700,
+                              ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
-    );
-    return GlassButton.custom(
-      label: label,
-      onTap: onPressed ?? () {},
-      enabled: enabled && onPressed != null,
-      height: compact ? 36 : 48,
-      shape: const LiquidRoundedRectangle(borderRadius: AppRadii.pill),
-      useOwnLayer: true,
-      quality: GlassQuality.standard,
-      style: prominent ? GlassButtonStyle.prominent : GlassButtonStyle.filled,
-      child: content,
     );
   }
 }

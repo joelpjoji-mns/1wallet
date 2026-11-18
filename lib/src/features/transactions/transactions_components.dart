@@ -283,6 +283,8 @@ class FilterPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (options != null && value != null && onSelected != null) {
       return Padding(
         padding: const EdgeInsets.only(right: AppSpacing.xs),
@@ -295,18 +297,58 @@ class FilterPill extends StatelessWidget {
         ),
       );
     }
-    final foreground = active ? scheme.onPrimaryContainer : scheme.onSurface;
+
+    final bg = active
+        ? (isDark
+              ? scheme.primary.withValues(alpha: 0.22)
+              : scheme.primary.withValues(alpha: 0.15))
+        : (isDark
+              ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
+              : scheme.surfaceContainerHigh.withValues(alpha: 0.85));
+    final fg = active ? scheme.primary : scheme.onSurface;
+    final borderColor = active
+        ? scheme.primary.withValues(alpha: isDark ? 0.35 : 0.25)
+        : scheme.outlineVariant.withValues(alpha: 0.4);
+
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.xs),
-      child: GlassChip(
-        label: label,
-        icon: Icon(icon, size: 16, color: foreground),
-        selected: active,
-        selectedColor: scheme.primaryContainer,
-        labelStyle: TextStyle(color: foreground, fontWeight: FontWeight.w800),
-        onTap: onTap ?? () {},
-        quality: GlassQuality.standard,
-        useOwnLayer: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(color: borderColor, width: 0.5),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 15, color: scheme.primary),
+                  const SizedBox(width: AppSpacing.xxs),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: fg,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xxxs),
+                  Icon(Icons.expand_more_rounded, size: 17, color: fg),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

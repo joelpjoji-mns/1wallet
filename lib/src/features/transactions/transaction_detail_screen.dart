@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:g1455/g1455.dart' as g1455;
 
 import '../../data/ledger_models.dart';
@@ -335,7 +334,47 @@ class _TransactionDetailScreenState
                 runSpacing: AppSpacing.sm,
                 children: [
                   for (final tag in transaction.tags)
-                    GlassChip(label: tag.replaceAll('#', '').trim()),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.4),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xxs,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.tag_rounded,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: AppSpacing.xxs),
+                            Text(
+                              tag.replaceAll('#', '').trim(),
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

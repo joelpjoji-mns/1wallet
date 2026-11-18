@@ -167,15 +167,11 @@ class _MainShellState extends ConsumerState<MainShell>
     if (!_pageController.hasClients) return;
     final currentPage = _pageController.page?.round();
     if (currentPage == index) return;
-    if (currentPage != null && (currentPage - index).abs() > 1) {
-      _pageController.jumpToPage(index);
-    } else {
-      _pageController.animateToPage(
-        index,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      );
-    }
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   bool _shouldSyncScheduledNotifications(
