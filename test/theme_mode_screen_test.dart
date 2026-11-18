@@ -42,7 +42,7 @@ void main() {
     expect(find.text('Color intensity'), findsOneWidget);
     expect(find.text('Vibrancy & Saturation'), findsOneWidget);
     expect(find.text('Subtle (50%)'), findsOneWidget);
-    expect(find.text('Default (100%)'), findsOneWidget);
+    expect(find.text('Default (100%)'), findsWidgets);
     expect(find.text('Vibrant (150%)'), findsOneWidget);
     expect(find.text('Reset theme settings'), findsOneWidget);
   });

@@ -343,6 +343,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
 
+                  // ── Feedback & About ──
+                  AppGroupedSection(
+                    header: 'Community & About',
+                    children: [
+                      AppGroupedTile(
+                        leading: const Icon(Icons.chat_bubble_outline_rounded),
+                        title: const Text('Feedback & Support'),
+                        subtitle: const Text(
+                          'Report an issue, request features, or send logs to Joel',
+                        ),
+                        showChevron: true,
+                        onTap: () => context.push('/settings/feedback'),
+                      ),
+                      const GlassDivider(),
+                      AppGroupedTile(
+                        leading: const Icon(Icons.info_outline_rounded),
+                        title: const Text('About 1Wallet'),
+                        subtitle: const Text(
+                          'The story, the creator, and the offline ledger philosophy',
+                        ),
+                        showChevron: true,
+                        onTap: () => context.push('/settings/about'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
                   // ── Danger zone ──
                   // Offline mode has no account to delete; its wallet is
                   // managed through backups and Data backup instead.

@@ -80,12 +80,18 @@ abstract final class AppTheme {
     Color? customAccentColor,
     double colorIntensity = 1.0,
     bool useSystemColor = true,
+    double surfaceContrast = 1.0,
+    double outlineThickness = 0.4,
+    double outlineOpacity = 0.15,
   }) => _theme(
     Brightness.light,
     systemColorScheme: systemColorScheme,
     customAccentColor: customAccentColor,
     colorIntensity: colorIntensity,
     useSystemColor: useSystemColor,
+    surfaceContrast: surfaceContrast,
+    outlineThickness: outlineThickness,
+    outlineOpacity: outlineOpacity,
   );
 
   static ThemeData amoled({
@@ -93,6 +99,9 @@ abstract final class AppTheme {
     Color? customAccentColor,
     double colorIntensity = 1.0,
     bool useSystemColor = true,
+    double surfaceContrast = 1.0,
+    double outlineThickness = 0.4,
+    double outlineOpacity = 0.15,
   }) => _theme(
     Brightness.dark,
     amoled: true,
@@ -100,6 +109,9 @@ abstract final class AppTheme {
     customAccentColor: customAccentColor,
     colorIntensity: colorIntensity,
     useSystemColor: useSystemColor,
+    surfaceContrast: surfaceContrast,
+    outlineThickness: outlineThickness,
+    outlineOpacity: outlineOpacity,
   );
 
   static ThemeData _theme(
@@ -109,6 +121,9 @@ abstract final class AppTheme {
     Color? customAccentColor,
     double colorIntensity = 1.0,
     bool useSystemColor = true,
+    double surfaceContrast = 1.0,
+    double outlineThickness = 0.4,
+    double outlineOpacity = 0.15,
   }) {
     final dark = brightness == Brightness.dark;
 
@@ -189,15 +204,56 @@ abstract final class AppTheme {
       }
     }
 
+    final effectiveSurfaceLow = amoled
+        ? Color.lerp(
+            AppColors.amoledBackground,
+            AppColors.amoledSurfaceLow,
+            surfaceContrast,
+          )!
+        : Color.lerp(
+            baseScheme.surface,
+            baseScheme.surfaceContainerLow,
+            surfaceContrast,
+          )!;
+    final effectiveSurface = amoled
+        ? Color.lerp(
+            AppColors.amoledBackground,
+            AppColors.amoledSurface,
+            surfaceContrast,
+          )!
+        : Color.lerp(
+            baseScheme.surface,
+            baseScheme.surfaceContainer,
+            surfaceContrast,
+          )!;
+    final effectiveSurfaceHigh = amoled
+        ? Color.lerp(
+            AppColors.amoledBackground,
+            AppColors.amoledSurfaceHigh,
+            surfaceContrast,
+          )!
+        : Color.lerp(
+            baseScheme.surface,
+            baseScheme.surfaceContainerHigh,
+            surfaceContrast,
+          )!;
+    final effectiveSurfaceHighest = amoled
+        ? Color.lerp(
+            AppColors.amoledBackground,
+            AppColors.amoledSurfaceHighest,
+            surfaceContrast,
+          )!
+        : Color.lerp(
+            baseScheme.surface,
+            baseScheme.surfaceContainerHighest,
+            surfaceContrast,
+          )!;
+
     final scheme = baseScheme.copyWith(
       primaryContainer: dark
-          ? Color.lerp(
-              baseScheme.surfaceContainerHigh,
-              baseScheme.primaryContainer,
-              0.65,
-            )
+          ? Color.lerp(effectiveSurfaceHigh, baseScheme.primaryContainer, 0.65)
           : Color.lerp(
-              baseScheme.surfaceContainerHighest,
+              effectiveSurfaceHighest,
               baseScheme.primaryContainer,
               0.65,
             ),
@@ -206,18 +262,10 @@ abstract final class AppTheme {
       surfaceContainerLowest: amoled
           ? AppColors.amoledBackground
           : baseScheme.surfaceContainerLowest,
-      surfaceContainerLow: amoled
-          ? AppColors.amoledSurfaceLow
-          : baseScheme.surfaceContainerLow,
-      surfaceContainer: amoled
-          ? AppColors.amoledSurface
-          : baseScheme.surfaceContainer,
-      surfaceContainerHigh: amoled
-          ? AppColors.amoledSurfaceHigh
-          : baseScheme.surfaceContainerHigh,
-      surfaceContainerHighest: amoled
-          ? AppColors.amoledSurfaceHighest
-          : baseScheme.surfaceContainerHighest,
+      surfaceContainerLow: effectiveSurfaceLow,
+      surfaceContainer: effectiveSurface,
+      surfaceContainerHigh: effectiveSurfaceHigh,
+      surfaceContainerHighest: effectiveSurfaceHighest,
       outlineVariant: baseScheme.outlineVariant,
     );
 
@@ -253,6 +301,12 @@ abstract final class AppTheme {
                     fontFamily: 'Inter',
                   ),
         );
+
+    final customBorderColor = (dark ? Colors.white : scheme.outlineVariant)
+        .withValues(alpha: outlineOpacity.clamp(0.0, 1.0));
+    final customBorderSide = outlineThickness > 0
+        ? BorderSide(color: customBorderColor, width: outlineThickness)
+        : BorderSide.none;
 
     return ThemeData(
       useMaterial3: true,
@@ -351,10 +405,7 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          side: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.4),
-            width: 0.5,
-          ),
+          side: customBorderSide,
         ),
         textStyle: textTheme.bodyMedium?.copyWith(
           color: scheme.onSurface,
@@ -369,10 +420,7 @@ abstract final class AppTheme {
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadii.md),
-              side: BorderSide(
-                color: scheme.outlineVariant.withValues(alpha: 0.4),
-                width: 0.5,
-              ),
+              side: customBorderSide,
             ),
           ),
         ),
@@ -384,10 +432,7 @@ abstract final class AppTheme {
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadii.md),
-              side: BorderSide(
-                color: scheme.outlineVariant.withValues(alpha: 0.4),
-                width: 0.5,
-              ),
+              side: customBorderSide,
             ),
           ),
         ),
@@ -411,10 +456,7 @@ abstract final class AppTheme {
           color: scheme.onPrimaryContainer,
           fontWeight: FontWeight.w600,
         ),
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.4),
-          width: 0.5,
-        ),
+        side: customBorderSide,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.pill),
         ),
@@ -457,6 +499,7 @@ abstract final class AppTheme {
         backgroundColor: scheme.surfaceContainerHigh,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.xl),
+          side: customBorderSide,
         ),
         titleTextStyle: textTheme.headlineSmall,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
@@ -473,8 +516,8 @@ abstract final class AppTheme {
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant.withValues(alpha: 0.35),
-        thickness: 0.8,
+        color: customBorderColor,
+        thickness: outlineThickness > 0 ? outlineThickness : 0.5,
         space: 1,
       ),
       cardTheme: CardThemeData(
@@ -483,6 +526,7 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
+          side: customBorderSide,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -490,23 +534,27 @@ abstract final class AppTheme {
         fillColor: scheme.surfaceContainerLow,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
-          borderSide: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.4),
-            width: 0.8,
-          ),
+          borderSide: customBorderSide,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
-          borderSide: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.4),
-            width: 0.8,
-          ),
+          borderSide: customBorderSide,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
-          borderSide: BorderSide(color: scheme.primary, width: 1.2),
+          borderSide: BorderSide(
+            color: scheme.primary,
+            width: (outlineThickness * 1.5).clamp(1.0, 2.0),
+          ),
         ),
       ),
+      extensions: [
+        AppThemeCustomization(
+          surfaceContrast: surfaceContrast,
+          outlineThickness: outlineThickness,
+          outlineOpacity: outlineOpacity,
+        ),
+      ],
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: scheme.primary,
         linearTrackColor: scheme.surfaceContainerHighest,
@@ -525,6 +573,50 @@ abstract final class AppTheme {
           TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
         },
       ),
+    );
+  }
+}
+
+@immutable
+class AppThemeCustomization extends ThemeExtension<AppThemeCustomization> {
+  const AppThemeCustomization({
+    this.surfaceContrast = 1.0,
+    this.outlineThickness = 0.4,
+    this.outlineOpacity = 0.15,
+  });
+
+  final double surfaceContrast;
+  final double outlineThickness;
+  final double outlineOpacity;
+
+  @override
+  AppThemeCustomization copyWith({
+    double? surfaceContrast,
+    double? outlineThickness,
+    double? outlineOpacity,
+  }) {
+    return AppThemeCustomization(
+      surfaceContrast: surfaceContrast ?? this.surfaceContrast,
+      outlineThickness: outlineThickness ?? this.outlineThickness,
+      outlineOpacity: outlineOpacity ?? this.outlineOpacity,
+    );
+  }
+
+  @override
+  AppThemeCustomization lerp(
+    ThemeExtension<AppThemeCustomization>? other,
+    double t,
+  ) {
+    if (other is! AppThemeCustomization) return this;
+    return AppThemeCustomization(
+      surfaceContrast:
+          lerpDouble(surfaceContrast, other.surfaceContrast, t) ??
+          surfaceContrast,
+      outlineThickness:
+          lerpDouble(outlineThickness, other.outlineThickness, t) ??
+          outlineThickness,
+      outlineOpacity:
+          lerpDouble(outlineOpacity, other.outlineOpacity, t) ?? outlineOpacity,
     );
   }
 }

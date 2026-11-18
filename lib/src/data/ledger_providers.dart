@@ -37,6 +37,15 @@ g1455.GlassFinish resolveGlassFinish(
   final specularAlpha = optics.specularOpacity;
   final blur = optics.blur;
 
+  final glassOptics = g1455.GlassOptics(
+    strength: -58.2 * optics.refractionLevel,
+    thickness:
+        (21.0 *
+        (optics.refractionLevel <= 0
+            ? 0.0
+            : optics.refractionLevel.clamp(0.2, 2.5))),
+  );
+
   return switch (optics.finish) {
     AppGlassFinish.regular =>
       g1455.GlassFinish.regular(
@@ -47,8 +56,9 @@ g1455.GlassFinish resolveGlassFinish(
             ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.01, 0.90))
             : Color.fromRGBO(0, 0, 0, (fillAlpha * 0.7).clamp(0.01, 0.90)),
         rim: isDark
-            ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
-            : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
+            ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.01, 0.95))
+            : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.01, 0.95)),
+        optics: glassOptics,
       ),
     AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
       blurSigmaLogical: blur,
@@ -56,8 +66,9 @@ g1455.GlassFinish resolveGlassFinish(
           ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.0, 0.90))
           : Color.fromRGBO(0, 0, 0, (fillAlpha * 0.7).clamp(0.0, 0.90)),
       rim: isDark
-          ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.05, 0.95))
-          : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.05, 0.95)),
+          ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.01, 0.95))
+          : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.01, 0.95)),
+      optics: glassOptics,
     ),
   };
 }

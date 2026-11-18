@@ -183,11 +183,17 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             customAccentColor: themeState.customAccentColor,
             colorIntensity: themeState.colorIntensity,
             useSystemColor: themeState.useSystemColor,
+            surfaceContrast: themeState.surfaceContrast,
+            outlineThickness: themeState.outlineThickness,
+            outlineOpacity: themeState.outlineOpacity,
           )
         : AppTheme.amoled(
             customAccentColor: themeState.customAccentColor,
             colorIntensity: themeState.colorIntensity,
             useSystemColor: themeState.useSystemColor,
+            surfaceContrast: themeState.surfaceContrast,
+            outlineThickness: themeState.outlineThickness,
+            outlineOpacity: themeState.outlineOpacity,
           );
 
     ref.listen(startupStateProvider, (prev, next) {
@@ -210,11 +216,17 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               customAccentColor: next.customAccentColor,
               colorIntensity: next.colorIntensity,
               useSystemColor: next.useSystemColor,
+              surfaceContrast: next.surfaceContrast,
+              outlineThickness: next.outlineThickness,
+              outlineOpacity: next.outlineOpacity,
             )
           : AppTheme.amoled(
               customAccentColor: next.customAccentColor,
               colorIntensity: next.colorIntensity,
               useSystemColor: next.useSystemColor,
+              surfaceContrast: next.surfaceContrast,
+              outlineThickness: next.outlineThickness,
+              outlineOpacity: next.outlineOpacity,
             );
       NativeWidgetSyncService.syncWidgets(
         ref.read(ledgerProvider),
@@ -302,12 +314,18 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             customAccentColor: themeState.customAccentColor,
             colorIntensity: themeState.colorIntensity,
             useSystemColor: themeState.useSystemColor,
+            surfaceContrast: themeState.surfaceContrast,
+            outlineThickness: themeState.outlineThickness,
+            outlineOpacity: themeState.outlineOpacity,
           ),
           darkTheme: AppTheme.amoled(
             systemColorScheme: themeState.useSystemColor ? darkDynamic : null,
             customAccentColor: themeState.customAccentColor,
             colorIntensity: themeState.colorIntensity,
             useSystemColor: themeState.useSystemColor,
+            surfaceContrast: themeState.surfaceContrast,
+            outlineThickness: themeState.outlineThickness,
+            outlineOpacity: themeState.outlineOpacity,
           ),
           themeMode: themeState.themeMode,
           builder: (context, child) {

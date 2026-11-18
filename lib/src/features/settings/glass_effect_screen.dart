@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +9,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/theme_controller.dart';
 import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
@@ -202,6 +202,13 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
       }
     }
 
+    final glassOptics = g1455.GlassOptics(
+      strength: -58.2 * _refractionLevel,
+      thickness:
+          (21.0 *
+          (_refractionLevel <= 0 ? 0.0 : _refractionLevel.clamp(0.2, 2.5))),
+    );
+
     final resolvedFinish = switch (_currentFinish) {
       AppGlassFinish.regular =>
         g1455.GlassFinish.regular(
@@ -226,14 +233,15 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
                   255,
                   255,
                   255,
-                  _specularOpacity.clamp(0.05, 0.95),
+                  _specularOpacity.clamp(0.01, 0.95),
                 )
               : Color.fromRGBO(
                   0,
                   0,
                   0,
-                  (_specularOpacity * 0.5).clamp(0.05, 0.95),
+                  (_specularOpacity * 0.5).clamp(0.01, 0.95),
                 ),
+          optics: glassOptics,
         ),
       AppGlassFinish.clear => g1455.GlassFinish.clear.copyWith(
         blurSigmaLogical: _blur,
@@ -246,13 +254,14 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
                 (_backgroundOpacity * 0.7).clamp(0.0, 0.90),
               ),
         rim: isDark
-            ? Color.fromRGBO(255, 255, 255, _specularOpacity.clamp(0.05, 0.95))
+            ? Color.fromRGBO(255, 255, 255, _specularOpacity.clamp(0.01, 0.95))
             : Color.fromRGBO(
                 0,
                 0,
                 0,
-                (_specularOpacity * 0.5).clamp(0.05, 0.95),
+                (_specularOpacity * 0.5).clamp(0.01, 0.95),
               ),
+        optics: glassOptics,
       ),
     };
 
@@ -959,6 +968,7 @@ class _LiveGlassPreview extends StatelessWidget {
             right: 14,
             bottom: 12,
             child: _buildComponentSpecificPreview(
+              context,
               fillAlphaTop: fillAlphaTop,
               fillAlphaBottom: fillAlphaBottom,
               borderAlpha: borderAlpha,
@@ -969,7 +979,8 @@ class _LiveGlassPreview extends StatelessWidget {
     );
   }
 
-  Widget _buildComponentSpecificPreview({
+  Widget _buildComponentSpecificPreview(
+    BuildContext context, {
     required double fillAlphaTop,
     required double fillAlphaBottom,
     required double borderAlpha,
@@ -977,30 +988,35 @@ class _LiveGlassPreview extends StatelessWidget {
     switch (target) {
       case GlassComponentTarget.islandBar:
         return _buildIslandBarPreview(
+          context,
           fillAlphaTop: fillAlphaTop,
           fillAlphaBottom: fillAlphaBottom,
           borderAlpha: borderAlpha,
         );
       case GlassComponentTarget.fab:
         return _buildFabPreview(
+          context,
           fillAlphaTop: fillAlphaTop,
           fillAlphaBottom: fillAlphaBottom,
           borderAlpha: borderAlpha,
         );
       case GlassComponentTarget.dropdownMenu:
         return _buildDropdownPreview(
+          context,
           fillAlphaTop: fillAlphaTop,
           fillAlphaBottom: fillAlphaBottom,
           borderAlpha: borderAlpha,
         );
       case GlassComponentTarget.toolbars:
         return _buildToolbarsPreview(
+          context,
           fillAlphaTop: fillAlphaTop,
           fillAlphaBottom: fillAlphaBottom,
           borderAlpha: borderAlpha,
         );
       case GlassComponentTarget.general:
         return _buildGeneralCardPreview(
+          context,
           fillAlphaTop: fillAlphaTop,
           fillAlphaBottom: fillAlphaBottom,
           borderAlpha: borderAlpha,
@@ -1008,52 +1024,44 @@ class _LiveGlassPreview extends StatelessWidget {
     }
   }
 
-  Widget _buildIslandBarPreview({
+  Widget _buildIslandBarPreview(
+    BuildContext context, {
     required double fillAlphaTop,
     required double fillAlphaBottom,
     required double borderAlpha,
   }) {
+    final custom =
+        Theme.of(context).extension<AppThemeCustomization>() ??
+        const AppThemeCustomization();
+    final borderWidth = custom.outlineThickness > 0
+        ? (custom.outlineThickness * 0.75).clamp(0.2, 1.2)
+        : 0.0;
+    final borderColor = (isDark ? Colors.white : scheme.outlineVariant)
+        .withAlphaFactor((custom.outlineOpacity * 0.7).clamp(0.04, 0.40));
     final pillRadius = BorderRadius.circular(30);
 
-    return ClipRRect(
+    return g1455.GlassSurface(
       borderRadius: pillRadius,
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: g1455.GlassSurface(
+      finish: finish,
+      labelled: false,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
           borderRadius: pillRadius,
-          finish: finish,
-          labelled: false,
-          child: Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              borderRadius: pillRadius,
-              border: Border.all(
-                color: Colors.white.withAlphaFactor(borderAlpha),
-                width: 0.5,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.white.withAlphaFactor(fillAlphaTop),
-                  Colors.white.withAlphaFactor(fillAlphaBottom),
-                ],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _navPreviewItem(Icons.home_rounded, 'Home', true),
-                _navPreviewItem(Icons.receipt_long_rounded, 'Records', false),
-                _navPreviewItem(
-                  Icons.calendar_month_rounded,
-                  'Calendar',
-                  false,
-                ),
-                _navPreviewItem(Icons.wallet_rounded, 'Accounts', false),
-              ],
-            ),
+          border: borderWidth > 0
+              ? Border.all(color: borderColor, width: borderWidth)
+              : null,
+        ),
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navPreviewItem(Icons.home_rounded, 'Home', true),
+              _navPreviewItem(Icons.receipt_long_rounded, 'Records', false),
+              _navPreviewItem(Icons.calendar_month_rounded, 'Calendar', false),
+              _navPreviewItem(Icons.wallet_rounded, 'Accounts', false),
+            ],
           ),
         ),
       ),
@@ -1096,119 +1104,118 @@ class _LiveGlassPreview extends StatelessWidget {
     );
   }
 
-  Widget _buildFabPreview({
+  Widget _buildFabPreview(
+    BuildContext context, {
     required double fillAlphaTop,
     required double fillAlphaBottom,
     required double borderAlpha,
   }) {
-    final circleRadius = BorderRadius.circular(30);
+    final custom =
+        Theme.of(context).extension<AppThemeCustomization>() ??
+        const AppThemeCustomization();
+    final fabBorderWidth = custom.outlineThickness > 0
+        ? (custom.outlineThickness * 0.8).clamp(0.2, 1.2)
+        : 0.0;
+    final fabBorderColor = scheme.primary.withAlphaFactor(
+      (custom.outlineOpacity * 0.8).clamp(0.04, 0.40),
+    );
+    final circleRadius = BorderRadius.circular(32);
 
     return Center(
-      child: ClipRRect(
+      child: g1455.GlassSurface(
         borderRadius: circleRadius,
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: g1455.GlassSurface(
-            borderRadius: circleRadius,
-            finish: finish,
-            labelled: false,
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withAlphaFactor(borderAlpha),
-                  width: 0.5,
-                ),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    scheme.primary.withAlphaFactor(
-                      fillAlphaTop.clamp(0.40, 0.90),
-                    ),
-                    scheme.primary.withAlphaFactor(
-                      fillAlphaBottom.clamp(0.25, 0.70),
-                    ),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: scheme.primary.withAlphaFactor(0.40),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 32,
-              ),
+        finish: finish,
+        labelled: false,
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: fabBorderWidth > 0
+                ? Border.all(color: fabBorderColor, width: fabBorderWidth)
+                : null,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                scheme.primary.withAlphaFactor(isDark ? 0.48 : 0.40),
+                Color.lerp(
+                  scheme.primary,
+                  isDark ? Colors.black : Colors.black87,
+                  0.28,
+                )!.withAlphaFactor(isDark ? 0.36 : 0.30),
+              ],
             ),
+            boxShadow: [
+              BoxShadow(
+                color: scheme.primary.withAlphaFactor(isDark ? 0.25 : 0.18),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
         ),
       ),
     );
   }
 
-  Widget _buildDropdownPreview({
+  Widget _buildDropdownPreview(
+    BuildContext context, {
     required double fillAlphaTop,
     required double fillAlphaBottom,
     required double borderAlpha,
   }) {
+    final custom =
+        Theme.of(context).extension<AppThemeCustomization>() ??
+        const AppThemeCustomization();
+    final borderWidth = custom.outlineThickness > 0
+        ? (custom.outlineThickness * 0.75).clamp(0.2, 1.2)
+        : 0.0;
+    final borderColor = (isDark ? Colors.white : scheme.outlineVariant)
+        .withAlphaFactor((custom.outlineOpacity * 0.7).clamp(0.04, 0.40));
     final menuRadius = BorderRadius.circular(16);
 
-    return ClipRRect(
+    return g1455.GlassSurface(
       borderRadius: menuRadius,
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: g1455.GlassSurface(
+      finish: finish,
+      labelled: false,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
           borderRadius: menuRadius,
-          finish: finish,
-          labelled: false,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: menuRadius,
-              border: Border.all(
-                color: Colors.white.withAlphaFactor(borderAlpha),
-                width: 0.5,
+          border: borderWidth > 0
+              ? Border.all(color: borderColor, width: borderWidth)
+              : null,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _menuPreviewOption(
+                Icons.add_circle_outline_rounded,
+                'Add record',
               ),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withAlphaFactor(fillAlphaTop),
-                  Colors.white.withAlphaFactor(fillAlphaBottom),
-                ],
+              Container(
+                width: 1,
+                height: 24,
+                color: (isDark ? Colors.white : Colors.black).withAlphaFactor(
+                  0.15,
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _menuPreviewOption(
-                  Icons.add_circle_outline_rounded,
-                  'Add record',
+              _menuPreviewOption(
+                Icons.document_scanner_outlined,
+                'Scan receipt',
+              ),
+              Container(
+                width: 1,
+                height: 24,
+                color: (isDark ? Colors.white : Colors.black).withAlphaFactor(
+                  0.15,
                 ),
-                Container(
-                  width: 1,
-                  height: 24,
-                  color: Colors.white.withAlphaFactor(0.20),
-                ),
-                _menuPreviewOption(
-                  Icons.document_scanner_outlined,
-                  'Scan receipt',
-                ),
-                Container(
-                  width: 1,
-                  height: 24,
-                  color: Colors.white.withAlphaFactor(0.20),
-                ),
-                _menuPreviewOption(Icons.file_download_outlined, 'Export CSV'),
-              ],
-            ),
+              ),
+              _menuPreviewOption(Icons.file_download_outlined, 'Export CSV'),
+            ],
           ),
         ),
       ),
@@ -1233,47 +1240,43 @@ class _LiveGlassPreview extends StatelessWidget {
     );
   }
 
-  Widget _buildToolbarsPreview({
+  Widget _buildToolbarsPreview(
+    BuildContext context, {
     required double fillAlphaTop,
     required double fillAlphaBottom,
     required double borderAlpha,
   }) {
+    final custom =
+        Theme.of(context).extension<AppThemeCustomization>() ??
+        const AppThemeCustomization();
+    final borderWidth = custom.outlineThickness > 0
+        ? (custom.outlineThickness * 0.75).clamp(0.2, 1.2)
+        : 0.0;
+    final borderColor = (isDark ? Colors.white : scheme.outlineVariant)
+        .withAlphaFactor((custom.outlineOpacity * 0.7).clamp(0.04, 0.40));
     final toolbarRadius = BorderRadius.circular(18);
 
-    return ClipRRect(
+    return g1455.GlassSurface(
       borderRadius: toolbarRadius,
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: g1455.GlassSurface(
+      finish: finish,
+      labelled: false,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
           borderRadius: toolbarRadius,
-          finish: finish,
-          labelled: false,
-          child: Container(
-            height: 52,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              borderRadius: toolbarRadius,
-              border: Border.all(
-                color: Colors.white.withAlphaFactor(borderAlpha),
-                width: 0.5,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withAlphaFactor(fillAlphaTop),
-                  Colors.white.withAlphaFactor(fillAlphaBottom),
-                ],
-              ),
-            ),
-            child: Row(
-              children: [
-                _toolbarSegment('All', true),
-                _toolbarSegment('Income', false),
-                _toolbarSegment('Expense', false),
-                _toolbarSegment('Transfer', false),
-              ],
-            ),
+          border: borderWidth > 0
+              ? Border.all(color: borderColor, width: borderWidth)
+              : null,
+        ),
+        child: Container(
+          height: 52,
+          padding: const EdgeInsets.all(4),
+          child: Row(
+            children: [
+              _toolbarSegment('All', true),
+              _toolbarSegment('Income', false),
+              _toolbarSegment('Expense', false),
+              _toolbarSegment('Transfer', false),
+            ],
           ),
         ),
       ),
@@ -1311,121 +1314,117 @@ class _LiveGlassPreview extends StatelessWidget {
     );
   }
 
-  Widget _buildGeneralCardPreview({
+  Widget _buildGeneralCardPreview(
+    BuildContext context, {
     required double fillAlphaTop,
     required double fillAlphaBottom,
     required double borderAlpha,
   }) {
+    final custom =
+        Theme.of(context).extension<AppThemeCustomization>() ??
+        const AppThemeCustomization();
+    final borderWidth = custom.outlineThickness > 0
+        ? (custom.outlineThickness * 0.75).clamp(0.2, 1.2)
+        : 0.0;
+    final borderColor = (isDark ? Colors.white : scheme.outlineVariant)
+        .withAlphaFactor((custom.outlineOpacity * 0.7).clamp(0.04, 0.40));
     final cardRadius = BorderRadius.circular(20);
 
-    return ClipRRect(
+    return g1455.GlassSurface(
       borderRadius: cardRadius,
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: g1455.GlassSurface(
+      finish: finish,
+      labelled: false,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
           borderRadius: cardRadius,
-          finish: finish,
-          labelled: false,
-          child: Container(
-            height: 78,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: cardRadius,
-              border: Border.all(
-                color: Colors.white.withAlphaFactor(borderAlpha),
-                width: 0.5,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withAlphaFactor(fillAlphaTop),
-                  Colors.white.withAlphaFactor(fillAlphaBottom),
-                ],
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        scheme.primary.withAlphaFactor(0.85),
-                        scheme.primary.withAlphaFactor(0.40),
-                      ],
-                    ),
-                  ),
-                  child: Icon(
-                    switch (finishPref) {
-                      AppGlassFinish.clear => Icons.water_drop_rounded,
-                      AppGlassFinish.regular => Icons.blur_linear_rounded,
-                    },
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            finishPref.label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: scheme.primary.withAlphaFactor(0.20),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              blur == 0
-                                  ? '0px Blur · Sharp'
-                                  : '${blur.toStringAsFixed(1)}px Blur · ${(backgroundOpacity * 100).toInt()}% Opacity',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: scheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        switch (finishPref) {
-                          AppGlassFinish.clear =>
-                            'Crystal clear liquid glass with zero blur',
-                          AppGlassFinish.regular =>
-                            'Calibrated liquid blur with dynamic refraction',
-                        },
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? Colors.white70 : Colors.black87,
-                        ),
-                      ),
+          border: borderWidth > 0
+              ? Border.all(color: borderColor, width: borderWidth)
+              : null,
+        ),
+        child: Container(
+          height: 78,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      scheme.primary.withAlphaFactor(0.85),
+                      scheme.primary.withAlphaFactor(0.40),
                     ],
                   ),
                 ),
-              ],
-            ),
+                child: Icon(
+                  switch (finishPref) {
+                    AppGlassFinish.clear => Icons.water_drop_rounded,
+                    AppGlassFinish.regular => Icons.blur_linear_rounded,
+                  },
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          finishPref.label,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withAlphaFactor(0.20),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            blur == 0
+                                ? '0px Blur · Sharp'
+                                : '${blur.toStringAsFixed(1)}px Blur · ${(backgroundOpacity * 100).toInt()}% Opacity',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      switch (finishPref) {
+                        AppGlassFinish.clear =>
+                          'Crystal clear liquid glass with zero blur',
+                        AppGlassFinish.regular =>
+                          'Calibrated liquid blur with dynamic refraction',
+                      },
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

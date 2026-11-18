@@ -8,6 +8,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../data/ledger_models.dart';
 import '../data/ledger_providers.dart';
 import '../design/tokens.dart';
+import '../theme/app_theme.dart';
 
 /// A horizontal drag gesture recognizer that only claims gestures moving to the right
 /// (dx > 0) beyond touch slop. Rejects gestures moving to the left so that
@@ -494,6 +495,16 @@ class IslandFloatingActionButton extends StatelessWidget {
       tint: brightPrimary.withAlphaFactor(isDark ? 0.15 : 0.10),
     );
 
+    final custom =
+        Theme.of(context).extension<AppThemeCustomization>() ??
+        const AppThemeCustomization();
+    final fabBorderWidth = custom.outlineThickness > 0
+        ? (custom.outlineThickness * 0.8).clamp(0.2, 1.2)
+        : 0.0;
+    final fabBorderColor = brightPrimary.withAlphaFactor(
+      (custom.outlineOpacity * 0.8).clamp(0.04, 0.40),
+    );
+
     Widget button = g1455.GlassSurface(
       borderRadius: BorderRadius.circular(32),
       finish: effectiveFinish,
@@ -516,10 +527,9 @@ class IslandFloatingActionButton extends StatelessWidget {
                 )!.withAlphaFactor(isDark ? 0.38 : 0.32),
               ],
             ),
-            border: Border.all(
-              color: brightPrimary.withAlphaFactor(isDark ? 0.25 : 0.25),
-              width: 0.5,
-            ),
+            border: fabBorderWidth > 0
+                ? Border.all(color: fabBorderColor, width: fabBorderWidth)
+                : null,
             boxShadow: [
               BoxShadow(
                 color: brightPrimary.withAlphaFactor(isDark ? 0.25 : 0.18),
@@ -2218,18 +2228,34 @@ extension AppSnackBarMessenger on ScaffoldMessengerState {
 /// opaque `PremiumRow`/`MetricTile` and every untitled panel. Use it instead
 /// of re-stating colour/radius/border values.
 abstract final class AppSurfaces {
-  static Color panelBorderColor(BuildContext context) =>
-      Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.40);
+  static AppThemeCustomization _customization(BuildContext context) =>
+      Theme.of(context).extension<AppThemeCustomization>() ??
+      const AppThemeCustomization();
+
+  static Color panelBorderColor(BuildContext context) {
+    final custom = _customization(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    return (isDark ? Colors.white : scheme.outlineVariant).withValues(
+      alpha: custom.outlineOpacity.clamp(0.0, 1.0),
+    );
+  }
+
+  static double panelBorderWidth(BuildContext context) =>
+      _customization(context).outlineThickness;
 
   static BoxDecoration panel(
     BuildContext context, {
     double radius = AppRadii.md,
     Color? color,
   }) {
+    final width = panelBorderWidth(context);
     return BoxDecoration(
       color: color ?? Theme.of(context).colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: panelBorderColor(context), width: 0.8),
+      border: width > 0
+          ? Border.all(color: panelBorderColor(context), width: width)
+          : null,
     );
   }
 
@@ -2237,9 +2263,12 @@ abstract final class AppSurfaces {
     BuildContext context, {
     double radius = AppRadii.md,
   }) {
+    final width = panelBorderWidth(context);
     return RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(radius),
-      side: BorderSide(color: panelBorderColor(context)),
+      side: width > 0
+          ? BorderSide(color: panelBorderColor(context), width: width)
+          : BorderSide.none,
     );
   }
 

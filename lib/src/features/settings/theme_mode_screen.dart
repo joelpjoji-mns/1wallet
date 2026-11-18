@@ -21,12 +21,22 @@ class ThemeModeScreen extends ConsumerStatefulWidget {
 
 class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
   late double _intensity;
+  late double _surfaceContrast;
+  late double _outlineThickness;
+  late double _outlineOpacity;
   bool _sliderActive = false;
+  bool _contrastSliderActive = false;
+  bool _thicknessSliderActive = false;
+  bool _opacitySliderActive = false;
 
   @override
   void initState() {
     super.initState();
-    _intensity = ref.read(themeControllerProvider).colorIntensity;
+    final theme = ref.read(themeControllerProvider);
+    _intensity = theme.colorIntensity;
+    _surfaceContrast = theme.surfaceContrast;
+    _outlineThickness = theme.outlineThickness;
+    _outlineOpacity = theme.outlineOpacity;
   }
 
   void _onIntensityChanged(double value) {
@@ -47,6 +57,66 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
     ref
         .read(themeControllerProvider.notifier)
         .setColorIntensity(value, persist: true);
+  }
+
+  void _onContrastChanged(double value) {
+    setState(() {
+      _surfaceContrast = value;
+      _contrastSliderActive = true;
+    });
+    ref
+        .read(themeControllerProvider.notifier)
+        .setSurfaceContrast(value, persist: false);
+  }
+
+  void _onContrastChangeEnd(double value) {
+    setState(() {
+      _surfaceContrast = value;
+      _contrastSliderActive = false;
+    });
+    ref
+        .read(themeControllerProvider.notifier)
+        .setSurfaceContrast(value, persist: true);
+  }
+
+  void _onThicknessChanged(double value) {
+    setState(() {
+      _outlineThickness = value;
+      _thicknessSliderActive = true;
+    });
+    ref
+        .read(themeControllerProvider.notifier)
+        .setOutlineThickness(value, persist: false);
+  }
+
+  void _onThicknessChangeEnd(double value) {
+    setState(() {
+      _outlineThickness = value;
+      _thicknessSliderActive = false;
+    });
+    ref
+        .read(themeControllerProvider.notifier)
+        .setOutlineThickness(value, persist: true);
+  }
+
+  void _onOpacityChanged(double value) {
+    setState(() {
+      _outlineOpacity = value;
+      _opacitySliderActive = true;
+    });
+    ref
+        .read(themeControllerProvider.notifier)
+        .setOutlineOpacity(value, persist: false);
+  }
+
+  void _onOpacityChangeEnd(double value) {
+    setState(() {
+      _outlineOpacity = value;
+      _opacitySliderActive = false;
+    });
+    ref
+        .read(themeControllerProvider.notifier)
+        .setOutlineOpacity(value, persist: true);
   }
 
   Future<void> _resetTheme() async {
@@ -141,6 +211,17 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
     if (!_sliderActive && _intensity != themeState.colorIntensity) {
       _intensity = themeState.colorIntensity;
     }
+    if (!_contrastSliderActive &&
+        _surfaceContrast != themeState.surfaceContrast) {
+      _surfaceContrast = themeState.surfaceContrast;
+    }
+    if (!_thicknessSliderActive &&
+        _outlineThickness != themeState.outlineThickness) {
+      _outlineThickness = themeState.outlineThickness;
+    }
+    if (!_opacitySliderActive && _outlineOpacity != themeState.outlineOpacity) {
+      _outlineOpacity = themeState.outlineOpacity;
+    }
 
     final modeLabel = switch (themeState.preference) {
       AppThemePreference.system => 'System',
@@ -149,6 +230,8 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
     };
 
     final intensityPercent = (_intensity * 100).round();
+    final contrastPercent = (_surfaceContrast * 100).round();
+    final opacityPercent = (_outlineOpacity * 100).round();
 
     return RouteScaffold(
       title: 'Theme & Appearance',
@@ -160,6 +243,9 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
             modeLabel: modeLabel,
             intensityPercent: intensityPercent,
             useSystemColor: themeState.useSystemColor,
+            contrastPercent: contrastPercent,
+            outlineThickness: _outlineThickness,
+            outlineOpacity: _outlineOpacity,
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -392,6 +478,305 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
 
+          // ── Dark Surface & Card Contrast Slider ──
+          AppGroupedSection(
+            header: 'Dark surface contrast',
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.contrast_rounded,
+                          size: 20,
+                          color: scheme.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            'Card & Surface Elevation',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                            vertical: AppSpacing.xxxs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withAlphaFactor(0.16),
+                            borderRadius: BorderRadius.circular(AppRadii.sm),
+                            border: Border.all(
+                              color: scheme.primary.withAlphaFactor(0.35),
+                            ),
+                          ),
+                          child: Text(
+                            '$contrastPercent%',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: scheme.primary,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 28),
+                      child: Text(
+                        _surfaceContrast == 0.0
+                            ? 'Pure black (0%) · Cards match background seamlessly'
+                            : 'Adjusts grey elevation of cards and widgets in dark mode.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: scheme.primary,
+                        inactiveTrackColor: scheme.primary.withAlphaFactor(
+                          0.20,
+                        ),
+                        thumbColor: scheme.primary,
+                        overlayColor: scheme.primary.withAlphaFactor(0.15),
+                        trackHeight: 4,
+                      ),
+                      child: Slider(
+                        value: _surfaceContrast.clamp(0.0, 1.8),
+                        min: 0.0,
+                        max: 1.8,
+                        divisions: 18,
+                        onChanged: _onContrastChanged,
+                        onChangeEnd: _onContrastChangeEnd,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _IntensityPresetChip(
+                          label: 'Pure black (0%)',
+                          selected: _surfaceContrast == 0.0,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _onContrastChangeEnd(0.0);
+                          },
+                        ),
+                        _IntensityPresetChip(
+                          label: 'Subtle (60%)',
+                          selected: (_surfaceContrast - 0.6).abs() < 0.05,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _onContrastChangeEnd(0.6);
+                          },
+                        ),
+                        _IntensityPresetChip(
+                          label: 'Default (100%)',
+                          selected: (_surfaceContrast - 1.0).abs() < 0.05,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _onContrastChangeEnd(1.0);
+                          },
+                        ),
+                        _IntensityPresetChip(
+                          label: 'High (150%)',
+                          selected: (_surfaceContrast - 1.5).abs() < 0.05,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _onContrastChangeEnd(1.5);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // ── Outline & Borders Customization ──
+          AppGroupedSection(
+            header: 'Card & component outlines',
+            children: [
+              // 1. Thickness
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.line_weight_rounded,
+                          size: 20,
+                          color: scheme.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            'Outline thickness',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                            vertical: AppSpacing.xxxs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withAlphaFactor(0.16),
+                            borderRadius: BorderRadius.circular(AppRadii.sm),
+                            border: Border.all(
+                              color: scheme.primary.withAlphaFactor(0.35),
+                            ),
+                          ),
+                          child: Text(
+                            _outlineThickness == 0.0
+                                ? 'Off'
+                                : '${_outlineThickness.toStringAsFixed(1)} px',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: scheme.primary,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 28),
+                      child: Text(
+                        'Border thickness for cards, island bar, and floating buttons.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: scheme.primary,
+                        inactiveTrackColor: scheme.primary.withAlphaFactor(
+                          0.20,
+                        ),
+                        thumbColor: scheme.primary,
+                        overlayColor: scheme.primary.withAlphaFactor(0.15),
+                        trackHeight: 4,
+                      ),
+                      child: Slider(
+                        value: _outlineThickness.clamp(0.0, 2.0),
+                        min: 0.0,
+                        max: 2.0,
+                        divisions: 20,
+                        onChanged: _onThicknessChanged,
+                        onChangeEnd: _onThicknessChangeEnd,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const GlassDivider(),
+
+              // 2. Opacity / Transparency
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.opacity_rounded,
+                          size: 20,
+                          color: scheme.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            'Outline opacity & transparency',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                            vertical: AppSpacing.xxxs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withAlphaFactor(0.16),
+                            borderRadius: BorderRadius.circular(AppRadii.sm),
+                            border: Border.all(
+                              color: scheme.primary.withAlphaFactor(0.35),
+                            ),
+                          ),
+                          child: Text(
+                            '$opacityPercent%',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: scheme.primary,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 28),
+                      child: Text(
+                        'Border visibility across cards, bottom island bar, and floating button.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: scheme.primary,
+                        inactiveTrackColor: scheme.primary.withAlphaFactor(
+                          0.20,
+                        ),
+                        thumbColor: scheme.primary,
+                        overlayColor: scheme.primary.withAlphaFactor(0.15),
+                        trackHeight: 4,
+                      ),
+                      child: Slider(
+                        value: _outlineOpacity.clamp(0.0, 1.0),
+                        min: 0.0,
+                        max: 1.0,
+                        divisions: 20,
+                        onChanged: _onOpacityChanged,
+                        onChangeEnd: _onOpacityChangeEnd,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
           // ── Reset to Defaults ──
           AppGroupedSection(
             header: 'Defaults',
@@ -587,25 +972,33 @@ class _ThemeLivePreview extends StatelessWidget {
     required this.modeLabel,
     required this.intensityPercent,
     required this.useSystemColor,
+    required this.contrastPercent,
+    required this.outlineThickness,
+    required this.outlineOpacity,
   });
 
   final String modeLabel;
   final int intensityPercent;
   final bool useSystemColor;
+  final int contrastPercent;
+  final double outlineThickness;
+  final double outlineOpacity;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final customBorderColor = (isDark ? Colors.white : scheme.outlineVariant)
+        .withAlphaFactor(outlineOpacity.clamp(0.0, 1.0));
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(AppRadii.xl),
         border: Border.all(
-          color: scheme.primary.withAlphaFactor(0.25),
+          color: scheme.primary.withAlphaFactor(0.30),
           width: 1.4,
         ),
       ),
@@ -631,7 +1024,7 @@ class _ThemeLivePreview extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.sm),
                 ),
                 child: Text(
-                  '$modeLabel · ${useSystemColor ? 'System' : 'Custom'} · $intensityPercent%',
+                  '$modeLabel · $contrastPercent% Depth · ${outlineThickness.toStringAsFixed(1)}px Border',
                   style: theme.textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: scheme.primary,
@@ -642,20 +1035,18 @@ class _ThemeLivePreview extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // Mini account balance card
+          // Mini account balance card (using actual surfaceContainerLow)
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  scheme.primary.withAlphaFactor(isDark ? 0.28 : 0.16),
-                  scheme.surfaceContainerHigh,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: scheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(AppRadii.lg),
-              border: Border.all(color: scheme.primary.withAlphaFactor(0.30)),
+              border: outlineThickness > 0
+                  ? Border.all(
+                      color: customBorderColor,
+                      width: outlineThickness,
+                    )
+                  : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -712,53 +1103,79 @@ class _ThemeLivePreview extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // Interactive controls preview
+          // Component & Island Bar live preview strip
           Row(
             children: [
+              // Mini Island Bar Capsule
               Expanded(
-                child: FilledButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('New record'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: scheme.primary,
-                    foregroundColor: scheme.onPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.md),
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHigh.withAlphaFactor(
+                      isDark ? 0.35 : 0.65,
                     ),
+                    borderRadius: BorderRadius.circular(AppRadii.lg),
+                    border: outlineThickness > 0
+                        ? Border.all(
+                            color: customBorderColor,
+                            width: (outlineThickness * 0.75).clamp(0.2, 1.2),
+                          )
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Icon(Icons.home_rounded, size: 18, color: scheme.primary),
+                      Icon(
+                        Icons.receipt_long_rounded,
+                        size: 18,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      Icon(
+                        Icons.calendar_month_rounded,
+                        size: 18,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      Icon(
+                        Icons.wallet_rounded,
+                        size: 18,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ],
                   ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
+
+              // Mini Action Button (FAB)
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: scheme.tertiary.withAlphaFactor(0.20),
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  border: Border.all(
-                    color: scheme.tertiary.withAlphaFactor(0.40),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.arrow_downward_rounded,
-                      size: 16,
-                      color: scheme.tertiary,
-                    ),
-                    const SizedBox(width: AppSpacing.xxs),
-                    Text(
-                      'Income',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: scheme.tertiary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  shape: BoxShape.circle,
+                  color: scheme.primary,
+                  border: outlineThickness > 0
+                      ? Border.all(
+                          color: (isDark ? Colors.white : Colors.black)
+                              .withAlphaFactor(
+                                (outlineOpacity * 0.8).clamp(0.04, 0.40),
+                              ),
+                          width: (outlineThickness * 0.8).clamp(0.2, 1.2),
+                        )
+                      : null,
+                  boxShadow: [
+                    BoxShadow(
+                      color: scheme.primary.withAlphaFactor(0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
             ],

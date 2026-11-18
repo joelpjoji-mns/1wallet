@@ -59,8 +59,8 @@ void main() {
 
         // Default optics for components
         final defaultIsland = base.opticsFor(GlassComponentTarget.islandBar);
-        expect(defaultIsland.finish, AppGlassFinish.clear);
-        expect(defaultIsland.blur, 0.0);
+        expect(defaultIsland.finish, AppGlassFinish.regular);
+        expect(defaultIsland.blur, 10.0);
 
         final defaultFab = base.opticsFor(GlassComponentTarget.fab);
         expect(defaultFab.finish, AppGlassFinish.regular);
@@ -115,10 +115,13 @@ void main() {
         final resetIsland = updatedMenu.resetComponentOptics(
           GlassComponentTarget.islandBar,
         );
-        expect(resetIsland.opticsFor(GlassComponentTarget.islandBar).blur, 0.0);
+        expect(
+          resetIsland.opticsFor(GlassComponentTarget.islandBar).blur,
+          10.0,
+        );
         expect(
           resetIsland.opticsFor(GlassComponentTarget.islandBar).finish,
-          AppGlassFinish.clear,
+          AppGlassFinish.regular,
         );
         // Menu still retains its custom optics
         expect(

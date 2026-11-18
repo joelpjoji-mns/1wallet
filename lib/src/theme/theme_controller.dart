@@ -27,6 +27,9 @@ class AppThemeState {
     this.useSystemColor = true,
     this.customAccentColor,
     this.colorIntensity = 1.0,
+    this.surfaceContrast = 1.0,
+    this.outlineThickness = 0.4,
+    this.outlineOpacity = 0.15,
     this.isLoaded = false,
   });
 
@@ -34,6 +37,9 @@ class AppThemeState {
   final bool useSystemColor;
   final Color? customAccentColor;
   final double colorIntensity;
+  final double surfaceContrast;
+  final double outlineThickness;
+  final double outlineOpacity;
   final bool isLoaded;
 
   ThemeMode get themeMode => switch (preference) {
@@ -50,6 +56,9 @@ class AppThemeState {
     Color? customAccentColor,
     bool clearCustomAccentColor = false,
     double? colorIntensity,
+    double? surfaceContrast,
+    double? outlineThickness,
+    double? outlineOpacity,
     bool? isLoaded,
   }) {
     return AppThemeState(
@@ -59,6 +68,9 @@ class AppThemeState {
           ? null
           : (customAccentColor ?? this.customAccentColor),
       colorIntensity: colorIntensity ?? this.colorIntensity,
+      surfaceContrast: surfaceContrast ?? this.surfaceContrast,
+      outlineThickness: outlineThickness ?? this.outlineThickness,
+      outlineOpacity: outlineOpacity ?? this.outlineOpacity,
       isLoaded: isLoaded ?? this.isLoaded,
     );
   }
@@ -77,6 +89,12 @@ class ThemeController extends StateNotifier<AppThemeState> {
   static const _accentColorKey = 'one_wallet_flutter.theme.accent_color.v1';
   static const _colorIntensityKey =
       'one_wallet_flutter.theme.color_intensity.v1';
+  static const _surfaceContrastKey =
+      'one_wallet_flutter.theme.surface_contrast.v1';
+  static const _outlineThicknessKey =
+      'one_wallet_flutter.theme.outline_thickness.v1';
+  static const _outlineOpacityKey =
+      'one_wallet_flutter.theme.outline_opacity.v1';
 
   Future<void> setPreference(AppThemePreference preference) async {
     final previousPreference = state.preference;
@@ -153,6 +171,64 @@ class ThemeController extends StateNotifier<AppThemeState> {
     }
   }
 
+  Future<void> setSurfaceContrast(
+    double contrast, {
+    bool persist = true,
+  }) async {
+    final clamped = contrast.clamp(0.0, 1.8);
+    final previousContrast = state.surfaceContrast;
+    state = state.copyWith(surfaceContrast: clamped, isLoaded: true);
+    if (!persist || _preferences == null) return;
+    try {
+      await _preferences.setDouble(_surfaceContrastKey, clamped);
+    } catch (error) {
+      if (state.surfaceContrast == clamped) {
+        state = state.copyWith(surfaceContrast: previousContrast);
+      }
+      debugPrint(
+        'ThemeController.setSurfaceContrast failed to persist: $error',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> setOutlineThickness(
+    double thickness, {
+    bool persist = true,
+  }) async {
+    final clamped = thickness.clamp(0.0, 2.5);
+    final previousThickness = state.outlineThickness;
+    state = state.copyWith(outlineThickness: clamped, isLoaded: true);
+    if (!persist || _preferences == null) return;
+    try {
+      await _preferences.setDouble(_outlineThicknessKey, clamped);
+    } catch (error) {
+      if (state.outlineThickness == clamped) {
+        state = state.copyWith(outlineThickness: previousThickness);
+      }
+      debugPrint(
+        'ThemeController.setOutlineThickness failed to persist: $error',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> setOutlineOpacity(double opacity, {bool persist = true}) async {
+    final clamped = opacity.clamp(0.0, 1.0);
+    final previousOpacity = state.outlineOpacity;
+    state = state.copyWith(outlineOpacity: clamped, isLoaded: true);
+    if (!persist || _preferences == null) return;
+    try {
+      await _preferences.setDouble(_outlineOpacityKey, clamped);
+    } catch (error) {
+      if (state.outlineOpacity == clamped) {
+        state = state.copyWith(outlineOpacity: previousOpacity);
+      }
+      debugPrint('ThemeController.setOutlineOpacity failed to persist: $error');
+      rethrow;
+    }
+  }
+
   Future<void> resetToDefaults() async {
     final previousState = state;
     state = const AppThemeState(
@@ -160,6 +236,9 @@ class ThemeController extends StateNotifier<AppThemeState> {
       useSystemColor: true,
       customAccentColor: null,
       colorIntensity: 1.0,
+      surfaceContrast: 1.0,
+      outlineThickness: 0.4,
+      outlineOpacity: 0.15,
       isLoaded: true,
     );
     if (_preferences == null) return;
@@ -168,6 +247,9 @@ class ThemeController extends StateNotifier<AppThemeState> {
       await _preferences.setBool(_useSystemColorKey, true);
       await _preferences.remove(_accentColorKey);
       await _preferences.setDouble(_colorIntensityKey, 1.0);
+      await _preferences.setDouble(_surfaceContrastKey, 1.0);
+      await _preferences.setDouble(_outlineThicknessKey, 0.4);
+      await _preferences.setDouble(_outlineOpacityKey, 0.15);
     } catch (error) {
       state = previousState;
       debugPrint('ThemeController.resetToDefaults failed to persist: $error');
@@ -193,12 +275,21 @@ class ThemeController extends StateNotifier<AppThemeState> {
       final customAccentColor = accentValue != null ? Color(accentValue) : null;
       final colorIntensity = (_preferences.getDouble(_colorIntensityKey) ?? 1.0)
           .clamp(0.2, 1.8);
+      final surfaceContrast =
+          (_preferences.getDouble(_surfaceContrastKey) ?? 1.0).clamp(0.0, 1.8);
+      final outlineThickness =
+          (_preferences.getDouble(_outlineThicknessKey) ?? 0.4).clamp(0.0, 2.5);
+      final outlineOpacity =
+          (_preferences.getDouble(_outlineOpacityKey) ?? 0.15).clamp(0.0, 1.0);
 
       state = AppThemeState(
         preference: preference,
         useSystemColor: useSystemColor,
         customAccentColor: customAccentColor,
         colorIntensity: colorIntensity,
+        surfaceContrast: surfaceContrast,
+        outlineThickness: outlineThickness,
+        outlineOpacity: outlineOpacity,
         isLoaded: true,
       );
     } catch (error) {

@@ -3,6 +3,7 @@ import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
+import '../theme/app_theme.dart';
 
 @immutable
 class IslandTabItem {
@@ -188,9 +189,27 @@ class BottomIslandNavBar extends StatelessWidget {
                                   : (isRegular
                                         ? (isDark ? 0.02 : 0.02)
                                         : (isDark ? 0.01 : 0.01));
-                              final borderColor = isDark
-                                  ? scheme.outlineVariant.withAlphaFactor(0.20)
-                                  : scheme.outlineVariant.withAlphaFactor(0.25);
+                              final custom =
+                                  Theme.of(
+                                    context,
+                                  ).extension<AppThemeCustomization>() ??
+                                  const AppThemeCustomization();
+                              final borderWidth = custom.outlineThickness > 0
+                                  ? (custom.outlineThickness * 0.75).clamp(
+                                      0.2,
+                                      1.2,
+                                    )
+                                  : 0.0;
+                              final borderColor =
+                                  (isDark
+                                          ? Colors.white
+                                          : scheme.outlineVariant)
+                                      .withAlphaFactor(
+                                        (custom.outlineOpacity * 0.7).clamp(
+                                          0.04,
+                                          0.40,
+                                        ),
+                                      );
                               final shadowAlpha = isFrosted
                                   ? (isDark ? 0.30 : 0.14)
                                   : (isRegular
@@ -208,10 +227,12 @@ class BottomIslandNavBar extends StatelessWidget {
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
                                     borderRadius: pillRadius,
-                                    border: Border.all(
-                                      color: borderColor,
-                                      width: 0.5,
-                                    ),
+                                    border: borderWidth > 0
+                                        ? Border.all(
+                                            color: borderColor,
+                                            width: borderWidth,
+                                          )
+                                        : null,
                                     gradient:
                                         (fillAlphaTop > 0 ||
                                             fillAlphaBottom > 0)

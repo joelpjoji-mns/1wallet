@@ -473,11 +473,11 @@ class GlassComponentOptics {
   static GlassComponentOptics defaultFor(GlassComponentTarget target) {
     return switch (target) {
       GlassComponentTarget.islandBar => const GlassComponentOptics(
-        finish: AppGlassFinish.clear,
-        blur: 0.0,
-        backgroundOpacity: 0.04,
+        finish: AppGlassFinish.regular,
+        blur: 10.0,
+        backgroundOpacity: 0.15,
         refractionLevel: 1.0,
-        specularOpacity: 0.30,
+        specularOpacity: 0.20,
       ),
       GlassComponentTarget.fab => const GlassComponentOptics(
         finish: AppGlassFinish.regular,
