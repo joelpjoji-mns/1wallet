@@ -27,7 +27,9 @@ abstract final class FirebaseEnv {
       authDomain: _value('FIREBASE_AUTH_DOMAIN'),
       storageBucket: _value('FIREBASE_STORAGE_BUCKET'),
       iosBundleId: 'com.joelpjoji.one.wallet',
-      androidClientId: googleAndroidClientId,
+      androidClientId: defaultTargetPlatform == TargetPlatform.android
+          ? null
+          : googleAndroidClientId,
       iosClientId: googleIosClientId,
     );
   }
@@ -50,7 +52,7 @@ abstract final class FirebaseEnv {
     if (kIsWeb) return googleWebClientId;
     return switch (defaultTargetPlatform) {
       TargetPlatform.iOS || TargetPlatform.macOS => googleIosClientId,
-      TargetPlatform.android => googleAndroidClientId,
+      TargetPlatform.android => null, // Android resolves client ID from package name + SHA-1 via Google Play Services
       _ => googleWebClientId,
     };
   }
