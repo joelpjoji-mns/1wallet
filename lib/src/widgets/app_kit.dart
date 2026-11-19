@@ -498,11 +498,9 @@ class IslandFloatingActionButton extends StatelessWidget {
     final custom =
         Theme.of(context).extension<AppThemeCustomization>() ??
         const AppThemeCustomization();
-    final fabBorderWidth = custom.outlineThickness > 0
-        ? (custom.outlineThickness * 0.8).clamp(0.2, 1.2)
-        : 0.0;
-    final fabBorderColor = brightPrimary.withAlphaFactor(
-      (custom.outlineOpacity * 0.8).clamp(0.04, 0.40),
+    final fabBorderWidth = custom.outlineThickness;
+    final fabBorderColor = (isDark ? Colors.white : brightPrimary).withValues(
+      alpha: custom.outlineOpacity.clamp(0.0, 1.0),
     );
 
     Widget button = g1455.GlassSurface(
@@ -2646,20 +2644,55 @@ class AppGroupedSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return GlassGroupedSection(
-      margin: margin,
+    final borderWidth = AppSurfaces.panelBorderWidth(context);
+    final borderColor = AppSurfaces.panelBorderColor(context);
+
+    Widget sectionCard = GlassGroupedSection(
+      margin: EdgeInsets.zero,
       shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      header: header == null
-          ? null
-          : Text(
+      children: children,
+    );
+
+    if (borderWidth > 0) {
+      sectionCard = DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(color: borderColor, width: borderWidth),
+        ),
+        child: sectionCard,
+      );
+    }
+
+    Widget content = sectionCard;
+    if (header != null) {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(
+              start: AppSpacing.md,
+              end: AppSpacing.md,
+              bottom: AppSpacing.xs,
+            ),
+            child: Text(
               header!,
               style: theme.textTheme.labelLarge?.copyWith(
                 color: destructive ? scheme.error : scheme.onSurfaceVariant,
                 fontWeight: FontWeight.w700,
               ),
             ),
-      children: children,
-    );
+          ),
+          sectionCard,
+        ],
+      );
+    }
+
+    if (margin != EdgeInsets.zero) {
+      content = Padding(padding: margin, child: content);
+    }
+
+    return content;
   }
 }
 

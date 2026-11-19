@@ -207,7 +207,7 @@ abstract final class AppTheme {
     final effectiveSurfaceLow = amoled
         ? Color.lerp(
             AppColors.amoledBackground,
-            AppColors.amoledSurfaceLow,
+            const Color(0xFF1E2026),
             surfaceContrast,
           )!
         : Color.lerp(
@@ -218,7 +218,7 @@ abstract final class AppTheme {
     final effectiveSurface = amoled
         ? Color.lerp(
             AppColors.amoledBackground,
-            AppColors.amoledSurface,
+            const Color(0xFF262832),
             surfaceContrast,
           )!
         : Color.lerp(
@@ -229,7 +229,7 @@ abstract final class AppTheme {
     final effectiveSurfaceHigh = amoled
         ? Color.lerp(
             AppColors.amoledBackground,
-            AppColors.amoledSurfaceHigh,
+            const Color(0xFF30333E),
             surfaceContrast,
           )!
         : Color.lerp(
@@ -240,7 +240,7 @@ abstract final class AppTheme {
     final effectiveSurfaceHighest = amoled
         ? Color.lerp(
             AppColors.amoledBackground,
-            AppColors.amoledSurfaceHighest,
+            const Color(0xFF3C3F4D),
             surfaceContrast,
           )!
         : Color.lerp(

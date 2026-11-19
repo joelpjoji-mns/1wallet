@@ -15,7 +15,6 @@ import '../features/capture/notification_apps_screen.dart';
 import '../startup/startup_state.dart';
 import '../auth/auth_controller.dart';
 import '../widgets/app_glass_page.dart';
-import '../features/settings/about_screen.dart';
 import '../features/settings/account_deletion_screen.dart';
 import '../features/settings/feedback_screen.dart';
 import '../features/settings/glass_effect_screen.dart';
@@ -265,10 +264,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings/feedback',
         builder: (context, state) =>
             const AppGlassPage(child: FeedbackScreen()),
-      ),
-      GoRoute(
-        path: '/settings/about',
-        builder: (context, state) => const AppGlassPage(child: AboutScreen()),
       ),
       GoRoute(
         path: '/recurring',

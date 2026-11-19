@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -45,6 +46,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   String _appVersion = 'Loading...';
   String _buildNumber = '';
   bool _includeDiagnostics = true;
+  final List<PlatformFile> _attachments = [];
 
   static const String _recipientEmail = 'joelpjoji1222@gmail.com';
 
@@ -129,6 +131,49 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     return buffer.toString();
   }
 
+  Future<void> _pickAttachment() async {
+    HapticFeedback.selectionClick();
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: [
+          'jpg',
+          'jpeg',
+          'png',
+          'webp',
+          'mp4',
+          'mov',
+          'webm',
+          'm4v',
+          'gif',
+        ],
+      );
+      if (files.isNotEmpty && mounted) {
+        setState(() {
+          _attachments.addAll(files);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackBar(context, 'Could not select media file: $e');
+      }
+    }
+  }
+
+  void _removeAttachment(int index) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _attachments.removeAt(index);
+    });
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes <= 0) return 'Unknown size';
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
   String _buildFullEmailBody() {
     final buffer = StringBuffer();
     buffer.writeln('Issue / Feedback:');
@@ -138,6 +183,20 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
           : _messageController.text.trim(),
     );
     buffer.writeln();
+
+    if (_attachments.isNotEmpty) {
+      buffer.writeln('=== Attached Screenshots / Screen Recordings ===');
+      for (final file in _attachments) {
+        final sizeStr = _formatFileSize(file.lengthSync() ?? 0);
+        buffer.writeln('• ${file.name} ($sizeStr)');
+      }
+      buffer.writeln(
+        '(Files listed above should be attached manually via your email app attachment icon)',
+      );
+      buffer.writeln('================================================');
+      buffer.writeln();
+    }
+
     if (_includeDiagnostics) {
       buffer.writeln(_buildDiagnosticsText());
     }
@@ -162,7 +221,12 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
         uri,
         mode: LaunchMode.externalApplication,
       );
-      if (!launched && mounted) {
+      if (launched && mounted && _attachments.isNotEmpty) {
+        showAppSnackBar(
+          context,
+          'Email app opened! Remember to tap 📎 to attach your ${_attachments.length} selected media file(s).',
+        );
+      } else if (!launched && mounted) {
         // Fallback: copy to clipboard
         await Clipboard.setData(
           ClipboardData(
@@ -363,6 +427,120 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                       ),
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // ── Screenshots & Screen Recordings ──
+              AppGroupedSection(
+                header: 'Screenshots & Screen Recordings',
+                children: [
+                  AppGroupedTile(
+                    leading: const Icon(Icons.add_photo_alternate_rounded),
+                    title: const Text('Add Screenshot or Recording'),
+                    subtitle: Text(
+                      _attachments.isEmpty
+                          ? 'Optional image or video proof (PNG, JPG, MP4, MOV)'
+                          : '${_attachments.length} file(s) selected',
+                    ),
+                    trailing: const Icon(Icons.attach_file_rounded, size: 20),
+                    onTap: _pickAttachment,
+                  ),
+                  if (_attachments.isNotEmpty) ...[
+                    const GlassDivider(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < _attachments.length; i++) ...[
+                            if (i > 0) const SizedBox(height: AppSpacing.xs),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: scheme.surfaceContainerHighest
+                                    .withAlphaFactor(0.4),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
+                                border: Border.all(
+                                  color: scheme.outlineVariant.withAlphaFactor(
+                                    0.3,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _attachments[i].extension?.toLowerCase() ==
+                                                'mp4' ||
+                                            _attachments[i].extension
+                                                    ?.toLowerCase() ==
+                                                'mov' ||
+                                            _attachments[i].extension
+                                                    ?.toLowerCase() ==
+                                                'webm'
+                                        ? Icons.videocam_rounded
+                                        : Icons.image_rounded,
+                                    size: 20,
+                                    color: scheme.primary,
+                                  ),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _attachments[i].name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.labelMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                        Text(
+                                          _formatFileSize(
+                                            _attachments[i].lengthSync() ?? 0,
+                                          ),
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: scheme.onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.close_rounded,
+                                      size: 18,
+                                    ),
+                                    onPressed: () => _removeAttachment(i),
+                                    tooltip: 'Remove',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            'When your email app launches, attach these selected files via the 📎 attachment button.',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: AppSpacing.md),

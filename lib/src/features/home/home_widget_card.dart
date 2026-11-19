@@ -41,7 +41,6 @@ class HomeWidgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
 
@@ -127,16 +126,16 @@ class HomeWidgetCard extends StatelessWidget {
       ),
     );
 
+    final borderWidth = AppSurfaces.panelBorderWidth(context);
+    final borderColor = AppSurfaces.panelBorderColor(context);
+
     return RepaintBoundary(
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withAlphaFactor(0.12)
-                : scheme.outlineVariant.withValues(alpha: 0.2),
-            width: 0.8,
-          ),
+          border: borderWidth > 0
+              ? Border.all(color: borderColor, width: borderWidth)
+              : null,
         ),
         child: GlassCard(
           margin: EdgeInsets.zero,

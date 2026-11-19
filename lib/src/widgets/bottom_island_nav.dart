@@ -194,20 +194,15 @@ class BottomIslandNavBar extends StatelessWidget {
                                     context,
                                   ).extension<AppThemeCustomization>() ??
                                   const AppThemeCustomization();
-                              final borderWidth = custom.outlineThickness > 0
-                                  ? (custom.outlineThickness * 0.75).clamp(
-                                      0.2,
-                                      1.2,
-                                    )
-                                  : 0.0;
+                              final borderWidth = custom.outlineThickness;
                               final borderColor =
                                   (isDark
                                           ? Colors.white
                                           : scheme.outlineVariant)
-                                      .withAlphaFactor(
-                                        (custom.outlineOpacity * 0.7).clamp(
-                                          0.04,
-                                          0.40,
+                                      .withValues(
+                                        alpha: custom.outlineOpacity.clamp(
+                                          0.0,
+                                          1.0,
                                         ),
                                       );
                               final shadowAlpha = isFrosted

@@ -1119,7 +1119,7 @@ class _ThemeLivePreview extends StatelessWidget {
                     border: outlineThickness > 0
                         ? Border.all(
                             color: customBorderColor,
-                            width: (outlineThickness * 0.75).clamp(0.2, 1.2),
+                            width: outlineThickness,
                           )
                         : null,
                   ),
@@ -1157,11 +1157,11 @@ class _ThemeLivePreview extends StatelessWidget {
                   color: scheme.primary,
                   border: outlineThickness > 0
                       ? Border.all(
-                          color: (isDark ? Colors.white : Colors.black)
-                              .withAlphaFactor(
-                                (outlineOpacity * 0.8).clamp(0.04, 0.40),
+                          color: (isDark ? Colors.white : scheme.primary)
+                              .withValues(
+                                alpha: outlineOpacity.clamp(0.0, 1.0),
                               ),
-                          width: (outlineThickness * 0.8).clamp(0.2, 1.2),
+                          width: outlineThickness,
                         )
                       : null,
                   boxShadow: [

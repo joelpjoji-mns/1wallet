@@ -343,28 +343,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
 
-                  // ── Feedback & About ──
+                  // ── Feedback & Support ──
                   AppGroupedSection(
-                    header: 'Community & About',
+                    header: 'Feedback & Support',
                     children: [
                       AppGroupedTile(
                         leading: const Icon(Icons.chat_bubble_outline_rounded),
-                        title: const Text('Feedback & Support'),
+                        title: const Text('Send Feedback & Diagnostics'),
                         subtitle: const Text(
                           'Report an issue, request features, or send logs to Joel',
                         ),
                         showChevron: true,
                         onTap: () => context.push('/settings/feedback'),
-                      ),
-                      const GlassDivider(),
-                      AppGroupedTile(
-                        leading: const Icon(Icons.info_outline_rounded),
-                        title: const Text('About 1Wallet'),
-                        subtitle: const Text(
-                          'The story, the creator, and the offline ledger philosophy',
-                        ),
-                        showChevron: true,
-                        onTap: () => context.push('/settings/about'),
                       ),
                     ],
                   ),

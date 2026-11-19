@@ -252,6 +252,20 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     final fill = glass.fill.clamp(0.0, 0.5);
     final interaction = glass.interaction.clamp(0.0, 1.0);
 
+    final darkSurfaceGrey = Color.lerp(
+      const Color(0xFF000000),
+      const Color(0xFF383A44),
+      themeState.surfaceContrast,
+    )!;
+    final darkGlassAlpha =
+        (fill * 0.75 * themeState.surfaceContrast.clamp(0.0, 1.5)).clamp(
+          0.0,
+          0.55,
+        );
+    final effectiveDarkGlassColor = darkSurfaceGrey.withValues(
+      alpha: darkGlassAlpha,
+    );
+
     return LiquidGlassWidgets.wrap(
       theme: GlassThemeData(
         light: GlassThemeVariant(
@@ -272,12 +286,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           settings: GlassThemeSettings(
             thickness: 20,
             blur: blur,
-            glassColor: Color.fromRGBO(
-              16,
-              16,
-              16,
-              (fill * 0.75).clamp(0.12, 0.45),
-            ),
+            glassColor: effectiveDarkGlassColor,
             visibility: glass.visibility.clamp(0.15, 1.0),
             saturation: glass.saturation.clamp(0.0, 2.0),
             refractiveIndex: 1.0 + glass.refraction.clamp(0.0, 1.0) * 0.25,
@@ -349,7 +358,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
                         Brightness.dark);
             return g1455.GlassHost(
               key: ValueKey(
-                'glass_host_${themeState.themeMode}_${themeState.preference}_${themeState.customAccentColor?.toARGB32()}_${themeState.colorIntensity}_${themeState.useSystemColor}_${isDark}_${glassFinish.name}',
+                'glass_host_${themeState.themeMode}_${themeState.preference}_${themeState.customAccentColor?.toARGB32()}_${themeState.colorIntensity}_${themeState.useSystemColor}_${themeState.surfaceContrast}_${themeState.outlineThickness}_${themeState.outlineOpacity}_${isDark}_${glassFinish.name}',
               ),
               content: g1455.GlassContentDeclaration.undeclared,
               finish: glassFinish,
