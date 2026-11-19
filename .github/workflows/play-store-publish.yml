@@ -69,13 +69,21 @@ jobs:
           fi
 
       - name: Restore Keystore & Signing Properties
+        env:
+          KEY_ALIAS: ${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
+          STORE_PWD: ${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
+          KEY_PWD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
         run: |
           printf '%s' "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 -d -i > android/upload-keystore.jks
-          cat << 'EOF' > android/release-signing.properties.local
+          KEY_ALIAS_CLEAN=$(printf '%s' "$KEY_ALIAS" | tr -d '\r\n\xef\xbb\xbf')
+          STORE_PWD_CLEAN=$(printf '%s' "$STORE_PWD" | tr -d '\r\n\xef\xbb\xbf')
+          KEY_PWD_CLEAN=$(printf '%s' "$KEY_PWD" | tr -d '\r\n\xef\xbb\xbf')
+
+          cat << EOF > android/release-signing.properties.local
           ONEWALLET_RELEASE_STORE_FILE=upload-keystore.jks
-          ONEWALLET_RELEASE_STORE_PASSWORD=${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
-          ONEWALLET_RELEASE_KEY_ALIAS=${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
-          ONEWALLET_RELEASE_KEY_PASSWORD=${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
+          ONEWALLET_RELEASE_STORE_PASSWORD=$STORE_PWD_CLEAN
+          ONEWALLET_RELEASE_KEY_ALIAS=$KEY_ALIAS_CLEAN
+          ONEWALLET_RELEASE_KEY_PASSWORD=$KEY_PWD_CLEAN
           EOF
 
       - name: Build Release App Bundle
