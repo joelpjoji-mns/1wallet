@@ -20,6 +20,11 @@ on:
         options:
           - completed
           - draft
+      release_notes:
+        description: 'Optional custom release notes (leave blank to auto-generate from changelog)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -87,6 +92,11 @@ jobs:
               f.write(f"ONEWALLET_RELEASE_KEY_PASSWORD={key_pwd}\n")
           '
 
+      - name: Generate Release Notes & Changelogs
+        env:
+          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+        run: node scripts/generate-play-store-release-notes.mjs
+
       - name: Build Release App Bundle
         run: flutter build appbundle --release --android-skip-build-dependency-validation
 
@@ -106,3 +116,4 @@ jobs:
           mappingFile: build/app/outputs/mapping/release/mapping.txt
           tracks: ${{ github.event.inputs.track || 'alpha' }}
           status: ${{ github.event.inputs.status || 'completed' }}
+          whatsNewDirectory: distribution/whatsnew

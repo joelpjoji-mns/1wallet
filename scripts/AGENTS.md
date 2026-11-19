@@ -10,6 +10,7 @@ Contains Node.js automation scripts supporting CI/CD, in-app update manifest gen
 | File | Responsibilities |
 | :--- | :--- |
 | `mobile-release-info.mjs` | Extracts app version, build number, and commit hash from `pubspec.yaml` and git logs. |
+| `generate-play-store-release-notes.mjs` | Extracts changelog from in-app update history or git commits, validates <= 500 characters, and produces Play Store `whatsnew-en-US` and fastlane changelog metadata. |
 | `mobile-release-notes.mjs` | Formats and cleans markdown changelogs for in-app updates and GitHub releases. |
 | `mobile-update-manifest.mjs` | Generates `mobile-update-manifest.json` pointing to release APKs, minimum required versions, and release hashes. |
 | `publish-mobile-update-to-firebase.mjs` | Publishes update manifests and assets to Firebase Remote Config or Hosting. |

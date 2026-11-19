@@ -1,0 +1,6 @@
+- Enhanced Google Play release pipeline and deployment configurations
+- Refined privacy controls and high-fidelity glass design enhancements
+- Offline-first personal finance with double-entry ledger accuracy
+- Fixed background sync lifecycle handlers and token management
+- Resolved layout overflows and polished typography alignment
+- Production release for Google Play Store with end-to-end ledger encryption

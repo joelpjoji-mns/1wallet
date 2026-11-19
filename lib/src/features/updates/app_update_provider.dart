@@ -180,6 +180,42 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.9',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.9',
+    versionCode: 9,
+    runtimeVersion: '1.0.9',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-19T22:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Dedicated in-app Changelog screen accessible via Settings',
+        'Direct quick-action controls for SMS, notifications, and diagnostics in Review queue',
+        'Optimized clear glass optics with 0.5px blur and high-contrast readability',
+      ],
+      bugFixes: const [
+        'Stabilized recent records animation container and eliminated height jumping',
+        'Eliminated see-through dropdown transparency across menus and popups',
+        'Refined promotional card alignment and mathematically centered pill badges',
+      ],
+      notes: const [
+        'Automated release changelog packaging for Google Play Store deployments',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 58 * 1024 * 1024,
+      sha256: '',
+      architecture: 'arm64-v8a',
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.8',
     platform: 'android',
     channel: 'stable',

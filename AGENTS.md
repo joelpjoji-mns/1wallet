@@ -87,6 +87,12 @@ When modifying any part of this repository, you must observe these strict system
 5. **No Network Operations on the UI Thread**:
    - All disk I/O, encryption, and network operations must run asynchronously and gracefully handle failures/retries.
 
+6. **Mandatory Changelog & Automated Release Notes**:
+   - Every commit and modification affecting user-facing behavior, architecture, UI, or capabilities must maintain a changelog entry.
+   - For every release version bump, update `kBuiltInReleaseHistory` in `lib/src/features/updates/app_update_provider.dart` with structured `newFeatures`, `bugFixes`, and `notes`.
+   - Every deployment pipeline automatically packages and publishes localized release notes (`whatsNewDirectory`) to Google Play Store and Fastlane metadata (`distribution/whatsnew/whatsnew-en-US` and `android/fastlane/metadata/android/en-US/changelogs/`).
+   - Releases must never be published without release notes.
+
 ---
 
 ## 🧪 Testing and Verification Protocol

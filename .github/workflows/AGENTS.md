@@ -10,6 +10,7 @@ Defines GitHub Actions automated pipelines for testing, validating pull requests
 | Workflow | Triggers & Responsibilities |
 | :--- | :--- |
 | `pr-validation.yml` | Triggered on pull requests to `main`. Executes `flutter analyze`, `flutter test`, and validates release notes with `scripts/validate-pr-release-notes.mjs`. |
+| `play-store-publish.yml` | Automated Google Play publishing pipeline: auto-generates localized release notes (`whatsNewDirectory`) from in-app changelog & git commits, builds signed AAB bundle, archives artifacts, and uploads to Google Play tracks (`internal`, `alpha`, `production`). |
 | `android-release.yml` | Full Android release pipeline: sets up Java 17, Flutter SDK, decodes signing keystore from secrets, builds signed APK & AAB bundles, generates release tags, and updates the in-app update manifest. |
 | `android-stable-release.yml` | Stable production track deployment for Google Play / GitHub Releases. |
 | `beta-release.yml` | Fast-track release workflow building preview APKs for internal testers. |
@@ -24,6 +25,8 @@ Defines GitHub Actions automated pipelines for testing, validating pull requests
    - Workflows derive versions directly from `pubspec.yaml` (`scripts/mobile-release-info.mjs`). Release tags must match `v<version>`.
 2. **Keystore Decoding**:
    - Android release keystores are base64-decoded from secrets during runtime into a temporary runner file and purged upon job completion.
+3. **Automated Changelog Packaging**:
+   - Play Store deployments must run `scripts/generate-play-store-release-notes.mjs` before uploading to ensure localized release notes (`whatsnew-en-US`) are supplied and strictly under 500 characters. Releases must never deploy without a changelog.
 
 ---
 

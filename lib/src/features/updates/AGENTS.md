@@ -1,17 +1,17 @@
-# `lib/src/features/updates/` — In-App Updates & Release Notes
+# `lib/src/features/updates/` — In-App Changelog & Release Notes
 
 ## 🎯 Role & Overview
-Checks for newer application releases via Firebase or GitHub releases manifest, presents what's new changelogs, and prompts users to update.
+Maintains built-in release history and in-app Changelog, presents what's new changelogs, and supplies release metadata for CI/CD deployment pipelines.
 
 ---
 
 ## 📜 Key Files
 
 - **`app_update_provider.dart`**:
-  - Compares current semantic version (`package_info_plus`) with the remote manifest (`mobile-update-manifest.json`).
-  - Emits update availability status (optional vs mandatory update).
+  - Maintains `kBuiltInReleaseHistory` containing structured release notes (`newFeatures`, `bugFixes`, `notes`) for each version.
+  - Serves as the primary source of truth for release changelogs.
 - **`updates_screen.dart`**:
-  - Modal or screen displaying formatted release notes, version tags, and download action button.
+  - Screen displaying formatted release notes, version tags, and changelogs accessible via Settings.
 
 ---
 
@@ -20,9 +20,11 @@ Checks for newer application releases via Firebase or GitHub releases manifest, 
 1. **Semantic Versioning Comparison**:
    - Version comparison must parse SemVer strings (`major.minor.patch+build`) correctly.
 2. **Non-Blocking UI**:
-   - Update checks must fail silently on network unavailability without blocking normal app usage unless marked as a critical breaking update.
+   - Update checks and changelog rendering must never block app usage or freeze UI.
 3. **No Account Dependency**:
-   - Update checks must keep working in offline mode (no Firebase user). They read public `appUpdates/*` documents (unauthenticated `get` is allowed by `firebase/firestore.rules`) and fall back to the GitHub Releases API. Never gate update checks on `authControllerProvider`.
+   - Changelog and release notes must be fully accessible in offline mode without requiring sign-in.
+4. **Mandatory Changelog Entry on Version Bump**:
+   - Every version bump must prepend a new `AppUpdateRelease` entry to `kBuiltInReleaseHistory` with categorized release notes. CI/CD pipelines derive Play Store release notes directly from this structure.
 
 ---
 
