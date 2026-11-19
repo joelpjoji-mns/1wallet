@@ -428,9 +428,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/updates',
-        builder: (context, state) => const AppGlassPage(
-          child: DrawerConfig(hasDrawer: true, child: UpdatesScreen()),
-        ),
+        builder: (context, state) =>
+            const AppGlassPage(child: UpdatesScreen()),
+      ),
+      GoRoute(
+        path: '/changelog',
+        builder: (context, state) =>
+            const AppGlassPage(child: UpdatesScreen()),
       ),
       GoRoute(
         path: '/device-permissions',

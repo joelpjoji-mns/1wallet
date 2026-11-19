@@ -27,7 +27,7 @@ void main() {
         const prefs = LedgerPreferences();
         expect(prefs.glassFinish, AppGlassFinish.clear);
         expect(prefs.glassIntensity, GlassIntensity.medium);
-        expect(prefs.glassBlurLevel, 0.0);
+        expect(prefs.glassBlurLevel, 0.5);
         expect(prefs.glassBackgroundOpacity, 0.04);
         expect(prefs.glassRefractionLevel, 1.0);
         expect(prefs.glassInteractionStrength, 0.35);
@@ -63,8 +63,8 @@ void main() {
         expect(defaultIsland.blur, 10.0);
 
         final defaultFab = base.opticsFor(GlassComponentTarget.fab);
-        expect(defaultFab.finish, AppGlassFinish.regular);
-        expect(defaultFab.blur, 14.0);
+        expect(defaultFab.finish, AppGlassFinish.clear);
+        expect(defaultFab.blur, 1.0);
 
         // Customize Island Bar
         final updatedIsland = base.withComponentOptics(
@@ -88,7 +88,7 @@ void main() {
           0.18,
         );
         // FAB remains unchanged
-        expect(updatedIsland.opticsFor(GlassComponentTarget.fab).blur, 14.0);
+        expect(updatedIsland.opticsFor(GlassComponentTarget.fab).blur, 1.0);
 
         // Customize Dropdown Menu
         final updatedMenu = updatedIsland.withComponentOptics(

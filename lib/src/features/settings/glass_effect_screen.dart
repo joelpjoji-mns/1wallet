@@ -120,10 +120,14 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
 
   void _selectFinish(AppGlassFinish finish) {
     HapticFeedback.selectionClick();
+    final targetBlur = (finish == AppGlassFinish.clear && _selectedTarget == GlassComponentTarget.fab)
+        ? 1.0
+        : finish.defaultBlur;
+    final targetOpacity = finish.defaultBackgroundOpacity;
     setState(() {
       _currentFinish = finish;
-      _blur = finish.defaultBlur;
-      _backgroundOpacity = finish.defaultBackgroundOpacity;
+      _blur = targetBlur;
+      _backgroundOpacity = targetOpacity;
       _refractionLevel = finish.defaultRefractionLevel;
       _specularOpacity = finish.defaultSpecularOpacity;
     });
@@ -134,8 +138,8 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
           (live) => live.withComponentOptics(
             _selectedTarget,
             finish: finish,
-            blur: finish.defaultBlur,
-            backgroundOpacity: finish.defaultBackgroundOpacity,
+            blur: targetBlur,
+            backgroundOpacity: targetOpacity,
             refractionLevel: finish.defaultRefractionLevel,
             specularOpacity: finish.defaultSpecularOpacity,
           ),
@@ -301,7 +305,7 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
                   _GlassFinishOptionTile(
                     title: 'Clear',
                     subtitle:
-                        'Crystal-clear optical liquid glass with zero blur & pure refraction',
+                        'Crystal-clear optical liquid glass with subtle 0.5 px blur & pure refraction',
                     icon: Icons.water_drop_outlined,
                     badge: 'Recommended',
                     isSelected: _currentFinish == AppGlassFinish.clear,

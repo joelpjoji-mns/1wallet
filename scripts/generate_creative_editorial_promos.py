@@ -69,7 +69,7 @@ THEMES = [
         "title_1": "Every transaction,",
         "title_2": "balanced honest",
         "subtitle": "Strict mathematical consistency with instant search.",
-        "inverted": True,
+        "inverted": False,
         "art_doodle": "waves",
     },
     {
@@ -100,10 +100,10 @@ THEMES = [
         "badge_bg": (180, 115, 32),
         "badge_fg": (255, 255, 255),
         "badge_angle": 0,
-        "title_1": "Master your,",
+        "title_1": "Master your",
         "title_2": "active loans",
         "subtitle": "Payoff schedules and monthly EMI tracking at ease.",
-        "inverted": True,
+        "inverted": False,
         "art_doodle": "spiral",
     },
     {
@@ -137,7 +137,7 @@ THEMES = [
         "title_1": "Your data,",
         "title_2": "owned solely by you",
         "subtitle": "Hardware biometrics and zero telemetry tracking.",
-        "inverted": True,
+        "inverted": False,
         "art_doodle": "waves_grid",
     },
     {
@@ -177,10 +177,8 @@ def draw_sticker_pill(canvas, text, cx, cy, bg_color, fg_color, font, angle=0):
     
     pdraw.rounded_rectangle((0, 0, pw - 1, ph - 1), radius=ph // 2, fill=(*bg_color, 255))
     
-    # Mathematical centering taking font metrics into account
-    text_x = (pw - tw) // 2 - tl
-    text_y = (ph - th) // 2 - tt
-    pdraw.text((text_x, text_y), text, font=font, fill=(*fg_color, 255))
+    # Mathematical exact centering using middle-middle text anchor
+    pdraw.text((pw / 2, ph / 2), text, font=font, fill=(*fg_color, 255), anchor="mm")
     
     if angle != 0:
         pill_img = pill_img.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)

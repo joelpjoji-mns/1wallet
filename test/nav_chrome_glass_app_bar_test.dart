@@ -73,7 +73,9 @@ void main() {
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(AppBackAction), findsOneWidget);
       expect(find.text('Review & Inbox'), findsOneWidget);
-      expect(find.byTooltip('Capture tools'), findsOneWidget);
+      expect(find.byTooltip('SMS auto-capture'), findsOneWidget);
+      expect(find.byTooltip('Notification capture'), findsOneWidget);
+      expect(find.byTooltip('Capture diagnostics'), findsOneWidget);
     },
   );
 
@@ -86,7 +88,7 @@ void main() {
       expect(find.byType(GlassAppBar), findsOneWidget);
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(AppBackAction), findsOneWidget);
-      expect(find.text('Updates'), findsOneWidget);
+      expect(find.text('Changelog'), findsOneWidget);
       expect(find.byTooltip('Check for updates'), findsOneWidget);
     },
   );

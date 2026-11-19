@@ -28,7 +28,6 @@ import '../../services/notification_service.dart';
 import '../../theme/theme_controller.dart';
 import '../settings/permission_setup_controller.dart';
 import '../transactions/transactions_screen.dart';
-import '../updates/app_update_provider.dart';
 import '../../widgets/app_kit.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -104,7 +103,6 @@ class _MainShellState extends ConsumerState<MainShell>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
-      ref.read(appUpdateProvider.notifier).checkForUpdates(force: true);
     });
     // The redirect that follows an offline → Google upgrade replaces the page
     // stack (closing the upgrade sheet), so confirm the result here.
@@ -130,7 +128,6 @@ class _MainShellState extends ConsumerState<MainShell>
       const Duration(minutes: 15),
       (_) {
         ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
-        ref.read(appUpdateProvider.notifier).checkForUpdates();
         ref.read(ledgerProvider.notifier).processSpooledSms();
         ref.read(ledgerProvider.notifier).processSpooledNotifications();
       },
@@ -141,7 +138,6 @@ class _MainShellState extends ConsumerState<MainShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
-      ref.read(appUpdateProvider.notifier).checkForUpdates();
       ref.read(ledgerProvider.notifier).processSpooledSms();
       ref.read(ledgerProvider.notifier).processSpooledNotifications();
     }
@@ -390,23 +386,6 @@ class AppMainDrawer extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final ledger = ref.watch(ledgerProvider);
     final sync = ref.watch(cloudSyncControllerProvider);
-    final updateState = ref.watch(appUpdateProvider);
-
-    ref.listen<AppUpdateState>(appUpdateProvider, (previous, next) {
-      if ((previous == null || previous.latestRelease == null) &&
-          next.latestRelease != null &&
-          next.status == UpdateStatus.idle) {
-        showAppSnackBar(
-          context,
-          'Update ${next.latestRelease!.versionName} is available!',
-          action: SnackBarAction(
-            label: 'View',
-            onPressed: () => context.push('/updates'),
-          ),
-          duration: const Duration(seconds: 10),
-        );
-      }
-    });
 
     final pendingReviewCount = _pendingReviewCount(ledger);
     final unreadNotificationCount = buildNotificationInbox(
@@ -415,7 +394,6 @@ class AppMainDrawer extends ConsumerWidget {
     final combinedInboxCount = pendingReviewCount + unreadNotificationCount;
     final upcomingPlannedCount = _upcomingPlannedCount(ledger);
     final syncBadge = _syncBadge(sync);
-    final updatesBadge = updateState.latestRelease != null ? '!' : null;
     final profileUser = auth.profileUser;
     final profileName = auth.isLocalOnly && auth.localDisplayName != null
         ? auth.localDisplayName!
@@ -641,18 +619,6 @@ class AppMainDrawer extends ConsumerWidget {
                       ),
                       child: Column(
                         children: [
-                          DrawerRouteTile(
-                            config: DrawerRowConfig.route(
-                              'Updates',
-                              Icons.download_for_offline_outlined,
-                              '/updates',
-                              badge: updatesBadge,
-                            ),
-                            selectedIndex: selectedIndex,
-                            onTabSelected: onTabSelected,
-                            accentColor: scheme.primary,
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
                           DrawerRouteTile(
                             config: DrawerRowConfig.route(
                               'Settings',

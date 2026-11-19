@@ -309,7 +309,7 @@ enum AppGlassFinish {
 
   double blurForIntensity(GlassIntensity intensity) {
     return switch (this) {
-      AppGlassFinish.clear => 0.0,
+      AppGlassFinish.clear => 0.5,
       AppGlassFinish.regular => switch (intensity) {
         GlassIntensity.light => 8.0,
         GlassIntensity.medium => 14.0,
@@ -321,7 +321,7 @@ enum AppGlassFinish {
   double get blurSigma => blurForIntensity(GlassIntensity.medium);
 
   double get defaultBlur => switch (this) {
-    AppGlassFinish.clear => 0.0,
+    AppGlassFinish.clear => 0.5,
     AppGlassFinish.regular => 14.0,
   };
 
@@ -480,16 +480,16 @@ class GlassComponentOptics {
         specularOpacity: 0.20,
       ),
       GlassComponentTarget.fab => const GlassComponentOptics(
-        finish: AppGlassFinish.regular,
-        blur: 14.0,
-        backgroundOpacity: 0.22,
+        finish: AppGlassFinish.clear,
+        blur: 1.0,
+        backgroundOpacity: 0.04,
         refractionLevel: 1.0,
         specularOpacity: 0.55,
       ),
       GlassComponentTarget.dropdownMenu => const GlassComponentOptics(
         finish: AppGlassFinish.regular,
         blur: 16.0,
-        backgroundOpacity: 0.20,
+        backgroundOpacity: 0.75,
         refractionLevel: 1.0,
         specularOpacity: 0.45,
       ),
@@ -502,7 +502,7 @@ class GlassComponentOptics {
       ),
       GlassComponentTarget.general => const GlassComponentOptics(
         finish: AppGlassFinish.clear,
-        blur: 0.0,
+        blur: 0.5,
         backgroundOpacity: 0.04,
         refractionLevel: 1.0,
         specularOpacity: 0.30,
@@ -635,7 +635,7 @@ class LedgerPreferences {
     this.glassSpecularOpacity = 0.30,
     this.glassSpecularSaturation = 2.0,
     this.glassRefractionLevel = 1.0,
-    this.glassBlurLevel = 0.0,
+    this.glassBlurLevel = 0.5,
     this.glassProgressiveBlurStrength = 0.0,
     this.glassBackgroundOpacity = 0.04,
     this.glassInteractionStrength = 0.35,

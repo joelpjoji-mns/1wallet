@@ -13,8 +13,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../services/notification_service.dart';
-
 class Changelog {
   final List<String> newFeatures;
   final List<String> bugFixes;
@@ -181,6 +179,73 @@ class AppUpdateRelease {
 enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
+  AppUpdateRelease(
+    id: '1.0.8',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.8',
+    versionCode: 8,
+    runtimeVersion: '1.0.8',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-19T21:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Enhanced Google Play release pipeline and deployment configurations',
+        'Refined privacy controls and high-fidelity glass design enhancements',
+        'Offline-first personal finance with double-entry ledger accuracy',
+      ],
+      bugFixes: const [
+        'Fixed background sync lifecycle handlers and token management',
+        'Resolved layout overflows and polished typography alignment',
+      ],
+      notes: const [
+        'Production release for Google Play Store with end-to-end ledger encryption',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 58 * 1024 * 1024,
+      sha256: '',
+      architecture: 'arm64-v8a',
+    ),
+  ),
+  AppUpdateRelease(
+    id: '1.0.0',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.0',
+    versionCode: 1,
+    runtimeVersion: '1.0.0',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-01T00:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Initial public release of 1Wallet on Google Play',
+        'Offline-first personal finance with double-entry ledger accuracy',
+        'Biometric authentication and AES-256 local encryption',
+      ],
+      bugFixes: const [],
+      notes: const [
+        'Welcome to 1Wallet!',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 58 * 1024 * 1024,
+      sha256: '',
+      architecture: 'arm64-v8a',
+    ),
+  ),
   AppUpdateRelease(
     id: '2.1.106',
     platform: 'android',
@@ -1069,11 +1134,11 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   );
   CancelToken? _downloadCancelToken;
   DateTime? _lastCheckedAt;
-  final Future<void> Function(String) _notifyUpdate;
+  final Future<void> Function(String)? _notifyUpdate;
 
   AppUpdateProvider({Future<void> Function(String)? notifyUpdate})
-    : _notifyUpdate =
-          notifyUpdate ?? NotificationService.showUpdateNotification,
+    // ignore: prefer_initializing_formals
+    : _notifyUpdate = notifyUpdate,
       super(AppUpdateState()) {
     _init();
   }
@@ -1097,55 +1162,42 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   Future<void> _init() async {
     await _clearOldUpdates();
     if (!mounted) return;
-    state = state.copyWith(allReleases: kBuiltInReleaseHistory);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      if (!mounted) return;
-      final cachedJson = prefs.getString('cached_latest_release_json');
-      if (cachedJson != null && cachedJson.isNotEmpty) {
-        final decoded = jsonDecode(cachedJson);
-        if (decoded is Map<String, dynamic>) {
-          final id = _stringValue(decoded['id']);
-          final cachedRelease = AppUpdateRelease.fromJson(id, decoded);
-          final packageInfo = await PackageInfo.fromPlatform();
-          final currentCode = int.tryParse(packageInfo.buildNumber) ?? 0;
-          final currentName = packageInfo.version;
-          if (isReleaseNewer(
-            latestVersionCode: cachedRelease.versionCode,
-            latestVersionName: cachedRelease.versionName,
-            currentVersionCode: currentCode,
-            currentVersionName: currentName,
-          )) {
-            if (mounted) {
-              state = state.copyWith(
-                latestRelease: cachedRelease,
-                currentVersionName: currentName,
-                currentVersionCode: currentCode,
-              );
-            }
-          } else {
-            await prefs.remove('cached_latest_release_json');
-          }
-        }
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentCode = int.tryParse(packageInfo.buildNumber) ?? 0;
+      final currentName = packageInfo.version;
+      if (mounted) {
+        state = state.copyWith(
+          currentVersionName: currentName,
+          currentVersionCode: currentCode,
+          allReleases: kBuiltInReleaseHistory,
+          status: UpdateStatus.idle,
+        );
       }
-    } catch (_) {}
-    if (!mounted) return;
-    try {
-      if (Firebase.apps.isEmpty) return;
     } catch (_) {
-      return; // If Firebase is not linked
+      if (mounted) {
+        state = state.copyWith(
+          allReleases: kBuiltInReleaseHistory,
+          status: UpdateStatus.idle,
+        );
+      }
     }
-    await checkForUpdates();
   }
 
   Future<void> checkForUpdates({bool force = false}) async {
     try {
       if (Firebase.apps.isEmpty) {
-        state = state.copyWith(status: UpdateStatus.idle);
+        state = state.copyWith(
+          status: UpdateStatus.idle,
+          allReleases: kBuiltInReleaseHistory,
+        );
         return;
       }
     } catch (_) {
-      state = state.copyWith(status: UpdateStatus.idle);
+      state = state.copyWith(
+        status: UpdateStatus.idle,
+        allReleases: kBuiltInReleaseHistory,
+      );
       return;
     }
 
@@ -1173,30 +1225,6 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
       final currentReleaseFuture = _releaseForVersionCode(currentVersionCode);
 
-      final githubFuture = () async {
-        try {
-          final res = await _dio.get(
-            'https://api.github.com/repos/joelpjoji-mns/1wallet/releases?per_page=30',
-            options: Options(
-              headers: {'User-Agent': '1Wallet-App'},
-              sendTimeout: const Duration(seconds: 4),
-              receiveTimeout: const Duration(seconds: 4),
-            ),
-          );
-          if (res.statusCode == 200 && res.data is List) {
-            final List<AppUpdateRelease> list = [];
-            for (final item in res.data) {
-              if (item is Map) {
-                final r = _parseGitHubRelease(Map<String, dynamic>.from(item));
-                if (r != null) list.add(r);
-              }
-            }
-            return list;
-          }
-        } catch (_) {}
-        return <AppUpdateRelease>[];
-      }();
-
       final channelDocFuture = () async {
         try {
           return await _firestore
@@ -1211,17 +1239,12 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
 
       final results = await Future.wait([
         currentReleaseFuture,
-        githubFuture,
         channelDocFuture,
       ]);
       final currentRelease = results[0] as AppUpdateRelease?;
-      final fetchedReleases = (results[1] as List<AppUpdateRelease>?) ?? [];
-      final channelDoc = results[2] as DocumentSnapshot?;
+      final channelDoc = results[1] as DocumentSnapshot?;
 
-      final allReleases = _mergeReleases(
-        fetchedReleases,
-        kBuiltInReleaseHistory,
-      );
+      final allReleases = kBuiltInReleaseHistory;
 
       int? latestVersionCode;
       String latestReleaseId = '';
@@ -1245,17 +1268,6 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
             } catch (_) {}
           }
         }
-      }
-
-      // If Firestore channel document was unavailable, permission denied,
-      // or unpopulated, seamlessly fallback to the newest release discovered
-      // from GitHub Releases API:
-      if (candidateRelease == null && allReleases.isNotEmpty) {
-        final newestFromApi = allReleases.first;
-        candidateRelease = newestFromApi;
-        latestVersionCode = newestFromApi.versionCode;
-        latestReleaseId = newestFromApi.id;
-        rawVersionName = newestFromApi.versionName;
       }
 
       if (latestVersionCode == null) {
@@ -1325,14 +1337,11 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         clearCurrentRelease: currentRelease == null && candidateRelease == null,
         clearLatestRelease: true,
       );
-    } catch (e) {
+    } catch (_) {
       _lastCheckedAt = null;
-      final message = e is FirebaseException && e.code == 'permission-denied'
-          ? 'Update metadata is not available yet. Please try again later.'
-          : 'Failed to check for updates: $e';
       state = state.copyWith(
-        status: UpdateStatus.error,
-        errorMessage: message,
+        status: UpdateStatus.idle,
+        clearErrorMessage: true,
         allReleases: state.allReleases.isNotEmpty
             ? state.allReleases
             : kBuiltInReleaseHistory,
@@ -1363,33 +1372,35 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
         jsonEncode(release.toJson()),
       );
     } catch (_) {}
-    // Notification delivery is optional; a valid update must remain installable.
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (!mounted) return;
-      await prefs.reload();
-      if (!mounted) return;
-      const notificationKey = 'lastNotifiedVersionCode.stable';
-      final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
-      if (release.versionCode > lastNotifiedVersionCode) {
-        await _notifyUpdate(release.versionName);
+    // Notification delivery is optional; only deliver if custom handler was supplied.
+    if (_notifyUpdate != null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
         if (!mounted) return;
-        if (!await prefs.setInt(notificationKey, release.versionCode)) {
-          throw StateError('Could not record update notification delivery.');
+        await prefs.reload();
+        if (!mounted) return;
+        const notificationKey = 'lastNotifiedVersionCode.stable';
+        final lastNotifiedVersionCode = prefs.getInt(notificationKey) ?? 0;
+        if (release.versionCode > lastNotifiedVersionCode) {
+          await _notifyUpdate(release.versionName);
+          if (!mounted) return;
+          if (!await prefs.setInt(notificationKey, release.versionCode)) {
+            throw StateError('Could not record update notification delivery.');
+          }
         }
+      } catch (error, stack) {
+        developer.log(
+          'Could not deliver the update notification',
+          name: 'AppUpdateProvider',
+          error: error,
+          stackTrace: stack,
+        );
+        if (!mounted) return;
+        state = state.copyWith(
+          notificationWarning:
+              'The update notification could not be shown. You can still download and install the update here.',
+        );
       }
-    } catch (error, stack) {
-      developer.log(
-        'Could not deliver the update notification',
-        name: 'AppUpdateProvider',
-        error: error,
-        stackTrace: stack,
-      );
-      if (!mounted) return;
-      state = state.copyWith(
-        notificationWarning:
-            'The update notification could not be shown. You can still download and install the update here.',
-      );
     }
   }
 
@@ -1485,132 +1496,6 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
       return 1000000 + (offset % 1000);
     }
     return code;
-  }
-
-  static List<AppUpdateRelease> _mergeReleases(
-    List<AppUpdateRelease> primary,
-    List<AppUpdateRelease> secondary,
-  ) {
-    final seen = <String>{};
-    final result = <AppUpdateRelease>[];
-    for (final r in primary) {
-      if (seen.add(r.versionName)) result.add(r);
-    }
-    for (final r in secondary) {
-      if (seen.add(r.versionName)) result.add(r);
-    }
-    result.sort((a, b) {
-      final dateA = DateTime.tryParse(a.publishedAt) ?? DateTime(1970);
-      final dateB = DateTime.tryParse(b.publishedAt) ?? DateTime(1970);
-      final cmp = dateB.compareTo(dateA);
-      if (cmp != 0) return cmp;
-      return b.versionCode.compareTo(a.versionCode);
-    });
-    return result;
-  }
-
-  static AppUpdateRelease? _parseGitHubRelease(Map<String, dynamic> json) {
-    final tagName = _stringValue(json['tag_name']);
-    if (!tagName.startsWith('android-')) return null;
-
-    final versionName = tagName.replaceFirst('android-', '');
-    final publishedAt = _stringValue(json['published_at']);
-    final body = _stringValue(json['body']);
-
-    ApkMetadata? apk;
-    final assets = json['assets'];
-    if (assets is List) {
-      for (final a in assets) {
-        if (a is Map) {
-          final aMap = Map<String, dynamic>.from(a);
-          final name = _stringValue(aMap['name']);
-          if (name.endsWith('.apk')) {
-            apk = ApkMetadata(
-              downloadUrl: _stringValue(aMap['browser_download_url']),
-              fileName: name,
-              sizeBytes: _intValue(aMap['size']),
-              sha256: '',
-              architecture: name.contains('arm64') ? 'arm64-v8a' : 'universal',
-            );
-            break;
-          }
-        }
-      }
-    }
-
-    final changelog = _parseMarkdownChangelog(body);
-    final versionCode = _deriveVersionCode(versionName);
-
-    return AppUpdateRelease(
-      id: tagName,
-      platform: 'android',
-      channel: 'stable',
-      status: 'published',
-      versionName: versionName,
-      versionCode: versionCode,
-      runtimeVersion: versionName,
-      releaseType: 'full',
-      requirement: 'optional',
-      mandatory: false,
-      minimumSupportedVersionCode: 0,
-      publishedAt: publishedAt,
-      changelog: changelog,
-      apk: apk,
-    );
-  }
-
-  static Changelog _parseMarkdownChangelog(String body) {
-    final features = <String>[];
-    final fixes = <String>[];
-    final notes = <String>[];
-
-    final lines = body.split('\n');
-    String currentSection = '';
-
-    for (final rawLine in lines) {
-      final line = rawLine.trim();
-      if (line.startsWith('#')) {
-        final heading = line.toLowerCase();
-        if (heading.contains('feature')) {
-          currentSection = 'features';
-        } else if (heading.contains('fix') || heading.contains('bug')) {
-          currentSection = 'fixes';
-        } else if (heading.contains('improvement') ||
-            heading.contains('note') ||
-            heading.contains('enhancement')) {
-          currentSection = 'notes';
-        } else {
-          currentSection = '';
-        }
-        continue;
-      }
-
-      if (line.startsWith('-') || line.startsWith('*')) {
-        final clean = line.replaceFirst(RegExp(r'^[-*]\s*'), '').trim();
-        if (clean.isEmpty) continue;
-        if (currentSection == 'features') {
-          features.add(clean);
-        } else if (currentSection == 'fixes') {
-          fixes.add(clean);
-        } else {
-          notes.add(clean);
-        }
-      }
-    }
-
-    return Changelog(newFeatures: features, bugFixes: fixes, notes: notes);
-  }
-
-  static int _deriveVersionCode(String versionName) {
-    final clean = versionName.trim().replaceFirst(RegExp(r'^[vV]'), '');
-    final parts = clean.split('.').map((p) => int.tryParse(p) ?? 0).toList();
-    if (parts.length >= 3) {
-      final major = parts[0];
-      final minor = parts[1];
-      final patch = parts[2];
-      return major * 1000000 + minor * 100000 + patch;
-    }
-    return 0;
   }
 
   Future<AppUpdateRelease?> _releaseForVersionCode(

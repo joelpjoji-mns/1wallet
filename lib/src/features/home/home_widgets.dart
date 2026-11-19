@@ -548,12 +548,10 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
                   livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-        alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 275),
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 260),
+          duration: const Duration(milliseconds: 280),
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
           layoutBuilder: (currentChild, previousChildren) {
@@ -567,32 +565,32 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
           },
           transitionBuilder: (child, animation) {
             final inAnimation = Tween<Offset>(
-              begin: const Offset(0.0, 0.04),
+              begin: const Offset(0.0, 0.12),
               end: Offset.zero,
             ).animate(CurvedAnimation(
               parent: animation,
               curve: Curves.easeOutCubic,
             ));
             final outAnimation = Tween<Offset>(
-              begin: const Offset(0.0, -0.08),
+              begin: const Offset(0.0, -0.15),
               end: Offset.zero,
             ).animate(CurvedAnimation(
               parent: animation,
               curve: Curves.easeInCubic,
             ));
-            final isPrimary = (child.key ==
+            final isIncoming = child.key ==
                 (recent.isEmpty
                     ? ValueKey(
                         'recent_empty_${selectedAccountId ?? "all"}_$period',
                       )
                     : ValueKey(
-                        'recent_list_${selectedAccountId ?? "all"}_${recent.length}',
-                      )));
+                        'recent_list_${selectedAccountId ?? "all"}_${recent.map((t) => t.id).take(10).join("_")}',
+                      ));
 
             return FadeTransition(
               opacity: animation,
               child: SlideTransition(
-                position: isPrimary ? inAnimation : outAnimation,
+                position: isIncoming ? inAnimation : outAnimation,
                 child: child,
               ),
             );
@@ -602,27 +600,37 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
                   key: ValueKey(
                     'recent_empty_${selectedAccountId ?? "all"}_$period',
                   ),
-                  child: EmptyState(
-                    icon: Icons.receipt_long_outlined,
-                    title: selectedAccount != null
-                        ? 'No records for ${selectedAccount.name}'
-                        : 'No records for $period',
-                    body: selectedAccount != null
-                        ? 'Tap the account tile above to clear the filter.'
-                        : 'Your latest transactions in this period will appear here.',
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 275),
+                    child: Center(
+                      child: SingleChildScrollView(
+                        physics: const NeverScrollableScrollPhysics(),
+                        child: EmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          title: selectedAccount != null
+                              ? 'No records for ${selectedAccount.name}'
+                              : 'No records for $period',
+                          body: selectedAccount != null
+                              ? 'Tap the account tile above to clear the filter.'
+                              : 'Your latest transactions in this period will appear here.',
+                        ),
+                      ),
+                    ),
                   ),
                 )
               : KeyedSubtree(
                   key: ValueKey(
-                    'recent_list_${selectedAccountId ?? "all"}_${recent.length}',
+                    'recent_list_${selectedAccountId ?? "all"}_${recent.map((t) => t.id).take(10).join("_")}',
                   ),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 275),
+                    constraints: const BoxConstraints(
+                      minHeight: 275,
+                      maxHeight: 275,
+                    ),
                     child: Scrollbar(
                       thumbVisibility: false,
                       child: ListView.separated(
-                        shrinkWrap: true,
-                        physics: const ClampingScrollPhysics(),
+                        physics: const BouncingScrollPhysics(),
                         padding: EdgeInsets.zero,
                         itemCount: recent.length,
                         separatorBuilder: (context, index) =>

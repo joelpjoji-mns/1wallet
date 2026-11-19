@@ -98,7 +98,7 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     }
 
     return RouteScaffold(
-      title: 'Updates',
+      title: 'Changelog',
       actions: [
         HeaderIconButton(
           icon: Icons.refresh_rounded,

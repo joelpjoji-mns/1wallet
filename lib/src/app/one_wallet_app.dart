@@ -11,7 +11,6 @@ import '../theme/theme_controller.dart';
 import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_providers.dart';
 import '../features/capture/sms_inbox_reader.dart';
-import '../features/updates/app_update_provider.dart';
 import '../services/notification_service.dart';
 import '../services/native_widget_sync_service.dart';
 import '../startup/startup_state.dart';
@@ -117,8 +116,6 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     final currentLoc = router.routerDelegate.currentConfiguration.uri.path;
     if (currentLoc != route) {
       await router.push(route);
-    } else if (route == '/updates') {
-      ref.read(appUpdateProvider.notifier).checkForUpdates(force: true);
     }
   }
 

@@ -117,7 +117,7 @@ void main() {
     },
   );
 
-  testWidgets('AppMainDrawer shows updates badge when update is available', (
+  testWidgets('AppMainDrawer does not show updates tab', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1080, 2400));
@@ -151,12 +151,8 @@ void main() {
     tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
     await tester.pumpAndSettle();
 
-    // Scroll to ensure bottom section is visible if needed
-    await tester.scrollUntilVisible(find.text('Updates'), 200);
-    await tester.pumpAndSettle();
-
-    // Verify "Updates" row is present with badge "!"
-    expect(find.text('Updates'), findsOneWidget);
-    expect(find.text('!'), findsOneWidget);
+    // Verify "Updates" row is not present in drawer
+    expect(find.text('Updates'), findsNothing);
+    expect(find.text('Settings'), findsOneWidget);
   });
 }
