@@ -75,16 +75,17 @@ jobs:
           KEY_PWD: ${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
         run: |
           printf '%s' "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 -d -i > android/upload-keystore.jks
-          KEY_ALIAS_CLEAN=$(printf '%s' "$KEY_ALIAS" | tr -d '\r\n\xef\xbb\xbf')
-          STORE_PWD_CLEAN=$(printf '%s' "$STORE_PWD" | tr -d '\r\n\xef\xbb\xbf')
-          KEY_PWD_CLEAN=$(printf '%s' "$KEY_PWD" | tr -d '\r\n\xef\xbb\xbf')
-
-          cat << EOF > android/release-signing.properties.local
-          ONEWALLET_RELEASE_STORE_FILE=upload-keystore.jks
-          ONEWALLET_RELEASE_STORE_PASSWORD=$STORE_PWD_CLEAN
-          ONEWALLET_RELEASE_KEY_ALIAS=$KEY_ALIAS_CLEAN
-          ONEWALLET_RELEASE_KEY_PASSWORD=$KEY_PWD_CLEAN
-          EOF
+          python3 -c '
+          import os
+          store_pwd = os.environ.get("STORE_PWD", "").encode("utf-8").decode("utf-8-sig").strip()
+          key_alias = os.environ.get("KEY_ALIAS", "").encode("utf-8").decode("utf-8-sig").strip()
+          key_pwd = os.environ.get("KEY_PWD", "").encode("utf-8").decode("utf-8-sig").strip()
+          with open("android/release-signing.properties.local", "w", encoding="utf-8") as f:
+              f.write("ONEWALLET_RELEASE_STORE_FILE=upload-keystore.jks\n")
+              f.write(f"ONEWALLET_RELEASE_STORE_PASSWORD={store_pwd}\n")
+              f.write(f"ONEWALLET_RELEASE_KEY_ALIAS={key_alias}\n")
+              f.write(f"ONEWALLET_RELEASE_KEY_PASSWORD={key_pwd}\n")
+          '
 
       - name: Build Release App Bundle
         run: flutter build appbundle --release --android-skip-build-dependency-validation

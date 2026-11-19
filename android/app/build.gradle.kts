@@ -17,6 +17,8 @@ if (releaseSigningPropertiesFile.exists()) {
 fun releaseProperty(name: String): String? =
     (findProperty(name) as String? ?: System.getenv(name) ?: releaseSigningProperties.getProperty(name))
         ?.trim()
+        ?.removePrefix("\uFEFF")
+        ?.trim()
         ?.takeIf { it.isNotEmpty() }
 
 val releaseStoreFilePath = releaseProperty("ONEWALLET_RELEASE_STORE_FILE")
