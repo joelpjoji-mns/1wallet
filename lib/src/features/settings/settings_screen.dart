@@ -83,13 +83,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     offline: auth.isLocalOnly,
                     onSignOut: () => _signOut(ref),
                     onUpgrade: () => showOfflineUpgradeSheet(context),
-                    onEditName: auth.isLocalOnly
-                        ? () => _editOfflineName(
-                            context,
-                            ref,
-                            auth.localDisplayName,
-                          )
-                        : null,
+                    onEditName: () => _editProfileName(
+                      context,
+                      ref,
+                      auth.profileUser?.displayName ?? auth.localDisplayName,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
 
@@ -361,13 +359,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: AppSpacing.md),
 
                   // ── Danger zone ──
-                  // Offline mode has no account to delete; its wallet is
-                  // managed through backups and Data backup instead.
-                  if (!auth.isLocalOnly)
-                    AppGroupedSection(
-                      header: 'Danger zone',
-                      destructive: true,
-                      children: [
+                  AppGroupedSection(
+                    header: 'Danger zone',
+                    destructive: true,
+                    children: [
+                      if (auth.isLocalOnly)
+                        AppGroupedTile(
+                          leading: const Icon(Icons.delete_sweep_rounded),
+                          title: const Text('Clear all data'),
+                          subtitle: const Text(
+                            'Permanently erase this device\'s offline ledger, accounts, and transactions.',
+                          ),
+                          destructive: true,
+                          showChevron: true,
+                          onTap: _showClearOfflineDataDialog,
+                        )
+                      else
                         AppGroupedTile(
                           leading: const Icon(Icons.delete_forever_rounded),
                           title: const Text('Delete account'),
@@ -378,8 +385,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           showChevron: true,
                           onTap: _showDeleteAccountDialog,
                         ),
-                      ],
-                    ),
+                    ],
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                 ],
               ),
@@ -400,6 +407,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     if (deleted == true) {
       _showMessage('Verified cloud and device account data were deleted.');
+      context.go('/login');
+    }
+  }
+
+  Future<void> _showClearOfflineDataDialog() async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Clear all wallet data?',
+      message:
+          'This will permanently erase all local accounts, transactions, and categories from this device. '
+          'This action cannot be undone. Export a backup first from Data backup if you want to keep your records.',
+      confirmLabel: 'Clear all data',
+      destructive: true,
+    );
+
+    if (!mounted) return;
+    if (confirmed == true) {
+      await ref.read(ledgerProvider.notifier).purgeAllLocalData();
+      ref.read(onboardingControllerProvider.notifier).clear();
+      ref.read(permissionSetupControllerProvider.notifier).clear();
+      await ref.read(authControllerProvider.notifier).setLocalDisplayName('');
+      if (!mounted) return;
+      _showMessage('All local wallet data has been cleared.');
       context.go('/login');
     }
   }
@@ -445,7 +475,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _showMessage('Locale updated.');
   }
 
-  Future<void> _editOfflineName(
+  Future<void> _editProfileName(
     BuildContext context,
     WidgetRef ref,
     String? currentName,
@@ -477,11 +507,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
     if (saved != null) {
-      await ref
-          .read(authControllerProvider.notifier)
-          .setLocalDisplayName(saved);
-      if (!mounted) return;
-      _showMessage('Name updated.');
+      final trimmed = saved.trim();
+      if (trimmed.isNotEmpty) {
+        await ref
+            .read(authControllerProvider.notifier)
+            .updateDisplayName(trimmed);
+        if (!mounted) return;
+        _showMessage('Name updated.');
+      }
     }
   }
 

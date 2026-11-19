@@ -63,7 +63,7 @@ class SettingsProfileSection extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (offline && onEditName != null) ...[
+                          if (onEditName != null) ...[
                             const SizedBox(width: AppSpacing.xxs),
                             InkWell(
                               onTap: onEditName,

@@ -83,9 +83,21 @@ class AuthState {
   String? get ownerId => user?.id ?? (isLocalOnly ? localOwnerId : null);
 
   /// Identity to display in profile UI, including the synthetic local owner.
-  AuthUser? get profileUser =>
-      user ??
-      (isLocalOnly ? AuthUser.local(displayName: localDisplayName) : null);
+  AuthUser? get profileUser {
+    final customName = localDisplayName?.trim();
+    if (user != null) {
+      if (customName != null && customName.isNotEmpty) {
+        return AuthUser(
+          id: user!.id,
+          email: user!.email,
+          displayName: customName,
+          photoUrl: user!.photoUrl,
+        );
+      }
+      return user;
+    }
+    return isLocalOnly ? AuthUser.local(displayName: localDisplayName) : null;
+  }
 
   AuthState copyWith({
     AuthPhase? phase,
@@ -357,6 +369,32 @@ class AuthController extends StateNotifier<AuthState> {
     state = state.copyWith(localDisplayName: trimmed.isEmpty ? null : trimmed);
   }
 
+  Future<void> updateDisplayName(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    await _appModeStore.setLocalDisplayName(trimmed);
+    if (!mounted) return;
+    if (state.isAuthenticated) {
+      try {
+        await _repository.updateDisplayName(trimmed);
+      } catch (_) {}
+      final current = state.user;
+      if (current != null) {
+        state = state.copyWith(
+          user: AuthUser(
+            id: current.id,
+            email: current.email,
+            displayName: trimmed,
+            photoUrl: current.photoUrl,
+          ),
+          localDisplayName: trimmed,
+        );
+      }
+    } else {
+      state = state.copyWith(localDisplayName: trimmed);
+    }
+  }
+
   Future<void> signInWithGoogle() async {
     // Offline mode upgrades go through OfflineModeController so the local
     // wallet is migrated before the Google uid becomes visible.
@@ -602,6 +640,10 @@ class AuthRepository {
           password: password,
         );
     return AuthUser.fromFirebaseUser(result.user);
+  }
+
+  Future<void> updateDisplayName(String name) async {
+    await firebase_auth.FirebaseAuth.instance.currentUser?.updateDisplayName(name);
   }
 
   Future<void> signOut() async {
