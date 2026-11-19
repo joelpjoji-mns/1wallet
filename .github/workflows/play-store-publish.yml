@@ -65,12 +65,12 @@ jobs:
 
           # Restore google-services.json if provided in secrets
           if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then
-            echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > android/app/google-services.json
+            printf '%s' "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d -i > android/app/google-services.json
           fi
 
       - name: Restore Keystore & Signing Properties
         run: |
-          echo "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/upload-keystore.jks
+          printf '%s' "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 -d -i > android/upload-keystore.jks
           cat << 'EOF' > android/release-signing.properties.local
           ONEWALLET_RELEASE_STORE_FILE=upload-keystore.jks
           ONEWALLET_RELEASE_STORE_PASSWORD=${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
