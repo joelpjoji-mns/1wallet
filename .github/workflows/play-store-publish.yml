@@ -1,0 +1,91 @@
+name: Publish to Google Play
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Google Play Track to deploy to'
+        required: true
+        default: 'alpha'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - production
+      status:
+        description: 'Release status (completed or draft)'
+        required: true
+        default: 'completed'
+        type: choice
+        options:
+          - completed
+          - draft
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Upload to Google Play
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Setup Environment & Google Services
+        run: |
+          # Create config.env
+          cat << 'EOF' > config.env
+          FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID || 'wallet-1a5af' }}
+          FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
+          GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          EOF
+
+          # Restore google-services.json if provided in secrets
+          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then
+            echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > android/app/google-services.json
+          fi
+
+      - name: Restore Keystore & Signing Properties
+        run: |
+          echo "${{ secrets.ONEWALLET_RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/upload-keystore.jks
+          cat << 'EOF' > android/release-signing.properties.local
+          ONEWALLET_RELEASE_STORE_FILE=upload-keystore.jks
+          ONEWALLET_RELEASE_STORE_PASSWORD=${{ secrets.ONEWALLET_RELEASE_STORE_PASSWORD }}
+          ONEWALLET_RELEASE_KEY_ALIAS=${{ secrets.ONEWALLET_RELEASE_KEY_ALIAS }}
+          ONEWALLET_RELEASE_KEY_PASSWORD=${{ secrets.ONEWALLET_RELEASE_KEY_PASSWORD }}
+          EOF
+
+      - name: Build Release App Bundle
+        run: flutter build appbundle --release
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          packageName: com.joelpjoji.one.wallet
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: ${{ github.event.inputs.track || 'alpha' }}
+          status: ${{ github.event.inputs.status || 'completed' }}
