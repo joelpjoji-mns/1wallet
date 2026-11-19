@@ -103,5 +103,6 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
           packageName: com.joelpjoji.one.wallet
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: ${{ github.event.inputs.track || 'alpha' }}
+          mappingFile: build/app/outputs/mapping/release/mapping.txt
+          tracks: ${{ github.event.inputs.track || 'alpha' }}
           status: ${{ github.event.inputs.status || 'completed' }}
