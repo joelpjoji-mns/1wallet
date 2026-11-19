@@ -8,11 +8,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/notification_service.dart';
 
@@ -1743,55 +1742,25 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   }
 
   Future<void> installUpdate() async {
-    final apkPath = state.downloadedApkPath;
-    if (apkPath == null) {
-      if (state.latestRelease?.apk != null) {
-        await downloadUpdate();
-      }
-      return;
-    }
+    await openStoreListing();
+  }
 
-    state = state.copyWith(status: UpdateStatus.installing);
+  Future<void> openStoreListing() async {
+    final marketUri =
+        Uri.parse('market://details?id=com.joelpjoji.one.wallet');
+    final webUri = Uri.parse(
+      'https://play.google.com/store/apps/details?id=com.joelpjoji.one.wallet',
+    );
     try {
-      if (!await File(apkPath).exists()) {
-        throw Exception(
-          'Downloaded APK was not found. Please download it again.',
-        );
+      if (await canLaunchUrl(marketUri)) {
+        await launchUrl(marketUri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
       }
-
-      if (!kIsWeb && Platform.isAndroid) {
-        final installPermission =
-            await Permission.requestInstallPackages.status;
-        if (!installPermission.isGranted) {
-          final requested = await Permission.requestInstallPackages.request();
-          if (!requested.isGranted) {
-            state = state.copyWith(
-              status: UpdateStatus.downloaded,
-              errorMessage:
-                  'Please enable "Install unknown apps" for 1wallet in Android settings to complete the update.',
-            );
-            return;
-          }
-        }
-      }
-
-      final result = await OpenFilex.open(
-        apkPath,
-        type: 'application/vnd.android.package-archive',
-      );
-      if (result.type != ResultType.done) {
-        throw Exception(result.message);
-      }
-      state = state.copyWith(
-        status: UpdateStatus.downloaded,
-        errorMessage:
-            'Installer opened. If Android blocks it, allow installs from 1wallet or uninstall the debug build first.',
-      );
-    } catch (e) {
-      state = state.copyWith(
-        status: UpdateStatus.error,
-        errorMessage: 'Failed to install update: $e',
-      );
+    } catch (_) {
+      try {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      } catch (_) {}
     }
   }
 }

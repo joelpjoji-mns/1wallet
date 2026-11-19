@@ -384,8 +384,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     if (state.status == UpdateStatus.downloaded) {
       return _buildMorpheTextButton(
         context,
-        label: 'Install Update',
-        onTap: () => provider.installUpdate(),
+        label: 'Update on Google Play',
+        onTap: () => provider.openStoreListing(),
         prominent: true,
       );
     }
@@ -393,13 +393,10 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     if (state.latestRelease != null &&
         (state.status == UpdateStatus.idle ||
             state.status == UpdateStatus.checking)) {
-      final sizeStr = state.latestRelease!.apk?.sizeBytes != null
-          ? ' (${(state.latestRelease!.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB)'
-          : '';
       return _buildMorpheTextButton(
         context,
-        label: 'Install Update$sizeStr',
-        onTap: () => provider.downloadUpdate(),
+        label: 'Update on Google Play',
+        onTap: () => provider.openStoreListing(),
         prominent: true,
       );
     }
