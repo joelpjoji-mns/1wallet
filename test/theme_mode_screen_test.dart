@@ -25,6 +25,11 @@ void main() {
   testWidgets('renders all theme customization sections and live preview', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final prefs = await SharedPreferences.getInstance();
     final controller = ThemeController(prefs);
 
@@ -41,6 +46,11 @@ void main() {
     expect(find.text('Match system wallpaper'), findsOneWidget);
     expect(find.text('Color intensity'), findsOneWidget);
     expect(find.text('Vibrancy & Saturation'), findsOneWidget);
+    expect(find.text('Dark surface contrast'), findsOneWidget);
+    expect(find.text('Card & Surface Elevation'), findsOneWidget);
+    expect(find.text('Card & surface outlines'), findsOneWidget);
+    expect(find.text('Island bar outline'), findsOneWidget);
+    expect(find.text('Floating button (FAB) outline'), findsOneWidget);
     expect(find.text('Subtle (50%)'), findsOneWidget);
     expect(find.text('Default (100%)'), findsWidgets);
     expect(find.text('Vibrant (150%)'), findsOneWidget);
@@ -130,6 +140,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final resetFinder = find.text('Reset theme settings');
+    await tester.ensureVisible(resetFinder);
+    await tester.pumpAndSettle();
     await tester.tap(resetFinder);
     await tester.pumpAndSettle();
 
@@ -137,5 +149,45 @@ void main() {
     expect(controller.state.useSystemColor, true);
     expect(controller.state.customAccentColor, isNull);
     expect(controller.state.colorIntensity, 1.0);
+    expect(controller.state.surfaceContrast, 1.0);
+    expect(controller.state.outlineThickness, 0.4);
+    expect(controller.state.outlineOpacity, 0.15);
+    expect(controller.state.islandOutlineThickness, 0.3);
+    expect(controller.state.islandOutlineOpacity, 0.10);
+    expect(controller.state.fabOutlineThickness, 0.3);
+    expect(controller.state.fabOutlineOpacity, 0.10);
   });
+
+  test(
+    'ThemeController supports custom outline and contrast parameters',
+    () async {
+      final prefs = await SharedPreferences.getInstance();
+      final controller = ThemeController(prefs);
+
+      await controller.setSurfaceContrast(1.2);
+      await controller.setOutlineThickness(1.0);
+      await controller.setOutlineOpacity(0.35);
+      await controller.setIslandOutlineThickness(0.8);
+      await controller.setIslandOutlineOpacity(0.40);
+      await controller.setFabOutlineThickness(0.9);
+      await controller.setFabOutlineOpacity(0.45);
+
+      expect(controller.state.surfaceContrast, 1.2);
+      expect(controller.state.outlineThickness, 1.0);
+      expect(controller.state.outlineOpacity, 0.35);
+      expect(controller.state.islandOutlineThickness, 0.8);
+      expect(controller.state.islandOutlineOpacity, 0.40);
+      expect(controller.state.fabOutlineThickness, 0.9);
+      expect(controller.state.fabOutlineOpacity, 0.45);
+
+      await controller.resetToDefaults();
+      expect(controller.state.surfaceContrast, 1.0);
+      expect(controller.state.outlineThickness, 0.4);
+      expect(controller.state.outlineOpacity, 0.15);
+      expect(controller.state.islandOutlineThickness, 0.3);
+      expect(controller.state.islandOutlineOpacity, 0.10);
+      expect(controller.state.fabOutlineThickness, 0.3);
+      expect(controller.state.fabOutlineOpacity, 0.10);
+    },
+  );
 }

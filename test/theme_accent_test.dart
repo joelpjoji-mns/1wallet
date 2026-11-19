@@ -31,7 +31,7 @@ void main() {
       amoled.colorScheme.surfaceContainerLowest,
       AppColors.amoledBackground,
     );
-    expect(amoled.cardTheme.color, AppColors.amoledSurfaceLow);
+    expect(amoled.cardTheme.color, amoled.colorScheme.surfaceContainerLow);
   });
 
   test('fallback accent is stable without dynamic color', () {

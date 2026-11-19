@@ -270,14 +270,18 @@ class _MainShellState extends ConsumerState<MainShell>
           final showAction = selectedIndex != 0 || !homeReordering;
           final action = selectedIndex == 3
               ? IslandFloatingActionButton(
-                  key: const ValueKey('add-account-action'),
+                  key: ValueKey(
+                    'add-account-action_${themeState.fabOutlineThickness}_${themeState.fabOutlineOpacity}',
+                  ),
                   icon: Icons.add_rounded,
                   tooltip: 'Add account',
                   finish: fabGlassFinish,
                   onPressed: () => context.push('/account/new'),
                 )
               : IslandFloatingActionButton(
-                  key: const ValueKey('add-record-action'),
+                  key: ValueKey(
+                    'add-record-action_${themeState.fabOutlineThickness}_${themeState.fabOutlineOpacity}',
+                  ),
                   icon: Icons.add_rounded,
                   tooltip: 'Add record',
                   finish: fabGlassFinish,
@@ -307,7 +311,7 @@ class _MainShellState extends ConsumerState<MainShell>
                 bottom: 0,
                 child: BottomIslandNavBar(
                   key: ValueKey(
-                    'island_nav_${theme.brightness}_${themeState.preference}_${islandGlassFinish.name}_${islandGlassFinish.blurSigmaLogical}',
+                    'island_nav_${theme.brightness}_${themeState.preference}_${themeState.islandOutlineThickness}_${themeState.islandOutlineOpacity}_${islandGlassFinish.name}_${islandGlassFinish.blurSigmaLogical}',
                   ),
                   items: tabs,
                   selectedIndex: selectedIndex,

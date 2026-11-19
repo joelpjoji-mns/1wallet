@@ -30,6 +30,10 @@ class AppThemeState {
     this.surfaceContrast = 1.0,
     this.outlineThickness = 0.4,
     this.outlineOpacity = 0.15,
+    this.islandOutlineThickness = 0.3,
+    this.islandOutlineOpacity = 0.10,
+    this.fabOutlineThickness = 0.3,
+    this.fabOutlineOpacity = 0.10,
     this.isLoaded = false,
   });
 
@@ -40,6 +44,10 @@ class AppThemeState {
   final double surfaceContrast;
   final double outlineThickness;
   final double outlineOpacity;
+  final double islandOutlineThickness;
+  final double islandOutlineOpacity;
+  final double fabOutlineThickness;
+  final double fabOutlineOpacity;
   final bool isLoaded;
 
   ThemeMode get themeMode => switch (preference) {
@@ -59,6 +67,10 @@ class AppThemeState {
     double? surfaceContrast,
     double? outlineThickness,
     double? outlineOpacity,
+    double? islandOutlineThickness,
+    double? islandOutlineOpacity,
+    double? fabOutlineThickness,
+    double? fabOutlineOpacity,
     bool? isLoaded,
   }) {
     return AppThemeState(
@@ -71,6 +83,11 @@ class AppThemeState {
       surfaceContrast: surfaceContrast ?? this.surfaceContrast,
       outlineThickness: outlineThickness ?? this.outlineThickness,
       outlineOpacity: outlineOpacity ?? this.outlineOpacity,
+      islandOutlineThickness:
+          islandOutlineThickness ?? this.islandOutlineThickness,
+      islandOutlineOpacity: islandOutlineOpacity ?? this.islandOutlineOpacity,
+      fabOutlineThickness: fabOutlineThickness ?? this.fabOutlineThickness,
+      fabOutlineOpacity: fabOutlineOpacity ?? this.fabOutlineOpacity,
       isLoaded: isLoaded ?? this.isLoaded,
     );
   }
@@ -95,6 +112,14 @@ class ThemeController extends StateNotifier<AppThemeState> {
       'one_wallet_flutter.theme.outline_thickness.v1';
   static const _outlineOpacityKey =
       'one_wallet_flutter.theme.outline_opacity.v1';
+  static const _islandOutlineThicknessKey =
+      'one_wallet_flutter.theme.island_outline_thickness.v1';
+  static const _islandOutlineOpacityKey =
+      'one_wallet_flutter.theme.island_outline_opacity.v1';
+  static const _fabOutlineThicknessKey =
+      'one_wallet_flutter.theme.fab_outline_thickness.v1';
+  static const _fabOutlineOpacityKey =
+      'one_wallet_flutter.theme.fab_outline_opacity.v1';
 
   Future<void> setPreference(AppThemePreference preference) async {
     final previousPreference = state.preference;
@@ -229,6 +254,90 @@ class ThemeController extends StateNotifier<AppThemeState> {
     }
   }
 
+  Future<void> setIslandOutlineThickness(
+    double thickness, {
+    bool persist = true,
+  }) async {
+    final clamped = thickness.clamp(0.0, 2.5);
+    final previous = state.islandOutlineThickness;
+    state = state.copyWith(islandOutlineThickness: clamped, isLoaded: true);
+    if (!persist || _preferences == null) return;
+    try {
+      await _preferences.setDouble(_islandOutlineThicknessKey, clamped);
+    } catch (error) {
+      if (state.islandOutlineThickness == clamped) {
+        state = state.copyWith(islandOutlineThickness: previous);
+      }
+      debugPrint(
+        'ThemeController.setIslandOutlineThickness failed to persist: $error',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> setIslandOutlineOpacity(
+    double opacity, {
+    bool persist = true,
+  }) async {
+    final clamped = opacity.clamp(0.0, 1.0);
+    final previous = state.islandOutlineOpacity;
+    state = state.copyWith(islandOutlineOpacity: clamped, isLoaded: true);
+    if (!persist || _preferences == null) return;
+    try {
+      await _preferences.setDouble(_islandOutlineOpacityKey, clamped);
+    } catch (error) {
+      if (state.islandOutlineOpacity == clamped) {
+        state = state.copyWith(islandOutlineOpacity: previous);
+      }
+      debugPrint(
+        'ThemeController.setIslandOutlineOpacity failed to persist: $error',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> setFabOutlineThickness(
+    double thickness, {
+    bool persist = true,
+  }) async {
+    final clamped = thickness.clamp(0.0, 2.5);
+    final previous = state.fabOutlineThickness;
+    state = state.copyWith(fabOutlineThickness: clamped, isLoaded: true);
+    if (!persist || _preferences == null) return;
+    try {
+      await _preferences.setDouble(_fabOutlineThicknessKey, clamped);
+    } catch (error) {
+      if (state.fabOutlineThickness == clamped) {
+        state = state.copyWith(fabOutlineThickness: previous);
+      }
+      debugPrint(
+        'ThemeController.setFabOutlineThickness failed to persist: $error',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> setFabOutlineOpacity(
+    double opacity, {
+    bool persist = true,
+  }) async {
+    final clamped = opacity.clamp(0.0, 1.0);
+    final previous = state.fabOutlineOpacity;
+    state = state.copyWith(fabOutlineOpacity: clamped, isLoaded: true);
+    if (!persist || _preferences == null) return;
+    try {
+      await _preferences.setDouble(_fabOutlineOpacityKey, clamped);
+    } catch (error) {
+      if (state.fabOutlineOpacity == clamped) {
+        state = state.copyWith(fabOutlineOpacity: previous);
+      }
+      debugPrint(
+        'ThemeController.setFabOutlineOpacity failed to persist: $error',
+      );
+      rethrow;
+    }
+  }
+
   Future<void> resetToDefaults() async {
     final previousState = state;
     state = const AppThemeState(
@@ -239,6 +348,10 @@ class ThemeController extends StateNotifier<AppThemeState> {
       surfaceContrast: 1.0,
       outlineThickness: 0.4,
       outlineOpacity: 0.15,
+      islandOutlineThickness: 0.3,
+      islandOutlineOpacity: 0.10,
+      fabOutlineThickness: 0.3,
+      fabOutlineOpacity: 0.10,
       isLoaded: true,
     );
     if (_preferences == null) return;
@@ -250,6 +363,10 @@ class ThemeController extends StateNotifier<AppThemeState> {
       await _preferences.setDouble(_surfaceContrastKey, 1.0);
       await _preferences.setDouble(_outlineThicknessKey, 0.4);
       await _preferences.setDouble(_outlineOpacityKey, 0.15);
+      await _preferences.setDouble(_islandOutlineThicknessKey, 0.3);
+      await _preferences.setDouble(_islandOutlineOpacityKey, 0.10);
+      await _preferences.setDouble(_fabOutlineThicknessKey, 0.3);
+      await _preferences.setDouble(_fabOutlineOpacityKey, 0.10);
     } catch (error) {
       state = previousState;
       debugPrint('ThemeController.resetToDefaults failed to persist: $error');
@@ -281,6 +398,26 @@ class ThemeController extends StateNotifier<AppThemeState> {
           (_preferences.getDouble(_outlineThicknessKey) ?? 0.4).clamp(0.0, 2.5);
       final outlineOpacity =
           (_preferences.getDouble(_outlineOpacityKey) ?? 0.15).clamp(0.0, 1.0);
+      final islandOutlineThickness =
+          (_preferences.getDouble(_islandOutlineThicknessKey) ?? 0.3).clamp(
+            0.0,
+            2.5,
+          );
+      final islandOutlineOpacity =
+          (_preferences.getDouble(_islandOutlineOpacityKey) ?? 0.10).clamp(
+            0.0,
+            1.0,
+          );
+      final fabOutlineThickness =
+          (_preferences.getDouble(_fabOutlineThicknessKey) ?? 0.3).clamp(
+            0.0,
+            2.5,
+          );
+      final fabOutlineOpacity =
+          (_preferences.getDouble(_fabOutlineOpacityKey) ?? 0.10).clamp(
+            0.0,
+            1.0,
+          );
 
       state = AppThemeState(
         preference: preference,
@@ -290,6 +427,10 @@ class ThemeController extends StateNotifier<AppThemeState> {
         surfaceContrast: surfaceContrast,
         outlineThickness: outlineThickness,
         outlineOpacity: outlineOpacity,
+        islandOutlineThickness: islandOutlineThickness,
+        islandOutlineOpacity: islandOutlineOpacity,
+        fabOutlineThickness: fabOutlineThickness,
+        fabOutlineOpacity: fabOutlineOpacity,
         isLoaded: true,
       );
     } catch (error) {

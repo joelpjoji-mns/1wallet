@@ -194,16 +194,14 @@ class BottomIslandNavBar extends StatelessWidget {
                                     context,
                                   ).extension<AppThemeCustomization>() ??
                                   const AppThemeCustomization();
-                              final borderWidth = custom.outlineThickness;
+                              final borderWidth = custom.islandOutlineThickness;
                               final borderColor =
                                   (isDark
                                           ? Colors.white
                                           : scheme.outlineVariant)
                                       .withValues(
-                                        alpha: custom.outlineOpacity.clamp(
-                                          0.0,
-                                          1.0,
-                                        ),
+                                        alpha: custom.islandOutlineOpacity
+                                            .clamp(0.0, 1.0),
                                       );
                               final shadowAlpha = isFrosted
                                   ? (isDark ? 0.30 : 0.14)
@@ -215,140 +213,158 @@ class BottomIslandNavBar extends StatelessWidget {
                                 AppSizes.bottomBarContentHeight / 2,
                               );
 
-                              Widget islandSurface = g1455.GlassSurface(
-                                borderRadius: pillRadius,
-                                finish: finish ?? g1455.GlassFinish.clear,
-                                labelled: false,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    borderRadius: pillRadius,
-                                    border: borderWidth > 0
-                                        ? Border.all(
-                                            color: borderColor,
-                                            width: borderWidth,
-                                          )
-                                        : null,
-                                    gradient:
-                                        (fillAlphaTop > 0 ||
-                                            fillAlphaBottom > 0)
-                                        ? LinearGradient(
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                            colors: [
-                                              Colors.white.withAlphaFactor(
-                                                fillAlphaTop,
-                                              ),
-                                              Colors.white.withAlphaFactor(
-                                                fillAlphaBottom,
-                                              ),
-                                            ],
-                                          )
-                                        : null,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withAlphaFactor(
-                                          shadowAlpha,
-                                        ),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      // Smooth animated active tab indicator pill following page drag in real-time
-                                      if (items.isNotEmpty)
-                                        Align(
-                                          alignment: Alignment(
-                                            items.length > 1
-                                                ? -1.0 +
-                                                      (page.clamp(
-                                                                0.0,
-                                                                items.length -
-                                                                    1.0,
-                                                              ) /
-                                                              (items.length -
-                                                                  1.0)) *
-                                                          2.0
-                                                : 0.0,
-                                            0.0,
+                              Widget islandSurface = DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: pillRadius,
+                                  border: borderWidth > 0
+                                      ? Border.all(
+                                          color: borderColor,
+                                          width: borderWidth,
+                                        )
+                                      : null,
+                                ),
+                                child: g1455.GlassSurface(
+                                  borderRadius: pillRadius,
+                                  finish: finish ?? g1455.GlassFinish.clear,
+                                  labelled: false,
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      borderRadius: pillRadius,
+                                      border: borderWidth > 0
+                                          ? Border.all(
+                                              color: borderColor,
+                                              width: borderWidth,
+                                            )
+                                          : null,
+                                      gradient:
+                                          (fillAlphaTop > 0 ||
+                                              fillAlphaBottom > 0)
+                                          ? LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: [
+                                                Colors.white.withAlphaFactor(
+                                                  fillAlphaTop,
+                                                ),
+                                                Colors.white.withAlphaFactor(
+                                                  fillAlphaBottom,
+                                                ),
+                                              ],
+                                            )
+                                          : null,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlphaFactor(
+                                            shadowAlpha,
                                           ),
-                                          child: FractionallySizedBox(
-                                            widthFactor: 1.0 / items.length,
-                                            heightFactor: 1.0,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 3,
-                                                    vertical: 5,
-                                                  ),
-                                              child: DecoratedBox(
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                    colors: [
-                                                      brightPrimary
-                                                          .withAlphaFactor(
-                                                            isDark
-                                                                ? 0.30
-                                                                : 0.20,
-                                                          ),
-                                                      brightPrimary
-                                                          .withAlphaFactor(
-                                                            isDark
-                                                                ? 0.16
-                                                                : 0.10,
-                                                          ),
-                                                    ],
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        (AppSizes.bottomBarContentHeight -
-                                                                8) /
-                                                            2,
-                                                      ),
-                                                  border: Border.all(
-                                                    color: brightPrimary
-                                                        .withAlphaFactor(
-                                                          isDark ? 0.25 : 0.20,
+                                          blurRadius: 18,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        // Smooth animated active tab indicator pill following page drag in real-time
+                                        if (items.isNotEmpty)
+                                          Align(
+                                            alignment: Alignment(
+                                              items.length > 1
+                                                  ? -1.0 +
+                                                        (page.clamp(
+                                                                  0.0,
+                                                                  items.length -
+                                                                      1.0,
+                                                                ) /
+                                                                (items.length -
+                                                                    1.0)) *
+                                                            2.0
+                                                  : 0.0,
+                                              0.0,
+                                            ),
+                                            child: FractionallySizedBox(
+                                              widthFactor: 1.0 / items.length,
+                                              heightFactor: 1.0,
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 3,
+                                                      vertical: 5,
+                                                    ),
+                                                child: DecoratedBox(
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      begin: Alignment.topLeft,
+                                                      end:
+                                                          Alignment.bottomRight,
+                                                      colors: [
+                                                        brightPrimary
+                                                            .withAlphaFactor(
+                                                              isDark
+                                                                  ? 0.30
+                                                                  : 0.20,
+                                                            ),
+                                                        brightPrimary
+                                                            .withAlphaFactor(
+                                                              isDark
+                                                                  ? 0.16
+                                                                  : 0.10,
+                                                            ),
+                                                      ],
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          (AppSizes.bottomBarContentHeight -
+                                                                  8) /
+                                                              2,
                                                         ),
-                                                    width: 0.5,
-                                                  ),
-                                                  boxShadow: [
-                                                    BoxShadow(
+                                                    border: Border.all(
                                                       color: brightPrimary
                                                           .withAlphaFactor(
                                                             isDark
-                                                                ? 0.18
-                                                                : 0.10,
+                                                                ? 0.25
+                                                                : 0.20,
                                                           ),
-                                                      blurRadius: 8,
+                                                      width: 0.5,
                                                     ),
-                                                  ],
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: brightPrimary
+                                                            .withAlphaFactor(
+                                                              isDark
+                                                                  ? 0.18
+                                                                  : 0.10,
+                                                            ),
+                                                        blurRadius: 8,
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      // Tab items row
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          for (int i = 0; i < items.length; i++)
-                                            Expanded(
-                                              child: _IslandTabButton(
-                                                item: items[i],
-                                                isSelected: activeTab == i,
-                                                onTap: () => onSelected(
-                                                  items[i].pageIndex ?? i,
+                                        // Tab items row
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            for (
+                                              int i = 0;
+                                              i < items.length;
+                                              i++
+                                            )
+                                              Expanded(
+                                                child: _IslandTabButton(
+                                                  item: items[i],
+                                                  isSelected: activeTab == i,
+                                                  onTap: () => onSelected(
+                                                    items[i].pageIndex ?? i,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                        ],
-                                      ),
-                                    ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );

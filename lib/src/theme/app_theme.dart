@@ -83,6 +83,10 @@ abstract final class AppTheme {
     double surfaceContrast = 1.0,
     double outlineThickness = 0.4,
     double outlineOpacity = 0.15,
+    double islandOutlineThickness = 0.3,
+    double islandOutlineOpacity = 0.10,
+    double fabOutlineThickness = 0.3,
+    double fabOutlineOpacity = 0.10,
   }) => _theme(
     Brightness.light,
     systemColorScheme: systemColorScheme,
@@ -92,6 +96,10 @@ abstract final class AppTheme {
     surfaceContrast: surfaceContrast,
     outlineThickness: outlineThickness,
     outlineOpacity: outlineOpacity,
+    islandOutlineThickness: islandOutlineThickness,
+    islandOutlineOpacity: islandOutlineOpacity,
+    fabOutlineThickness: fabOutlineThickness,
+    fabOutlineOpacity: fabOutlineOpacity,
   );
 
   static ThemeData amoled({
@@ -102,6 +110,10 @@ abstract final class AppTheme {
     double surfaceContrast = 1.0,
     double outlineThickness = 0.4,
     double outlineOpacity = 0.15,
+    double islandOutlineThickness = 0.3,
+    double islandOutlineOpacity = 0.10,
+    double fabOutlineThickness = 0.3,
+    double fabOutlineOpacity = 0.10,
   }) => _theme(
     Brightness.dark,
     amoled: true,
@@ -112,6 +124,10 @@ abstract final class AppTheme {
     surfaceContrast: surfaceContrast,
     outlineThickness: outlineThickness,
     outlineOpacity: outlineOpacity,
+    islandOutlineThickness: islandOutlineThickness,
+    islandOutlineOpacity: islandOutlineOpacity,
+    fabOutlineThickness: fabOutlineThickness,
+    fabOutlineOpacity: fabOutlineOpacity,
   );
 
   static ThemeData _theme(
@@ -124,6 +140,10 @@ abstract final class AppTheme {
     double surfaceContrast = 1.0,
     double outlineThickness = 0.4,
     double outlineOpacity = 0.15,
+    double islandOutlineThickness = 0.3,
+    double islandOutlineOpacity = 0.10,
+    double fabOutlineThickness = 0.3,
+    double fabOutlineOpacity = 0.10,
   }) {
     final dark = brightness == Brightness.dark;
 
@@ -204,49 +224,51 @@ abstract final class AppTheme {
       }
     }
 
+    final scaledContrast = surfaceContrast * 0.30;
+
     final effectiveSurfaceLow = amoled
         ? Color.lerp(
             AppColors.amoledBackground,
             const Color(0xFF1E2026),
-            surfaceContrast,
+            scaledContrast,
           )!
         : Color.lerp(
             baseScheme.surface,
             baseScheme.surfaceContainerLow,
-            surfaceContrast,
+            scaledContrast,
           )!;
     final effectiveSurface = amoled
         ? Color.lerp(
             AppColors.amoledBackground,
             const Color(0xFF262832),
-            surfaceContrast,
+            scaledContrast,
           )!
         : Color.lerp(
             baseScheme.surface,
             baseScheme.surfaceContainer,
-            surfaceContrast,
+            scaledContrast,
           )!;
     final effectiveSurfaceHigh = amoled
         ? Color.lerp(
             AppColors.amoledBackground,
             const Color(0xFF30333E),
-            surfaceContrast,
+            scaledContrast,
           )!
         : Color.lerp(
             baseScheme.surface,
             baseScheme.surfaceContainerHigh,
-            surfaceContrast,
+            scaledContrast,
           )!;
     final effectiveSurfaceHighest = amoled
         ? Color.lerp(
             AppColors.amoledBackground,
             const Color(0xFF3C3F4D),
-            surfaceContrast,
+            scaledContrast,
           )!
         : Color.lerp(
             baseScheme.surface,
             baseScheme.surfaceContainerHighest,
-            surfaceContrast,
+            scaledContrast,
           )!;
 
     final scheme = baseScheme.copyWith(
@@ -553,6 +575,10 @@ abstract final class AppTheme {
           surfaceContrast: surfaceContrast,
           outlineThickness: outlineThickness,
           outlineOpacity: outlineOpacity,
+          islandOutlineThickness: islandOutlineThickness,
+          islandOutlineOpacity: islandOutlineOpacity,
+          fabOutlineThickness: fabOutlineThickness,
+          fabOutlineOpacity: fabOutlineOpacity,
         ),
       ],
       progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -583,22 +609,39 @@ class AppThemeCustomization extends ThemeExtension<AppThemeCustomization> {
     this.surfaceContrast = 1.0,
     this.outlineThickness = 0.4,
     this.outlineOpacity = 0.15,
+    this.islandOutlineThickness = 0.3,
+    this.islandOutlineOpacity = 0.10,
+    this.fabOutlineThickness = 0.3,
+    this.fabOutlineOpacity = 0.10,
   });
 
   final double surfaceContrast;
   final double outlineThickness;
   final double outlineOpacity;
+  final double islandOutlineThickness;
+  final double islandOutlineOpacity;
+  final double fabOutlineThickness;
+  final double fabOutlineOpacity;
 
   @override
   AppThemeCustomization copyWith({
     double? surfaceContrast,
     double? outlineThickness,
     double? outlineOpacity,
+    double? islandOutlineThickness,
+    double? islandOutlineOpacity,
+    double? fabOutlineThickness,
+    double? fabOutlineOpacity,
   }) {
     return AppThemeCustomization(
       surfaceContrast: surfaceContrast ?? this.surfaceContrast,
       outlineThickness: outlineThickness ?? this.outlineThickness,
       outlineOpacity: outlineOpacity ?? this.outlineOpacity,
+      islandOutlineThickness:
+          islandOutlineThickness ?? this.islandOutlineThickness,
+      islandOutlineOpacity: islandOutlineOpacity ?? this.islandOutlineOpacity,
+      fabOutlineThickness: fabOutlineThickness ?? this.fabOutlineThickness,
+      fabOutlineOpacity: fabOutlineOpacity ?? this.fabOutlineOpacity,
     );
   }
 
@@ -617,6 +660,18 @@ class AppThemeCustomization extends ThemeExtension<AppThemeCustomization> {
           outlineThickness,
       outlineOpacity:
           lerpDouble(outlineOpacity, other.outlineOpacity, t) ?? outlineOpacity,
+      islandOutlineThickness:
+          lerpDouble(islandOutlineThickness, other.islandOutlineThickness, t) ??
+          islandOutlineThickness,
+      islandOutlineOpacity:
+          lerpDouble(islandOutlineOpacity, other.islandOutlineOpacity, t) ??
+          islandOutlineOpacity,
+      fabOutlineThickness:
+          lerpDouble(fabOutlineThickness, other.fabOutlineThickness, t) ??
+          fabOutlineThickness,
+      fabOutlineOpacity:
+          lerpDouble(fabOutlineOpacity, other.fabOutlineOpacity, t) ??
+          fabOutlineOpacity,
     );
   }
 }

@@ -498,56 +498,64 @@ class IslandFloatingActionButton extends StatelessWidget {
     final custom =
         Theme.of(context).extension<AppThemeCustomization>() ??
         const AppThemeCustomization();
-    final fabBorderWidth = custom.outlineThickness;
+    final fabBorderWidth = custom.fabOutlineThickness;
     final fabBorderColor = (isDark ? Colors.white : brightPrimary).withValues(
-      alpha: custom.outlineOpacity.clamp(0.0, 1.0),
+      alpha: custom.fabOutlineOpacity.clamp(0.0, 1.0),
     );
 
-    Widget button = g1455.GlassSurface(
-      borderRadius: BorderRadius.circular(32),
-      finish: effectiveFinish,
-      labelled: false,
-      child: SizedBox(
-        width: 64,
-        height: 64,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                brightPrimary.withAlphaFactor(isDark ? 0.50 : 0.42),
-                Color.lerp(
-                  brightPrimary,
-                  isDark ? Colors.black : Colors.black87,
-                  0.28,
-                )!.withAlphaFactor(isDark ? 0.38 : 0.32),
+    Widget button = DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: fabBorderWidth > 0
+            ? Border.all(color: fabBorderColor, width: fabBorderWidth)
+            : null,
+      ),
+      child: g1455.GlassSurface(
+        borderRadius: BorderRadius.circular(32),
+        finish: effectiveFinish,
+        labelled: false,
+        child: SizedBox(
+          width: 64,
+          height: 64,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  brightPrimary.withAlphaFactor(isDark ? 0.50 : 0.42),
+                  Color.lerp(
+                    brightPrimary,
+                    isDark ? Colors.black : Colors.black87,
+                    0.28,
+                  )!.withAlphaFactor(isDark ? 0.38 : 0.32),
+                ],
+              ),
+              border: fabBorderWidth > 0
+                  ? Border.all(color: fabBorderColor, width: fabBorderWidth)
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: brightPrimary.withAlphaFactor(isDark ? 0.25 : 0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
-            border: fabBorderWidth > 0
-                ? Border.all(color: fabBorderColor, width: fabBorderWidth)
-                : null,
-            boxShadow: [
-              BoxShadow(
-                color: brightPrimary.withAlphaFactor(isDark ? 0.25 : 0.18),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: GlassButton(
-            icon: Icon(icon, color: Colors.white, size: 34),
-            label: tooltip ?? 'Action',
-            onTap: onPressed,
-            width: 64,
-            height: 64,
-            iconSize: 34,
-            iconColor: scheme.primary,
-            useOwnLayer: false,
-            style: GlassButtonStyle.transparent,
-            quality: GlassQuality.minimal,
-            shape: const LiquidOval(),
+            child: GlassButton(
+              icon: Icon(icon, color: Colors.white, size: 34),
+              label: tooltip ?? 'Action',
+              onTap: onPressed,
+              width: 64,
+              height: 64,
+              iconSize: 34,
+              iconColor: scheme.primary,
+              useOwnLayer: false,
+              style: GlassButtonStyle.transparent,
+              quality: GlassQuality.minimal,
+              shape: const LiquidOval(),
+            ),
           ),
         ),
       ),

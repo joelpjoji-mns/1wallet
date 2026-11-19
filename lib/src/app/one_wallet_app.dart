@@ -186,6 +186,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             surfaceContrast: themeState.surfaceContrast,
             outlineThickness: themeState.outlineThickness,
             outlineOpacity: themeState.outlineOpacity,
+            islandOutlineThickness: themeState.islandOutlineThickness,
+            islandOutlineOpacity: themeState.islandOutlineOpacity,
+            fabOutlineThickness: themeState.fabOutlineThickness,
+            fabOutlineOpacity: themeState.fabOutlineOpacity,
           )
         : AppTheme.amoled(
             customAccentColor: themeState.customAccentColor,
@@ -194,6 +198,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             surfaceContrast: themeState.surfaceContrast,
             outlineThickness: themeState.outlineThickness,
             outlineOpacity: themeState.outlineOpacity,
+            islandOutlineThickness: themeState.islandOutlineThickness,
+            islandOutlineOpacity: themeState.islandOutlineOpacity,
+            fabOutlineThickness: themeState.fabOutlineThickness,
+            fabOutlineOpacity: themeState.fabOutlineOpacity,
           );
 
     ref.listen(startupStateProvider, (prev, next) {
@@ -219,6 +227,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               surfaceContrast: next.surfaceContrast,
               outlineThickness: next.outlineThickness,
               outlineOpacity: next.outlineOpacity,
+              islandOutlineThickness: next.islandOutlineThickness,
+              islandOutlineOpacity: next.islandOutlineOpacity,
+              fabOutlineThickness: next.fabOutlineThickness,
+              fabOutlineOpacity: next.fabOutlineOpacity,
             )
           : AppTheme.amoled(
               customAccentColor: next.customAccentColor,
@@ -227,6 +239,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               surfaceContrast: next.surfaceContrast,
               outlineThickness: next.outlineThickness,
               outlineOpacity: next.outlineOpacity,
+              islandOutlineThickness: next.islandOutlineThickness,
+              islandOutlineOpacity: next.islandOutlineOpacity,
+              fabOutlineThickness: next.fabOutlineThickness,
+              fabOutlineOpacity: next.fabOutlineOpacity,
             );
       NativeWidgetSyncService.syncWidgets(
         ref.read(ledgerProvider),
@@ -252,16 +268,16 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
     final fill = glass.fill.clamp(0.0, 0.5);
     final interaction = glass.interaction.clamp(0.0, 1.0);
 
+    final scaledContrast = themeState.surfaceContrast * 0.30;
     final darkSurfaceGrey = Color.lerp(
       const Color(0xFF000000),
       const Color(0xFF383A44),
-      themeState.surfaceContrast,
+      scaledContrast,
     )!;
-    final darkGlassAlpha =
-        (fill * 0.75 * themeState.surfaceContrast.clamp(0.0, 1.5)).clamp(
-          0.0,
-          0.55,
-        );
+    final darkGlassAlpha = (fill * 0.75 * scaledContrast.clamp(0.0, 1.5)).clamp(
+      0.0,
+      0.55,
+    );
     final effectiveDarkGlassColor = darkSurfaceGrey.withValues(
       alpha: darkGlassAlpha,
     );
@@ -326,6 +342,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             surfaceContrast: themeState.surfaceContrast,
             outlineThickness: themeState.outlineThickness,
             outlineOpacity: themeState.outlineOpacity,
+            islandOutlineThickness: themeState.islandOutlineThickness,
+            islandOutlineOpacity: themeState.islandOutlineOpacity,
+            fabOutlineThickness: themeState.fabOutlineThickness,
+            fabOutlineOpacity: themeState.fabOutlineOpacity,
           ),
           darkTheme: AppTheme.amoled(
             systemColorScheme: themeState.useSystemColor ? darkDynamic : null,
@@ -335,6 +355,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             surfaceContrast: themeState.surfaceContrast,
             outlineThickness: themeState.outlineThickness,
             outlineOpacity: themeState.outlineOpacity,
+            islandOutlineThickness: themeState.islandOutlineThickness,
+            islandOutlineOpacity: themeState.islandOutlineOpacity,
+            fabOutlineThickness: themeState.fabOutlineThickness,
+            fabOutlineOpacity: themeState.fabOutlineOpacity,
           ),
           themeMode: themeState.themeMode,
           builder: (context, child) {
@@ -358,7 +382,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
                         Brightness.dark);
             return g1455.GlassHost(
               key: ValueKey(
-                'glass_host_${themeState.themeMode}_${themeState.preference}_${themeState.customAccentColor?.toARGB32()}_${themeState.colorIntensity}_${themeState.useSystemColor}_${themeState.surfaceContrast}_${themeState.outlineThickness}_${themeState.outlineOpacity}_${isDark}_${glassFinish.name}',
+                'glass_host_${themeState.themeMode}_${themeState.preference}_${themeState.customAccentColor?.toARGB32()}_${themeState.colorIntensity}_${themeState.useSystemColor}_${themeState.surfaceContrast}_${themeState.outlineThickness}_${themeState.outlineOpacity}_${themeState.islandOutlineThickness}_${themeState.islandOutlineOpacity}_${themeState.fabOutlineThickness}_${themeState.fabOutlineOpacity}_${isDark}_${glassFinish.name}',
               ),
               content: g1455.GlassContentDeclaration.undeclared,
               finish: glassFinish,
