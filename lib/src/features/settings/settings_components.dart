@@ -32,7 +32,7 @@ class SettingsProfileSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AppPanel(
-      glass: true,
+      glass: false,
       child: Material(
         type: MaterialType.transparency,
         child: Column(

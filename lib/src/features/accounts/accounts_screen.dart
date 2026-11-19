@@ -274,7 +274,7 @@ class _CurrencySummaryHeader extends StatelessWidget {
       });
 
     return AppPanel(
-      glass: true,
+      glass: false,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,

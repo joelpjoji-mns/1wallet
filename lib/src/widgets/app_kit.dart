@@ -319,7 +319,6 @@ class AppTopFadeMask extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!enabled) return child;
     final surfaceColor = Theme.of(context).colorScheme.surface;
 
     return Stack(
@@ -327,23 +326,27 @@ class AppTopFadeMask extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         child,
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: fadeHeight,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [surfaceColor, surfaceColor.withValues(alpha: 0)],
+        if (enabled)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: fadeHeight,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      surfaceColor.withValues(alpha: 0),
+                      surfaceColor.withValues(alpha: 0),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -359,7 +362,7 @@ class AppScreen extends StatelessWidget {
     this.actions = const [],
     this.padding = const EdgeInsets.fromLTRB(
       AppSpacing.md,
-      AppSpacing.xs,
+      AppSpacing.sm,
       AppSpacing.md,
       AppSpacing.md,
     ),
@@ -592,6 +595,7 @@ class AppHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
     final header = GlassAppBar(
+      centerTitle: false,
       title: Text(
         title,
         maxLines: 1,
@@ -744,7 +748,7 @@ class AppMenuAction extends StatelessWidget {
       ),
       button: true,
       child: Padding(
-        padding: const EdgeInsets.only(left: AppSpacing.xxs),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
         child: menuButton,
       ),
     );
@@ -859,7 +863,7 @@ class HeaderIconButton extends StatelessWidget {
       ),
       button: true,
       child: Padding(
-        padding: const EdgeInsets.only(left: AppSpacing.xxs),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
         child: iconButton,
       ),
     );
@@ -1132,11 +1136,24 @@ class SectionCard extends StatelessWidget {
       ),
     );
 
-    if (glass && !AppSurfaces.isAmoled(context)) {
+    final isAmoled = AppSurfaces.isAmoled(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (glass && !isAmoled) {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
         shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        settings: isDark
+            ? null
+            : const LiquidGlassSettings(
+                bodyMode: GlassBodyMode.clear,
+                glassColor: AppColors.clearGlassWhite,
+                thickness: 6,
+                blur: 8,
+                visibility: 1.0,
+                lightIntensity: 0.04,
+                fresnelStrength: 0.04,
+              ),
         quality: GlassQuality.standard,
         child: content,
       );
@@ -1217,7 +1234,8 @@ class MetricTile extends StatelessWidget {
       ),
     );
 
-    if (glass && !AppSurfaces.isAmoled(context)) {
+    final isAmoled = AppSurfaces.isAmoled(context);
+    if (glass && !isAmoled) {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
@@ -1342,7 +1360,7 @@ class _PremiumSearchInputState extends State<PremiumSearchInput> {
       onChanged: widget.onChanged,
       height: widget.height,
       placeholderStyle: TextStyle(
-        color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
         fontFamily: theme.textTheme.bodyLarge?.fontFamily,
         fontSize: theme.textTheme.bodyMedium?.fontSize,
       ),
@@ -1454,6 +1472,7 @@ class _AppGlassTextFieldState extends State<AppGlassTextField> {
     final isMultiline = (widget.maxLines > 1);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     final field = GlassTextField(
       controller: _effectiveController,
@@ -1484,7 +1503,7 @@ class _AppGlassTextFieldState extends State<AppGlassTextField> {
           ? CrossAxisAlignment.start
           : CrossAxisAlignment.center,
       placeholderStyle: TextStyle(
-        color: scheme.onSurfaceVariant.withValues(alpha: 0.65),
+        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
         fontFamily: theme.textTheme.bodyLarge?.fontFamily,
         fontSize: theme.textTheme.bodyMedium?.fontSize,
       ),
@@ -1906,7 +1925,8 @@ class PremiumRow extends StatelessWidget {
       ),
     );
 
-    if (glass && !AppSurfaces.isAmoled(context)) {
+    final isAmoled = AppSurfaces.isAmoled(context);
+    if (glass && !isAmoled) {
       return GlassCard(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
@@ -1924,7 +1944,6 @@ class PremiumRow extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: AppSurfaces.panel(context),
-
       child: content,
     );
   }
@@ -2261,12 +2280,22 @@ abstract final class AppSurfaces {
     Color? color,
   }) {
     final width = panelBorderWidth(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor =
+        color ??
+        (isDark
+            ? Theme.of(context).colorScheme.surfaceContainerLow
+            : Colors.white);
     return BoxDecoration(
-      color: color ?? Theme.of(context).colorScheme.surfaceContainerLow,
+      color: effectiveColor,
       borderRadius: BorderRadius.circular(radius),
       border: width > 0
           ? Border.all(color: panelBorderColor(context), width: width)
-          : null,
+          : (isDark
+                ? null
+                : const Border.fromBorderSide(
+                    BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+                  )),
     );
   }
 
@@ -2275,11 +2304,14 @@ abstract final class AppSurfaces {
     double radius = AppRadii.md,
   }) {
     final width = panelBorderWidth(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(radius),
       side: width > 0
           ? BorderSide(color: panelBorderColor(context), width: width)
-          : BorderSide.none,
+          : (isDark
+                ? BorderSide.none
+                : const BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
     );
   }
 
@@ -2317,9 +2349,11 @@ class AppPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final interactive = onTap != null || onLongPress != null;
     Widget content = Padding(padding: padding, child: child);
-    if (glass && !AppSurfaces.isAmoled(context)) {
+    final isAmoled = AppSurfaces.isAmoled(context);
+    if (glass && !isAmoled) {
       if (interactive) {
         content = Material(
           color: Colors.transparent,
@@ -2341,8 +2375,14 @@ class AppPanel extends StatelessWidget {
       );
     }
     return Material(
-      color: color ?? Theme.of(context).colorScheme.surfaceContainerLow,
+      color:
+          color ??
+          (isDark
+              ? Theme.of(context).colorScheme.surfaceContainerLow
+              : Colors.white),
       shape: AppSurfaces.panelShape(context, radius: radius),
+      elevation: isDark ? 0 : 0.5,
+      shadowColor: Colors.black.withValues(alpha: 0.04),
       clipBehavior: Clip.antiAlias,
       child: interactive
           ? InkWell(onTap: onTap, onLongPress: onLongPress, child: content)
@@ -2657,22 +2697,52 @@ class AppGroupedSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final borderWidth = AppSurfaces.panelBorderWidth(context);
     final borderColor = AppSurfaces.panelBorderColor(context);
+    final isAmoled = AppSurfaces.isAmoled(context);
 
-    Widget sectionCard = GlassGroupedSection(
-      margin: EdgeInsets.zero,
-      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      children: children,
-    );
+    Widget sectionCard;
+    if (!isAmoled) {
+      sectionCard = GlassGroupedSection(
+        margin: EdgeInsets.zero,
+        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        settings: isDark
+            ? null
+            : const LiquidGlassSettings(
+                bodyMode: GlassBodyMode.clear,
+                glassColor: AppColors.clearGlassWhite,
+                thickness: 6,
+                blur: 8,
+                visibility: 1.0,
+                lightIntensity: 0.04,
+                fresnelStrength: 0.04,
+              ),
+        children: children,
+      );
 
-    if (borderWidth > 0) {
+      if (borderWidth > 0) {
+        sectionCard = DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(color: borderColor, width: borderWidth),
+          ),
+          child: sectionCard,
+        );
+      }
+    } else {
       sectionCard = DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(color: borderColor, width: borderWidth),
+        decoration: AppSurfaces.panel(
+          context,
+          color: isDark ? AppColors.amoledBackground : Colors.white,
         ),
-        child: sectionCard,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: children,
+          ),
+        ),
       );
     }
 

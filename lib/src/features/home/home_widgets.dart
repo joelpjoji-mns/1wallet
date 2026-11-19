@@ -548,53 +548,101 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
                   livePreferences.copyWith(homeWidgetFilters: newFilters),
             );
       },
-      child: GlassMaterializeSwitcher(
-        duration: const Duration(milliseconds: 320),
-        child: recent.isEmpty
-            ? KeyedSubtree(
-                key: ValueKey(
-                  'recent_empty_${selectedAccountId ?? "all"}_$period',
-                ),
-                child: EmptyState(
-                  icon: Icons.receipt_long_outlined,
-                  title: selectedAccount != null
-                      ? 'No records for ${selectedAccount.name}'
-                      : 'No records for $period',
-                  body: selectedAccount != null
-                      ? 'Tap the account tile above to clear the filter.'
-                      : 'Your latest transactions in this period will appear here.',
-                ),
-              )
-            : KeyedSubtree(
-                key: ValueKey(
-                  'recent_list_${selectedAccountId ?? "all"}_${recent.length}',
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 275),
-                  child: Scrollbar(
-                    thumbVisibility: false,
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const ClampingScrollPhysics(),
-                      padding: EdgeInsets.zero,
-                      itemCount: recent.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: AppSpacing.xxs),
-                      itemBuilder: (context, index) {
-                        final transaction = recent[index];
-                        return TransactionRow(
-                          key: ValueKey(transaction.id),
-                          state: state,
-                          transaction: transaction,
-                          glass: false,
-                          onTap: () =>
-                              context.push('/transaction/${transaction.id}'),
-                        );
-                      },
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 260),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (currentChild, previousChildren) {
+            return Stack(
+              alignment: Alignment.topCenter,
+              children: <Widget>[
+                ...previousChildren,
+                ?currentChild,
+              ],
+            );
+          },
+          transitionBuilder: (child, animation) {
+            final inAnimation = Tween<Offset>(
+              begin: const Offset(0.0, 0.04),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ));
+            final outAnimation = Tween<Offset>(
+              begin: const Offset(0.0, -0.08),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeInCubic,
+            ));
+            final isPrimary = (child.key ==
+                (recent.isEmpty
+                    ? ValueKey(
+                        'recent_empty_${selectedAccountId ?? "all"}_$period',
+                      )
+                    : ValueKey(
+                        'recent_list_${selectedAccountId ?? "all"}_${recent.length}',
+                      )));
+
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: isPrimary ? inAnimation : outAnimation,
+                child: child,
+              ),
+            );
+          },
+          child: recent.isEmpty
+              ? KeyedSubtree(
+                  key: ValueKey(
+                    'recent_empty_${selectedAccountId ?? "all"}_$period',
+                  ),
+                  child: EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: selectedAccount != null
+                        ? 'No records for ${selectedAccount.name}'
+                        : 'No records for $period',
+                    body: selectedAccount != null
+                        ? 'Tap the account tile above to clear the filter.'
+                        : 'Your latest transactions in this period will appear here.',
+                  ),
+                )
+              : KeyedSubtree(
+                  key: ValueKey(
+                    'recent_list_${selectedAccountId ?? "all"}_${recent.length}',
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 275),
+                    child: Scrollbar(
+                      thumbVisibility: false,
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const ClampingScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        itemCount: recent.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: AppSpacing.xxs),
+                        itemBuilder: (context, index) {
+                          final transaction = recent[index];
+                          return TransactionRow(
+                            key: ValueKey(transaction.id),
+                            state: state,
+                            transaction: transaction,
+                            glass: false,
+                            onTap: () =>
+                                context.push('/transaction/${transaction.id}'),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }
@@ -2709,6 +2757,7 @@ class _AccountTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = accountDisplayColor(account);
     final foreground = _legibleForegroundFor(color);
     final nativeBalance = accountBalanceFromMap(balances, account);
@@ -2769,10 +2818,25 @@ class _AccountTile extends ConsumerWidget {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(AppRadii.md),
+            boxShadow: isDark
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.32),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
             border: isSelected
                 ? Border.all(color: foreground, width: 2.2)
                 : Border.all(
-                    color: foreground.withValues(alpha: 0.20),
+                    color: foreground.withValues(alpha: isDark ? 0.35 : 0.22),
                     width: 0.8,
                   ),
           ),
@@ -2784,7 +2848,9 @@ class _AccountTile extends ConsumerWidget {
                 children: [
                   Icon(
                     accountIcon(account),
-                    color: foreground.withValues(alpha: 0.78),
+                    color: foreground == Colors.white
+                        ? Colors.white.withValues(alpha: 0.92)
+                        : foreground.withValues(alpha: 0.88),
                     size: 13,
                   ),
                   const SizedBox(width: AppSpacing.xxxs),
@@ -2819,10 +2885,14 @@ class _AccountTile extends ConsumerWidget {
                         vertical: AppSpacing.xxxs,
                       ),
                       decoration: BoxDecoration(
-                        color: foreground.withValues(alpha: 0.16),
+                        color: foreground == Colors.white
+                            ? Colors.white.withValues(alpha: 0.22)
+                            : foreground.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(AppRadii.pill),
                         border: Border.all(
-                          color: foreground.withValues(alpha: 0.24),
+                          color: foreground == Colors.white
+                              ? Colors.white.withValues(alpha: 0.38)
+                              : foreground.withValues(alpha: 0.20),
                           width: 0.5,
                         ),
                       ),
@@ -2832,8 +2902,8 @@ class _AccountTile extends ConsumerWidget {
                           nativeBalance.currency,
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
-                                color: foreground.withValues(alpha: 0.86),
-                                fontWeight: FontWeight.w800,
+                                color: foreground,
+                                fontWeight: FontWeight.w900,
                                 letterSpacing: 0.3,
                               ),
                         ),
@@ -2848,7 +2918,9 @@ class _AccountTile extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: foreground.withValues(alpha: 0.94),
+                  color: foreground == Colors.white
+                      ? Colors.white
+                      : foreground,
                   height: 1.1,
                   letterSpacing: -0.3,
                   fontWeight: FontWeight.w900,
@@ -2860,7 +2932,9 @@ class _AccountTile extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: foreground.withValues(alpha: 0.63),
+                    color: foreground == Colors.white
+                        ? Colors.white.withValues(alpha: 0.85)
+                        : foreground.withValues(alpha: 0.75),
                     height: 1.1,
                     fontWeight: FontWeight.w600,
                   ),
@@ -3119,10 +3193,12 @@ class DashboardCard extends StatelessWidget {
       ),
     );
 
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     if (isAmoled) {
       return Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: AppSurfaces.panel(context),
+        decoration: AppSurfaces.panel(context, color: scheme.surface),
         child: inner,
       );
     }

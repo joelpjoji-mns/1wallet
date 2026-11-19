@@ -10,7 +10,19 @@ class AppGlassPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return GlassPage(
+      settings: isDark
+          ? null
+          : const LiquidGlassSettings(
+              bodyMode: GlassBodyMode.clear,
+              glassColor: Color(0x08FFFFFF),
+              thickness: 8,
+              blur: 8,
+              visibility: 1.0,
+              lightIntensity: 0.04,
+              fresnelStrength: 0.04,
+            ),
       background: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(

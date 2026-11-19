@@ -120,60 +120,49 @@ class RouteScaffold extends StatelessWidget {
         (Navigator.of(context).canPop() ||
             (GoRouter.maybeOf(context)?.canPop() ?? false));
 
+    PreferredSizeWidget buildAppBar({bool isDesktop = false}) {
+      final titleWidget = FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+      );
+      final leadingWidget =
+          leading ??
+          (canPop
+              ? const AppBackAction()
+              : effectiveDrawer != null
+              ? (isDesktop
+                  ? const SizedBox.shrink()
+                  : Builder(
+                      builder: (scaffoldContext) => AppMenuAction(
+                        onPressed: Scaffold.of(scaffoldContext).openDrawer,
+                      ),
+                    ))
+              : null);
+
+      return GlassAppBar(
+        title: titleWidget,
+        leading: leadingWidget,
+        actions: actions,
+        centerTitle: false,
+      );
+    }
+
     Widget mobileView = Scaffold(
       drawer: effectiveDrawer,
       drawerEnableOpenDragGesture: effectiveDrawer != null,
-      appBar: GlassAppBar(
-        title: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ),
-        leading:
-            leading ??
-            (canPop
-                ? const AppBackAction()
-                : effectiveDrawer != null
-                ? Builder(
-                    builder: (scaffoldContext) => AppMenuAction(
-                      onPressed: Scaffold.of(scaffoldContext).openDrawer,
-                    ),
-                  )
-                : null),
-        actions: actions,
-        centerTitle: false,
-      ),
+      appBar: buildAppBar(isDesktop: false),
       floatingActionButton: floatingActionButton,
       body: body,
     );
 
     Widget desktopView = Scaffold(
-      appBar: GlassAppBar(
-        title: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-        ),
-        actions: actions,
-        leading:
-            leading ??
-            (canPop
-                ? const AppBackAction()
-                : effectiveDrawer != null
-                ? const SizedBox.shrink()
-                : null),
-        centerTitle: false,
-      ),
+      appBar: buildAppBar(isDesktop: true),
       floatingActionButton: floatingActionButton,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,

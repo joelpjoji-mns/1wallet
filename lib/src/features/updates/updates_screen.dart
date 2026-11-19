@@ -382,10 +382,19 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     }
 
     if (state.status == UpdateStatus.downloaded) {
+      final label = state.latestRelease?.apk != null
+          ? 'Install Update'
+          : 'Update on Google Play';
       return _buildMorpheTextButton(
         context,
-        label: 'Update on Google Play',
-        onTap: () => provider.openStoreListing(),
+        label: label,
+        onTap: () {
+          if (state.latestRelease?.apk != null) {
+            provider.installUpdate();
+          } else {
+            provider.openStoreListing();
+          }
+        },
         prominent: true,
       );
     }
@@ -393,10 +402,22 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     if (state.latestRelease != null &&
         (state.status == UpdateStatus.idle ||
             state.status == UpdateStatus.checking)) {
+      final sizeStr = state.latestRelease!.apk?.sizeBytes != null
+          ? ' (${(state.latestRelease!.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB)'
+          : '';
+      final label = state.latestRelease!.apk != null
+          ? 'Install Update$sizeStr'
+          : 'Update on Google Play';
       return _buildMorpheTextButton(
         context,
-        label: 'Update on Google Play',
-        onTap: () => provider.openStoreListing(),
+        label: label,
+        onTap: () {
+          if (state.latestRelease!.apk != null) {
+            provider.downloadUpdate();
+          } else {
+            provider.openStoreListing();
+          }
+        },
         prominent: true,
       );
     }
@@ -1199,6 +1220,8 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final isAmoled = AppSurfaces.isAmoled(context);
     final progress = state.progress.clamp(0.0, 1.0);
     final percent = (progress * 100).toStringAsFixed(0);
     final writtenMb = (state.bytesWritten / 1024 / 1024).toStringAsFixed(1);
@@ -1213,14 +1236,15 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              GlassCard(
-                margin: EdgeInsets.zero,
-                padding: const EdgeInsets.all(AppSpacing.md),
-                shape: const LiquidRoundedSuperellipse(
-                  borderRadius: AppRadii.lg,
-                ),
-                quality: GlassQuality.standard,
-                child: Padding(
+              isDark && !isAmoled
+                  ? GlassCard(
+                      margin: EdgeInsets.zero,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      shape: const LiquidRoundedSuperellipse(
+                        borderRadius: AppRadii.lg,
+                      ),
+                      quality: GlassQuality.standard,
+                      child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.lg,
                     vertical: AppSpacing.xxl,
@@ -1312,7 +1336,105 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
                     ],
                   ),
                 ),
-              ),
+
+                    )
+                  : Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: AppSurfaces.panel(context, color: scheme.surface),
+                      child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.xxl,
+                  ),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        width: 220,
+                        height: 220,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 220,
+                              height: 220,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: scheme.primary.withValues(
+                                      alpha: 0.16,
+                                    ),
+                                    blurRadius: 36,
+                                    spreadRadius: 6,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: 195,
+                              height: 195,
+                              child: CircularProgressIndicator(
+                                value: 1.0,
+                                strokeWidth: 10,
+                                color: scheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 195,
+                              height: 195,
+                              child: CircularProgressIndicator(
+                                value: progress > 0 ? progress : null,
+                                strokeWidth: 10,
+                                strokeCap: StrokeCap.round,
+                              ),
+                            ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '$percent%',
+                                  style: theme.textTheme.displayMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -1.5,
+                                        color: scheme.onSurface,
+                                      ),
+                                ),
+                                const SizedBox(height: AppSpacing.xxs),
+                                Text(
+                                  state.bytesExpected > 0
+                                      ? '$writtenMb / $totalMb MB'
+                                      : '$writtenMb MB downloaded',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      Text(
+                        'Downloading Update Package',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        'v${state.latestRelease?.versionName ?? ''} · Please keep the app open',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                    ),
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
                 onPressed: () => provider.cancelDownload(),

@@ -240,39 +240,49 @@ class BottomIslandNavBar extends StatelessWidget {
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
                                       borderRadius: pillRadius,
-                                      gradient:
-                                          (fillAlphaTop > 0 ||
-                                              fillAlphaBottom > 0)
-                                          ? LinearGradient(
+                                      border: Border.all(
+                                        color: isDark
+                                            ? (hasIslandBorder
+                                                ? borderColor
+                                                : Colors.transparent)
+                                            : const Color(0x330F172A),
+                                        width: isDark ? borderWidth : 1.0,
+                                      ),
+                                      gradient: isDark
+                                          ? (fillAlphaTop > 0 ||
+                                                  fillAlphaBottom > 0)
+                                              ? LinearGradient(
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                  colors: [
+                                                    const Color(
+                                                      0xFF1E2026,
+                                                    ).withAlphaFactor(
+                                                      fillAlphaTop,
+                                                    ),
+                                                    const Color(
+                                                      0xFF121418,
+                                                    ).withAlphaFactor(
+                                                      fillAlphaBottom,
+                                                    ),
+                                                  ],
+                                                )
+                                              : null
+                                          : LinearGradient(
                                               begin: Alignment.topCenter,
                                               end: Alignment.bottomCenter,
                                               colors: [
-                                                (isDark
-                                                        ? const Color(
-                                                            0xFF1E2026,
-                                                          )
-                                                        : Colors.white)
-                                                    .withAlphaFactor(
-                                                      fillAlphaTop,
-                                                    ),
-                                                (isDark
-                                                        ? const Color(
-                                                            0xFF121418,
-                                                          )
-                                                        : Colors.white)
-                                                    .withAlphaFactor(
-                                                      fillAlphaBottom,
-                                                    ),
+                                                Colors.white.withValues(alpha: 0.85),
+                                                Colors.white.withValues(alpha: 0.65),
                                               ],
-                                            )
-                                          : null,
+                                            ),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.black.withAlphaFactor(
-                                            shadowAlpha,
+                                            isDark ? shadowAlpha : 0.08,
                                           ),
-                                          blurRadius: 18,
-                                          offset: const Offset(0, 6),
+                                          blurRadius: isDark ? 18 : 16,
+                                          offset: Offset(0, isDark ? 6 : 4),
                                         ),
                                       ],
                                     ),

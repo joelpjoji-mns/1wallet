@@ -66,6 +66,7 @@ class TransactionCommandStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -92,12 +93,10 @@ class TransactionCommandStrip extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        GlassCard(
-          margin: EdgeInsets.zero,
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-          quality: GlassQuality.standard,
-          child: Material(
+        () {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final isAmoled = AppSurfaces.isAmoled(context);
+          final innerContent = Material(
             color: Colors.transparent,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -229,8 +228,22 @@ class TransactionCommandStrip extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
+          );
+          if (isDark && !isAmoled) {
+            return GlassCard(
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+              quality: GlassQuality.standard,
+              child: innerContent,
+            );
+          }
+          return Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: AppSurfaces.panel(context, color: scheme.surface),
+            child: innerContent,
+          );
+        }(),
       ],
     );
   }

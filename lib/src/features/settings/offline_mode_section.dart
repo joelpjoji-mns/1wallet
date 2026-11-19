@@ -162,24 +162,41 @@ class _OfflineUpgradeSheetState extends ConsumerState<OfflineUpgradeSheet> {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
-          child: AppPanel(
-            glass: true,
-            radius: AppRadii.lg,
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Back up & sync with Google',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
+          child: Material(
+            color: theme.brightness == Brightness.dark
+                ? theme.colorScheme.surfaceContainerHigh
+                : theme.colorScheme.surface,
+            elevation: 12,
+            shadowColor: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.5 : 0.15,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadii.xl),
+              side: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(
+                  alpha: theme.brightness == Brightness.dark ? 0.35 : 0.8,
+                ),
+                width: 1.0,
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Back up & sync with Google',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  ..._body(context, state),
-                ],
+                    const SizedBox(height: AppSpacing.md),
+                    ..._body(context, state),
+                  ],
+                ),
               ),
             ),
           ),

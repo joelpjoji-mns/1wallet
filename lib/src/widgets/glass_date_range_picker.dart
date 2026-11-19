@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../design/tokens.dart';
+import 'app_kit.dart';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -274,13 +275,30 @@ class _GlassDateRangePickerDialogState
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 340),
-        child: GlassCard(
-          margin: EdgeInsets.zero,
-          padding: EdgeInsets.zero,
-          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.xl),
-          quality: GlassQuality.standard,
-          child: content,
-        ),
+        child: Theme.of(context).brightness == Brightness.dark &&
+                !AppSurfaces.isAmoled(context)
+            ? GlassCard(
+                margin: EdgeInsets.zero,
+                padding: EdgeInsets.zero,
+                shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.xl),
+                quality: GlassQuality.standard,
+                child: content,
+              )
+            : DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppRadii.xl),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: content,
+              ),
       ),
     );
   }

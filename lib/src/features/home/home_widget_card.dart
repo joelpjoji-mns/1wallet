@@ -128,22 +128,45 @@ class HomeWidgetCard extends StatelessWidget {
 
     final borderWidth = AppSurfaces.panelBorderWidth(context);
     final borderColor = AppSurfaces.panelBorderColor(context);
+    final isAmoled = AppSurfaces.isAmoled(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (!isAmoled) {
+      return RepaintBoundary(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: borderWidth > 0
+                ? Border.all(color: borderColor, width: borderWidth)
+                : null,
+          ),
+          child: GlassCard(
+            margin: EdgeInsets.zero,
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+            settings: isDark
+                ? null
+                : const LiquidGlassSettings(
+                    bodyMode: GlassBodyMode.clear,
+                    glassColor: AppColors.clearGlassWhite,
+                    thickness: 6,
+                    blur: 8,
+                    visibility: 1.0,
+                    lightIntensity: 0.04,
+                    fresnelStrength: 0.04,
+                  ),
+            quality: GlassQuality.standard,
+            child: cardContent,
+          ),
+        ),
+      );
+    }
 
     return RepaintBoundary(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: borderWidth > 0
-              ? Border.all(color: borderColor, width: borderWidth)
-              : null,
-        ),
-        child: GlassCard(
-          margin: EdgeInsets.zero,
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-          quality: GlassQuality.standard,
-          child: cardContent,
-        ),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: AppSurfaces.panel(context, color: scheme.surface),
+        child: cardContent,
       ),
     );
   }

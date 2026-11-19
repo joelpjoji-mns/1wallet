@@ -132,14 +132,13 @@ class HomeScreen extends ConsumerWidget {
       maxWidth: 1400,
       child: Column(
         children: [
+          const SizedBox(height: AppSpacing.xxs),
           Expanded(
-            child: AppTopFadeMask(
-              child: _HomeDashboardList(
-                widgetOrder: widgetOrder,
-                onTabSelected: onTabSelected,
-                reorderMode: reorderMode,
-                onMenuPressed: onMenuPressed,
-              ),
+            child: _HomeDashboardList(
+              widgetOrder: widgetOrder,
+              onTabSelected: onTabSelected,
+              reorderMode: reorderMode,
+              onMenuPressed: onMenuPressed,
             ),
           ),
         ],
@@ -192,7 +191,7 @@ class _HomeDashboardList extends ConsumerWidget {
         padding: padding,
         itemCount: widgetOrder.length,
         separatorBuilder: (context, index) =>
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xxs),
         itemBuilder: (context, index) =>
             _buildScopedHomeWidget(context, ref, state, index),
       );

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../design/tokens.dart';
 import '../../offline_mode/offline_mode_controller.dart';
 import '../../widgets/app_kit.dart';
-import '../launch/brand_widgets.dart';
 
 /// Explains offline mode and requires an explicit acknowledgement before the
 /// device switches to a wallet that lives only on this device.
@@ -63,92 +62,109 @@ class _OfflineModeSheetState extends ConsumerState<OfflineModeSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: BrandFrostedPanel(
-          borderRadius: AppRadii.xl,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.phonelink_lock_outlined, color: scheme.primary),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'Use 1Wallet offline',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
+        child: Material(
+          color: isDark ? scheme.surfaceContainerHigh : scheme.surface,
+          elevation: 12,
+          shadowColor: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            side: BorderSide(
+              color: scheme.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.8),
+              width: 1.0,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.phonelink_lock_outlined, color: scheme.primary),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Use 1Wallet offline',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const _Point(
-                  icon: Icons.smartphone_outlined,
-                  text:
-                      'Your wallet is kept only in this app\'s private storage on '
-                      'this device. No Google account is needed.',
-                ),
-                const _Point(
-                  icon: Icons.cloud_off_outlined,
-                  text:
-                      'Nothing is uploaded and there is no cloud backup or '
-                      'sync with your other devices.',
-                ),
-                const _Point(
-                  icon: Icons.save_alt_outlined,
-                  text:
-                      'You own your backups: export an encrypted backup file '
-                      'from Settings › Data backup and keep it somewhere safe.',
-                ),
-                const _Point(
-                  icon: Icons.cloud_upload_outlined,
-                  text:
-                      'You can turn on Google backup & sync later from '
-                      'Settings without losing your data.',
-                ),
-                _Point(
-                  icon: Icons.warning_amber_rounded,
-                  color: scheme.error,
-                  text:
-                      'If you uninstall the app, clear its data or lose this '
-                      'device without a backup, your wallet cannot be recovered.',
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                AppPanel(
-                  glass: true,
-                  radius: AppRadii.md,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xxs,
+                    ],
                   ),
-                  child: CheckboxListTile(
-                    key: OfflineModeSheet.acknowledgeKey,
-                    value: _acknowledged,
-                    onChanged: _busy
-                        ? null
-                        : (value) =>
-                              setState(() => _acknowledged = value ?? false),
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: const Text(
-                      'I understand my data stays only on this device',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+                  const SizedBox(height: AppSpacing.md),
+                  const _Point(
+                    icon: Icons.smartphone_outlined,
+                    text:
+                        'Your wallet is kept only in this app\'s private storage on '
+                        'this device. No Google account is needed.',
                   ),
-                ),
-                if (_error != null) ...[
+                  const _Point(
+                    icon: Icons.cloud_off_outlined,
+                    text:
+                        'Nothing is uploaded and there is no cloud backup or '
+                        'sync with your other devices.',
+                  ),
+                  const _Point(
+                    icon: Icons.save_alt_outlined,
+                    text:
+                        'You own your backups: export an encrypted backup file '
+                        'from Settings › Data backup and keep it somewhere safe.',
+                  ),
+                  const _Point(
+                    icon: Icons.cloud_upload_outlined,
+                    text:
+                        'You can turn on Google backup & sync later from '
+                        'Settings without losing your data.',
+                  ),
+                  _Point(
+                    icon: Icons.warning_amber_rounded,
+                    color: scheme.error,
+                    text:
+                        'If you uninstall the app, clear its data or lose this '
+                        'device without a backup, your wallet cannot be recovered.',
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   AppPanel(
-                    glass: true,
+                    glass: false,
                     radius: AppRadii.md,
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: Row(
+                    color: isDark
+                        ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
+                        : scheme.surfaceContainerLowest,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xxs,
+                    ),
+                    child: CheckboxListTile(
+                      key: OfflineModeSheet.acknowledgeKey,
+                      value: _acknowledged,
+                      onChanged: _busy
+                          ? null
+                          : (value) =>
+                                setState(() => _acknowledged = value ?? false),
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: const Text(
+                        'I understand my data stays only on this device',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    AppPanel(
+                      glass: false,
+                      radius: AppRadii.md,
+                      color: scheme.errorContainer.withValues(alpha: 0.2),
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      child: Row(
                       children: [
                         Icon(
                           Icons.error_outline_rounded,
@@ -185,7 +201,8 @@ class _OfflineModeSheetState extends ConsumerState<OfflineModeSheet> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

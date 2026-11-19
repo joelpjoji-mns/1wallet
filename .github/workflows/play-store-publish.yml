@@ -90,6 +90,13 @@ jobs:
       - name: Build Release App Bundle
         run: flutter build appbundle --release --android-skip-build-dependency-validation
 
+      - name: Archive Production Release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
         with:

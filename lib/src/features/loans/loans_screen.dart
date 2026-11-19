@@ -852,27 +852,19 @@ class LoanDetailView extends ConsumerWidget {
     final details = effectiveLoanDetails(state, loan);
     final projection = loanProjection(state, loan);
     final repaymentHistory = _loanHistoryRepayments(state, loan.id);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        GlassCard(
-          key: const ValueKey('loanDetailHeaderCard'),
-          margin: EdgeInsets.zero,
-          padding: EdgeInsets.zero,
-          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-          quality: GlassQuality.standard,
-          child: Material(
-            color: Colors.transparent,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      IconBubble(
-                        icon: Icons.account_balance_rounded,
-                        color: Theme.of(context).colorScheme.primary,
+    final isAmoled = AppSurfaces.isAmoled(context);
+    final cardBody = Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                IconBubble(
+                  icon: Icons.account_balance_rounded,
+                  color: Theme.of(context).colorScheme.primary,
                         compact: true,
                       ),
                       const SizedBox(width: AppSpacing.md),
@@ -982,8 +974,30 @@ class LoanDetailView extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
-        ),
+          );
+
+    final headerCard = !isAmoled
+        ? GlassCard(
+            key: const ValueKey('loanDetailHeaderCard'),
+            margin: EdgeInsets.zero,
+            padding: EdgeInsets.zero,
+            shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+            quality: GlassQuality.standard,
+            child: cardBody,
+          )
+        : DecoratedBox(
+            key: const ValueKey('loanDetailHeaderCard'),
+            decoration: AppSurfaces.panel(
+              context,
+              color: Theme.of(context).colorScheme.surface,
+            ),
+            child: cardBody,
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        headerCard,
         const Gap(AppSpacing.lg),
 
         // Metadata Grid

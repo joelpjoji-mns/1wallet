@@ -56,8 +56,9 @@ abstract final class AppColors {
   static const Color dangerLight = Color(0xFFBA1A1A);
   static const Color dangerDark = Color(0xFFFFB4AB);
   static const Color warning = Color(0xFF946200);
-  static const Color lightBackground = Color(0xFFFFFBFF);
+  static const Color lightBackground = Color(0xFFF8FAFC);
   static const Color darkBackground = Color(0xFF101318);
+  static const Color clearGlassWhite = Color(0x06FFFFFF);
   static const Color amoledBackground = Color(0xFF000000);
 
   /// AMOLED surface-container ramp (low → highest) layered on pure black.

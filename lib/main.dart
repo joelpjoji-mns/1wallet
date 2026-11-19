@@ -28,7 +28,11 @@ Future<void> main() async {
   FirebaseEnv.assertProductionReady();
   final firebaseOptions = FirebaseEnv.firebaseOptions;
   if (firebaseOptions != null) {
-    await Firebase.initializeApp(options: firebaseOptions);
+    try {
+      await Firebase.initializeApp(options: firebaseOptions);
+    } catch (_) {
+      // Default Firebase app already initialized natively or in previous session.
+    }
     if (FirebaseEnv.useFirebaseEmulator) {
       await FirebaseAuth.instance.useAuthEmulator(
         FirebaseEnv.firebaseEmulatorHost,

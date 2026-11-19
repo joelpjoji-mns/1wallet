@@ -280,6 +280,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           scrollView: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: AppSpacing.xs),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: AddRecordTypeTabs(
@@ -761,12 +762,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                                                       .textTheme
                                                       .bodyMedium
                                                       ?.copyWith(
-                                                        color: theme
-                                                            .colorScheme
-                                                            .onSurfaceVariant
-                                                            .withValues(
-                                                              alpha: 0.7,
-                                                            ),
+                                                        color: theme.colorScheme.onSurfaceVariant,
                                                       ),
                                                 ),
                                                 style:
@@ -1105,7 +1101,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.md),
+                        const SizedBox(height: AppSpacing.xs),
                       ],
                     ),
                   ],
@@ -1856,12 +1852,78 @@ class _FxAmountCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = selected ? scheme.primary : scheme.onSurfaceVariant;
-    return GlassCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-      quality: GlassQuality.standard,
-      clipBehavior: Clip.antiAlias,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAmoled = AppSurfaces.isAmoled(context);
+
+    if (isDark && !isAmoled) {
+      return GlassCard(
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+        quality: GlassQuality.standard,
+        clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            decoration: BoxDecoration(
+              color: selected
+                  ? scheme.primaryContainer.withValues(alpha: 0.43)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: selected ? scheme.primary : scheme.outlineVariant,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 14, color: color),
+                    const SizedBox(width: AppSpacing.xxs),
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  '$amount $currency',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      );
+    }
+
+    return DecoratedBox(
+      decoration: AppSurfaces.panel(
+        context,
+        color: selected
+            ? scheme.primaryContainer.withValues(alpha: 0.35)
+            : scheme.surface,
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

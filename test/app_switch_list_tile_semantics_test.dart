@@ -87,6 +87,7 @@ void main() {
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData.dark(),
           home: Scaffold(
             body: SectionCard(
               title: 'Notifications',

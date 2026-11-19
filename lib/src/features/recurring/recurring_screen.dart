@@ -176,13 +176,10 @@ class RecurringScreen extends ConsumerWidget {
           if (recordId == null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: GlassCard(
-                margin: EdgeInsets.zero,
+              child: AppPanel(
+                glass: true,
                 padding: EdgeInsets.zero,
-                shape: const LiquidRoundedSuperellipse(
-                  borderRadius: AppRadii.md,
-                ),
-                quality: GlassQuality.standard,
+                radius: AppRadii.md,
                 child: Material(
                   color: Colors.transparent,
                   child: Padding(
@@ -1479,11 +1476,10 @@ class RecurringDetailView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GlassCard(
-          margin: EdgeInsets.zero,
+        AppPanel(
+          glass: true,
           padding: EdgeInsets.zero,
-          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
-          quality: GlassQuality.standard,
+          radius: AppRadii.md,
           child: Material(
             color: Colors.transparent,
             child: Padding(

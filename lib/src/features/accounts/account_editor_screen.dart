@@ -1366,7 +1366,21 @@ Future<int?> showDayOfMonthPicker({
     );
 
     // Modal surface: keeps the dialog radius (xl) of the theme's dialogs.
-    return AppPanel(glass: true, radius: AppRadii.xl, child: inner);
+    final isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: isDark ? scheme.surfaceContainerHigh : scheme.surface,
+      elevation: 8,
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: isDark ? 0.35 : 0.8),
+          width: 1.0,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: inner,
+    );
   }
 
   if (isDesktop) {

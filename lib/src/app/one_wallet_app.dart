@@ -286,15 +286,17 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       theme: GlassThemeData(
         light: GlassThemeVariant(
           settings: GlassThemeSettings(
-            thickness: 20,
-            blur: blur,
-            glassColor: Color.fromRGBO(255, 255, 255, fill),
-            visibility: glass.visibility.clamp(0.15, 1.0),
-            saturation: glass.saturation.clamp(0.0, 2.0),
-            refractiveIndex: 1.0 + glass.refraction.clamp(0.0, 1.0) * 0.25,
-            fresnelStrength: 0.4,
-            ambientStrength: 0.10,
-            chromaticAberration: 0.01,
+            thickness: 8,
+            blur: (blur > 0 ? blur : 10.0).clamp(4.0, 14.0),
+            glassColor: const Color(0x08FFFFFF),
+            visibility: 1.0,
+            saturation: 1.0,
+            refractiveIndex: 1.01,
+            lightIntensity: 0.04,
+            ambientStrength: 0.02,
+            fresnelStrength: 0.05,
+            edgeAbsorption: 0.02,
+            chromaticAberration: 0.0,
           ),
           quality: GlassQuality.standard,
         ),
@@ -303,7 +305,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             thickness: 20,
             blur: blur,
             glassColor: effectiveDarkGlassColor,
-            visibility: glass.visibility.clamp(0.15, 1.0),
+            visibility: 1.0,
             saturation: glass.saturation.clamp(0.0, 2.0),
             refractiveIndex: 1.0 + glass.refraction.clamp(0.0, 1.0) * 0.25,
             lightIntensity: 0.08,
@@ -367,10 +369,6 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
                 .toString()
                 .contains('Test');
             final appLock = AppLockGate(child: child);
-            if (isTest) {
-              return appLock;
-            }
-            final glassFinish = ref.watch(glassFinishProvider);
             final isDark =
                 themeState.themeMode == ThemeMode.dark ||
                 (themeState.themeMode == ThemeMode.system &&
@@ -380,6 +378,10 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
                                 .platformDispatcher
                                 .platformBrightness) ==
                         Brightness.dark);
+            if (isTest) {
+              return appLock;
+            }
+            final glassFinish = ref.watch(glassFinishProvider);
             return g1455.GlassHost(
               key: ValueKey(
                 'glass_host_${themeState.themeMode}_${themeState.preference}_${themeState.customAccentColor?.toARGB32()}_${themeState.colorIntensity}_${themeState.useSystemColor}_${themeState.surfaceContrast}_${themeState.outlineThickness}_${themeState.outlineOpacity}_${themeState.islandOutlineThickness}_${themeState.islandOutlineOpacity}_${themeState.fabOutlineThickness}_${themeState.fabOutlineOpacity}_${isDark}_${glassFinish.name}',
@@ -387,9 +389,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               content: g1455.GlassContentDeclaration.undeclared,
               finish: glassFinish,
               appearance: isDark ? Brightness.dark : Brightness.light,
-              backdrop: isDark
-                  ? const Color(0xFF000000)
-                  : const Color(0xFFF9F9F9),
+              backdrop: isDark ? const Color(0xFF000000) : const Color(0xFFF8FAFC),
               richBackdrop: false,
               child: appLock,
             );

@@ -97,7 +97,7 @@ class TransactionRow extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           color: inactive
                               ? Theme.of(context).colorScheme.outline
-                              : null,
+                              : Theme.of(context).colorScheme.onSurface,
                           decoration: transaction.status == 'void'
                               ? TextDecoration.lineThrough
                               : null,
@@ -180,20 +180,29 @@ class TransactionRow extends StatelessWidget {
     );
 
     final isAmoled = AppSurfaces.isAmoled(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (!showSurface) {
       return RepaintBoundary(child: content);
     }
 
-    if (glass) {
-      if (isAmoled) {
-        return RepaintBoundary(child: content);
-      }
+    if (glass && !isAmoled) {
       return RepaintBoundary(
         child: GlassCard(
           margin: EdgeInsets.zero,
           padding: EdgeInsets.zero,
           shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
+          settings: isDark
+              ? null
+              : const LiquidGlassSettings(
+                  bodyMode: GlassBodyMode.clear,
+                  glassColor: AppColors.clearGlassWhite,
+                  thickness: 6,
+                  blur: 8,
+                  visibility: 1.0,
+                  lightIntensity: 0.04,
+                  fresnelStrength: 0.04,
+                ),
           quality: GlassQuality.standard,
           clipBehavior: Clip.antiAlias,
           child: content,

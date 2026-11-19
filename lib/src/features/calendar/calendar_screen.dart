@@ -633,91 +633,106 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final isDesktop = AppResponsiveLayout.isDesktop(context);
 
     Widget buildCardContent(BuildContext modalContext) {
-      return AppPanel(
-        glass: true,
-        radius: AppRadii.lg,
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        DateFormat.yMMMMd(
-                          state.preferences.locale.replaceAll('_', '-'),
-                        ).format(date),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      PrivacyText(
-                        balanceDisplay,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: balanceMinor < 0
-                              ? scheme.error
-                              : scheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                IconButton.filledTonal(
-                  tooltip: 'Close',
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => Navigator.of(modalContext).pop(),
-                ),
-              ],
+      final isDark = theme.brightness == Brightness.dark;
+      return Material(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        clipBehavior: Clip.antiAlias,
+        elevation: 8,
+        shadowColor: Colors.black.withValues(alpha: isDark ? 0.6 : 0.15),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.xl),
+            border: Border.all(
+              color: scheme.outlineVariant,
+              width: 1.0,
             ),
-            const SizedBox(height: AppSpacing.md),
-            if (records.isEmpty)
-              const EmptyState(
-                icon: Icons.event_busy_outlined,
-                title: 'No records on this day',
-                body: 'Nothing was posted or scheduled for this date.',
-              )
-            else
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 280),
-                child: AppTopFadeMask(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: records.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, index) {
-                      final transaction = records[index];
-                      return TransactionRow(
-                        state: state,
-                        transaction: transaction,
-                        glass: false,
-                        onTap: () {
-                          if (transaction.status == 'forecast') {
-                            final templateId =
-                                transaction.originalTransactionId;
-                            if (templateId != null) {
-                              context.push('/recurring/$templateId/edit');
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          DateFormat.yMMMMd(
+                            state.preferences.locale.replaceAll('_', '-'),
+                          ).format(date),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: scheme.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        PrivacyText(
+                          balanceDisplay,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: balanceMinor < 0
+                                ? scheme.error
+                                : (isDark ? scheme.primary : AppColors.positiveLight),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  IconButton.filledTonal(
+                    tooltip: 'Close',
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => Navigator.of(modalContext).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (records.isEmpty)
+                const EmptyState(
+                  icon: Icons.event_busy_outlined,
+                  title: 'No records on this day',
+                  body: 'Nothing was posted or scheduled for this date.',
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  child: AppTopFadeMask(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: records.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (context, index) {
+                        final transaction = records[index];
+                        return TransactionRow(
+                          state: state,
+                          transaction: transaction,
+                          glass: false,
+                          onTap: () {
+                            if (transaction.status == 'forecast') {
+                              final templateId =
+                                  transaction.originalTransactionId;
+                              if (templateId != null) {
+                                context.push('/recurring/$templateId/edit');
+                              }
+                            } else {
+                              context.push('/transaction/${transaction.id}');
                             }
-                          } else {
-                            context.push('/transaction/${transaction.id}');
-                          }
-                        },
-                      );
-                    },
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -823,8 +838,10 @@ class _CalendarFilterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return AppPanel(
-      glass: true,
+      glass: false,
+      color: isDark ? scheme.surfaceContainer : Colors.white,
       padding: EdgeInsets.zero,
       onTap: onTap,
       child: Container(
@@ -833,16 +850,20 @@ class _CalendarFilterCard extends StatelessWidget {
           horizontal: AppSpacing.sm,
           vertical: AppSpacing.xs,
         ),
-        decoration: active
-            ? BoxDecoration(
-                color: scheme.primaryContainer.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(
-                  color: scheme.primary.withValues(alpha: 0.70),
-                  width: 0.8,
-                ),
-              )
-            : null,
+        decoration: BoxDecoration(
+          color: active
+              ? scheme.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.40)
+              : (isDark ? scheme.surfaceContainer : scheme.surface),
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(
+            color: active
+                ? scheme.primary
+                : (isDark
+                    ? scheme.outlineVariant.withValues(alpha: 0.5)
+                    : scheme.outlineVariant),
+            width: active ? 1.5 : 1.0,
+          ),
+        ),
         child: Row(
           children: [
             IconBubble(
@@ -937,6 +958,7 @@ class _DayCell extends StatelessWidget {
         date.day == today.day;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadii.md),
       onTap: onTap,
@@ -944,16 +966,30 @@ class _DayCell extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.xxs),
         decoration: BoxDecoration(
           color: isToday
-              ? scheme.primaryContainer.withValues(alpha: 0.55)
+              ? (isDark
+                  ? scheme.primaryContainer.withValues(alpha: 0.55)
+                  : scheme.primaryContainer.withValues(alpha: 0.70))
               : (inMonth
-                    ? scheme.surfaceContainer.withValues(alpha: 0.70)
-                    : scheme.surfaceContainer.withValues(alpha: 0.25)),
+                    ? (isDark
+                          ? scheme.surfaceContainer.withValues(alpha: 0.70)
+                          : scheme.surface)
+                    : (isDark
+                          ? scheme.surfaceContainer.withValues(alpha: 0.25)
+                          : scheme.surfaceContainerLow)),
           borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
             color: isToday
-                ? scheme.primary.withValues(alpha: 0.75)
-                : scheme.outlineVariant.withValues(alpha: inMonth ? 0.6 : 0.25),
-            width: 0.8,
+                ? (isDark
+                      ? scheme.primary.withValues(alpha: 0.75)
+                      : AppColors.positiveLight)
+                : (inMonth
+                      ? (isDark
+                            ? scheme.outlineVariant.withValues(alpha: 0.6)
+                            : scheme.outlineVariant)
+                      : (isDark
+                            ? scheme.outlineVariant.withValues(alpha: 0.25)
+                            : scheme.surfaceContainerLow)),
+            width: isToday ? 1.5 : 0.8,
           ),
         ),
         child: Column(
@@ -968,9 +1004,13 @@ class _DayCell extends StatelessWidget {
                     maxLines: 1,
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w900,
-                      color: scheme.onSurface.withAlphaFactor(
-                        inMonth ? 1.0 : 0.42,
-                      ),
+                      color: isDark
+                          ? scheme.onSurface.withAlphaFactor(
+                              inMonth ? 1.0 : 0.42,
+                            )
+                          : (inMonth
+                                ? scheme.onSurface
+                                : scheme.outline),
                     ),
                   ),
                 ),

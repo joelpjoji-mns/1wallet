@@ -275,20 +275,32 @@ abstract final class AppTheme {
       primaryContainer: dark
           ? Color.lerp(effectiveSurfaceHigh, baseScheme.primaryContainer, 0.65)
           : Color.lerp(
-              effectiveSurfaceHighest,
+              const Color(0xFFE2E8F0),
               baseScheme.primaryContainer,
               0.65,
             ),
       error: dark ? AppColors.dangerDark : AppColors.dangerLight,
-      surface: amoled ? AppColors.amoledBackground : baseScheme.surface,
+      surface: amoled
+          ? AppColors.amoledBackground
+          : dark
+          ? baseScheme.surface
+          : const Color(0xFFFFFFFF),
       surfaceContainerLowest: amoled
           ? AppColors.amoledBackground
-          : baseScheme.surfaceContainerLowest,
-      surfaceContainerLow: effectiveSurfaceLow,
-      surfaceContainer: effectiveSurface,
-      surfaceContainerHigh: effectiveSurfaceHigh,
-      surfaceContainerHighest: effectiveSurfaceHighest,
-      outlineVariant: baseScheme.outlineVariant,
+          : dark
+          ? baseScheme.surfaceContainerLowest
+          : const Color(0xFFFFFFFF),
+      surfaceContainerLow: dark ? effectiveSurfaceLow : const Color(0xFFF8FAFC),
+      surfaceContainer: dark ? effectiveSurface : const Color(0xFFF1F5F9),
+      surfaceContainerHigh:
+          dark ? effectiveSurfaceHigh : const Color(0xFFE2E8F0),
+      surfaceContainerHighest:
+          dark ? effectiveSurfaceHighest : const Color(0xFFCBD5E1),
+      onSurface: dark ? baseScheme.onSurface : const Color(0xFF0F172A),
+      onSurfaceVariant:
+          dark ? baseScheme.onSurfaceVariant : const Color(0xFF475569),
+      outline: dark ? baseScheme.outline : const Color(0xFF94A3B8),
+      outlineVariant: dark ? baseScheme.outlineVariant : const Color(0xFFE2E8F0),
     );
 
     // `ThemeData.fontFamily` only applies to the *default* text theme; an
@@ -554,6 +566,10 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerLow,
+        hintStyle: TextStyle(
+          color: dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          fontWeight: FontWeight.w400,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
           borderSide: customBorderSide,
