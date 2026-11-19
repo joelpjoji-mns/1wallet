@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
@@ -140,7 +140,16 @@ Future<void> showAttachmentPreviewDialog(
                     IconButton(
                       icon: const Icon(Icons.open_in_new_rounded),
                       tooltip: 'Open with external viewer',
-                      onPressed: () => OpenFilex.open(attachment.uri),
+                      onPressed: () async {
+                        try {
+                          final uri = Uri.tryParse(attachment.uri) ??
+                              Uri.file(attachment.uri);
+                          await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        } catch (_) {}
+                      },
                     ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
