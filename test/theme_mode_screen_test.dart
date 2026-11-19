@@ -152,10 +152,10 @@ void main() {
     expect(controller.state.surfaceContrast, 1.0);
     expect(controller.state.outlineThickness, 0.4);
     expect(controller.state.outlineOpacity, 0.15);
-    expect(controller.state.islandOutlineThickness, 0.3);
-    expect(controller.state.islandOutlineOpacity, 0.10);
-    expect(controller.state.fabOutlineThickness, 0.3);
-    expect(controller.state.fabOutlineOpacity, 0.10);
+    expect(controller.state.islandOutlineThickness, 0.0);
+    expect(controller.state.islandOutlineOpacity, 0.0);
+    expect(controller.state.fabOutlineThickness, 0.0);
+    expect(controller.state.fabOutlineOpacity, 0.0);
   });
 
   test(
@@ -184,10 +184,10 @@ void main() {
       expect(controller.state.surfaceContrast, 1.0);
       expect(controller.state.outlineThickness, 0.4);
       expect(controller.state.outlineOpacity, 0.15);
-      expect(controller.state.islandOutlineThickness, 0.3);
-      expect(controller.state.islandOutlineOpacity, 0.10);
-      expect(controller.state.fabOutlineThickness, 0.3);
-      expect(controller.state.fabOutlineOpacity, 0.10);
+      expect(controller.state.islandOutlineThickness, 0.0);
+      expect(controller.state.islandOutlineOpacity, 0.0);
+      expect(controller.state.fabOutlineThickness, 0.0);
+      expect(controller.state.fabOutlineOpacity, 0.0);
     },
   );
 }

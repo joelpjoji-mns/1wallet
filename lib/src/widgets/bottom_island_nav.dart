@@ -195,13 +195,18 @@ class BottomIslandNavBar extends StatelessWidget {
                                   ).extension<AppThemeCustomization>() ??
                                   const AppThemeCustomization();
                               final borderWidth = custom.islandOutlineThickness;
+                              final hasIslandBorder =
+                                  borderWidth > 0 &&
+                                  custom.islandOutlineOpacity > 0;
                               final borderColor =
                                   (isDark
                                           ? Colors.white
                                           : scheme.outlineVariant)
                                       .withValues(
-                                        alpha: custom.islandOutlineOpacity
-                                            .clamp(0.0, 1.0),
+                                        alpha:
+                                            (custom.islandOutlineOpacity *
+                                                    (isDark ? 0.20 : 1.0))
+                                                .clamp(0.0, 1.0),
                                       );
                               final shadowAlpha = isFrosted
                                   ? (isDark ? 0.30 : 0.14)
@@ -213,10 +218,15 @@ class BottomIslandNavBar extends StatelessWidget {
                                 AppSizes.bottomBarContentHeight / 2,
                               );
 
+                              final effectiveFinish =
+                                  (finish ?? g1455.GlassFinish.clear).copyWith(
+                                    rim: Colors.transparent,
+                                  );
+
                               Widget islandSurface = DecoratedBox(
                                 decoration: BoxDecoration(
                                   borderRadius: pillRadius,
-                                  border: borderWidth > 0
+                                  border: hasIslandBorder
                                       ? Border.all(
                                           color: borderColor,
                                           width: borderWidth,
@@ -225,17 +235,11 @@ class BottomIslandNavBar extends StatelessWidget {
                                 ),
                                 child: g1455.GlassSurface(
                                   borderRadius: pillRadius,
-                                  finish: finish ?? g1455.GlassFinish.clear,
+                                  finish: effectiveFinish,
                                   labelled: false,
                                   child: DecoratedBox(
                                     decoration: BoxDecoration(
                                       borderRadius: pillRadius,
-                                      border: borderWidth > 0
-                                          ? Border.all(
-                                              color: borderColor,
-                                              width: borderWidth,
-                                            )
-                                          : null,
                                       gradient:
                                           (fillAlphaTop > 0 ||
                                               fillAlphaBottom > 0)
@@ -243,12 +247,22 @@ class BottomIslandNavBar extends StatelessWidget {
                                               begin: Alignment.topCenter,
                                               end: Alignment.bottomCenter,
                                               colors: [
-                                                Colors.white.withAlphaFactor(
-                                                  fillAlphaTop,
-                                                ),
-                                                Colors.white.withAlphaFactor(
-                                                  fillAlphaBottom,
-                                                ),
+                                                (isDark
+                                                        ? const Color(
+                                                            0xFF1E2026,
+                                                          )
+                                                        : Colors.white)
+                                                    .withAlphaFactor(
+                                                      fillAlphaTop,
+                                                    ),
+                                                (isDark
+                                                        ? const Color(
+                                                            0xFF121418,
+                                                          )
+                                                        : Colors.white)
+                                                    .withAlphaFactor(
+                                                      fillAlphaBottom,
+                                                    ),
                                               ],
                                             )
                                           : null,

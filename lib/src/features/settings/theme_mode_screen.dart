@@ -1458,9 +1458,13 @@ class _ThemeLivePreview extends StatelessWidget {
     final customBorderColor = (isDark ? Colors.white : scheme.outlineVariant)
         .withAlphaFactor(outlineOpacity.clamp(0.0, 1.0));
     final islandBorderColor = (isDark ? Colors.white : scheme.outlineVariant)
-        .withAlphaFactor(islandOutlineOpacity.clamp(0.0, 1.0));
-    final fabBorderColor = (isDark ? Colors.white : scheme.primary)
-        .withAlphaFactor(fabOutlineOpacity.clamp(0.0, 1.0));
+        .withAlphaFactor(
+          (islandOutlineOpacity * (isDark ? 0.20 : 1.0)).clamp(0.0, 1.0),
+        );
+    final fabBorderColor = (isDark ? scheme.primary : scheme.primary)
+        .withAlphaFactor(
+          (fabOutlineOpacity * (isDark ? 0.40 : 0.80)).clamp(0.0, 1.0),
+        );
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -1586,7 +1590,8 @@ class _ThemeLivePreview extends StatelessWidget {
                       isDark ? 0.35 : 0.65,
                     ),
                     borderRadius: BorderRadius.circular(AppRadii.lg),
-                    border: islandOutlineThickness > 0
+                    border:
+                        (islandOutlineThickness > 0 && islandOutlineOpacity > 0)
                         ? Border.all(
                             color: islandBorderColor,
                             width: islandOutlineThickness,
@@ -1625,7 +1630,7 @@ class _ThemeLivePreview extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: scheme.primary,
-                  border: fabOutlineThickness > 0
+                  border: (fabOutlineThickness > 0 && fabOutlineOpacity > 0)
                       ? Border.all(
                           color: fabBorderColor,
                           width: fabOutlineThickness,

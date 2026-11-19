@@ -56,7 +56,7 @@ g1455.GlassFinish resolveGlassFinish(
             ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.01, 0.90))
             : Color.fromRGBO(0, 0, 0, (fillAlpha * 0.7).clamp(0.01, 0.90)),
         rim: isDark
-            ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.01, 0.95))
+            ? Colors.transparent
             : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.01, 0.95)),
         optics: glassOptics,
       ),
@@ -66,7 +66,7 @@ g1455.GlassFinish resolveGlassFinish(
           ? Color.fromRGBO(255, 255, 255, fillAlpha.clamp(0.0, 0.90))
           : Color.fromRGBO(0, 0, 0, (fillAlpha * 0.7).clamp(0.0, 0.90)),
       rim: isDark
-          ? Color.fromRGBO(255, 255, 255, specularAlpha.clamp(0.01, 0.95))
+          ? Colors.transparent
           : Color.fromRGBO(0, 0, 0, (specularAlpha * 0.5).clamp(0.01, 0.95)),
       optics: glassOptics,
     ),

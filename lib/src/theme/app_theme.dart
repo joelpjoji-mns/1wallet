@@ -83,10 +83,10 @@ abstract final class AppTheme {
     double surfaceContrast = 1.0,
     double outlineThickness = 0.4,
     double outlineOpacity = 0.15,
-    double islandOutlineThickness = 0.3,
-    double islandOutlineOpacity = 0.10,
-    double fabOutlineThickness = 0.3,
-    double fabOutlineOpacity = 0.10,
+    double islandOutlineThickness = 0.0,
+    double islandOutlineOpacity = 0.0,
+    double fabOutlineThickness = 0.0,
+    double fabOutlineOpacity = 0.0,
   }) => _theme(
     Brightness.light,
     systemColorScheme: systemColorScheme,
@@ -110,10 +110,10 @@ abstract final class AppTheme {
     double surfaceContrast = 1.0,
     double outlineThickness = 0.4,
     double outlineOpacity = 0.15,
-    double islandOutlineThickness = 0.3,
-    double islandOutlineOpacity = 0.10,
-    double fabOutlineThickness = 0.3,
-    double fabOutlineOpacity = 0.10,
+    double islandOutlineThickness = 0.0,
+    double islandOutlineOpacity = 0.0,
+    double fabOutlineThickness = 0.0,
+    double fabOutlineOpacity = 0.0,
   }) => _theme(
     Brightness.dark,
     amoled: true,
@@ -140,10 +140,10 @@ abstract final class AppTheme {
     double surfaceContrast = 1.0,
     double outlineThickness = 0.4,
     double outlineOpacity = 0.15,
-    double islandOutlineThickness = 0.3,
-    double islandOutlineOpacity = 0.10,
-    double fabOutlineThickness = 0.3,
-    double fabOutlineOpacity = 0.10,
+    double islandOutlineThickness = 0.0,
+    double islandOutlineOpacity = 0.0,
+    double fabOutlineThickness = 0.0,
+    double fabOutlineOpacity = 0.0,
   }) {
     final dark = brightness == Brightness.dark;
 
@@ -609,10 +609,10 @@ class AppThemeCustomization extends ThemeExtension<AppThemeCustomization> {
     this.surfaceContrast = 1.0,
     this.outlineThickness = 0.4,
     this.outlineOpacity = 0.15,
-    this.islandOutlineThickness = 0.3,
-    this.islandOutlineOpacity = 0.10,
-    this.fabOutlineThickness = 0.3,
-    this.fabOutlineOpacity = 0.10,
+    this.islandOutlineThickness = 0.0,
+    this.islandOutlineOpacity = 0.0,
+    this.fabOutlineThickness = 0.0,
+    this.fabOutlineOpacity = 0.0,
   });
 
   final double surfaceContrast;

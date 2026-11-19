@@ -30,10 +30,10 @@ class AppThemeState {
     this.surfaceContrast = 1.0,
     this.outlineThickness = 0.4,
     this.outlineOpacity = 0.15,
-    this.islandOutlineThickness = 0.3,
-    this.islandOutlineOpacity = 0.10,
-    this.fabOutlineThickness = 0.3,
-    this.fabOutlineOpacity = 0.10,
+    this.islandOutlineThickness = 0.0,
+    this.islandOutlineOpacity = 0.0,
+    this.fabOutlineThickness = 0.0,
+    this.fabOutlineOpacity = 0.0,
     this.isLoaded = false,
   });
 
@@ -348,10 +348,10 @@ class ThemeController extends StateNotifier<AppThemeState> {
       surfaceContrast: 1.0,
       outlineThickness: 0.4,
       outlineOpacity: 0.15,
-      islandOutlineThickness: 0.3,
-      islandOutlineOpacity: 0.10,
-      fabOutlineThickness: 0.3,
-      fabOutlineOpacity: 0.10,
+      islandOutlineThickness: 0.0,
+      islandOutlineOpacity: 0.0,
+      fabOutlineThickness: 0.0,
+      fabOutlineOpacity: 0.0,
       isLoaded: true,
     );
     if (_preferences == null) return;
@@ -363,10 +363,10 @@ class ThemeController extends StateNotifier<AppThemeState> {
       await _preferences.setDouble(_surfaceContrastKey, 1.0);
       await _preferences.setDouble(_outlineThicknessKey, 0.4);
       await _preferences.setDouble(_outlineOpacityKey, 0.15);
-      await _preferences.setDouble(_islandOutlineThicknessKey, 0.3);
-      await _preferences.setDouble(_islandOutlineOpacityKey, 0.10);
-      await _preferences.setDouble(_fabOutlineThicknessKey, 0.3);
-      await _preferences.setDouble(_fabOutlineOpacityKey, 0.10);
+      await _preferences.setDouble(_islandOutlineThicknessKey, 0.0);
+      await _preferences.setDouble(_islandOutlineOpacityKey, 0.0);
+      await _preferences.setDouble(_fabOutlineThicknessKey, 0.0);
+      await _preferences.setDouble(_fabOutlineOpacityKey, 0.0);
     } catch (error) {
       state = previousState;
       debugPrint('ThemeController.resetToDefaults failed to persist: $error');
@@ -399,22 +399,22 @@ class ThemeController extends StateNotifier<AppThemeState> {
       final outlineOpacity =
           (_preferences.getDouble(_outlineOpacityKey) ?? 0.15).clamp(0.0, 1.0);
       final islandOutlineThickness =
-          (_preferences.getDouble(_islandOutlineThicknessKey) ?? 0.3).clamp(
+          (_preferences.getDouble(_islandOutlineThicknessKey) ?? 0.0).clamp(
             0.0,
             2.5,
           );
       final islandOutlineOpacity =
-          (_preferences.getDouble(_islandOutlineOpacityKey) ?? 0.10).clamp(
+          (_preferences.getDouble(_islandOutlineOpacityKey) ?? 0.0).clamp(
             0.0,
             1.0,
           );
       final fabOutlineThickness =
-          (_preferences.getDouble(_fabOutlineThicknessKey) ?? 0.3).clamp(
+          (_preferences.getDouble(_fabOutlineThicknessKey) ?? 0.0).clamp(
             0.0,
             2.5,
           );
       final fabOutlineOpacity =
-          (_preferences.getDouble(_fabOutlineOpacityKey) ?? 0.10).clamp(
+          (_preferences.getDouble(_fabOutlineOpacityKey) ?? 0.0).clamp(
             0.0,
             1.0,
           );

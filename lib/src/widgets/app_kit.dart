@@ -493,20 +493,25 @@ class IslandFloatingActionButton extends StatelessWidget {
         );
     final effectiveFinish = baseFinish.copyWith(
       tint: brightPrimary.withAlphaFactor(isDark ? 0.15 : 0.10),
+      rim: Colors.transparent,
     );
 
     final custom =
         Theme.of(context).extension<AppThemeCustomization>() ??
         const AppThemeCustomization();
     final fabBorderWidth = custom.fabOutlineThickness;
-    final fabBorderColor = (isDark ? Colors.white : brightPrimary).withValues(
-      alpha: custom.fabOutlineOpacity.clamp(0.0, 1.0),
+    final hasFabBorder = fabBorderWidth > 0 && custom.fabOutlineOpacity > 0;
+    final fabBorderColor = (isDark ? brightPrimary : scheme.primary).withValues(
+      alpha: (custom.fabOutlineOpacity * (isDark ? 0.40 : 0.80)).clamp(
+        0.0,
+        1.0,
+      ),
     );
 
     Widget button = DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: fabBorderWidth > 0
+        border: hasFabBorder
             ? Border.all(color: fabBorderColor, width: fabBorderWidth)
             : null,
       ),
@@ -532,9 +537,6 @@ class IslandFloatingActionButton extends StatelessWidget {
                   )!.withAlphaFactor(isDark ? 0.38 : 0.32),
                 ],
               ),
-              border: fabBorderWidth > 0
-                  ? Border.all(color: fabBorderColor, width: fabBorderWidth)
-                  : null,
               boxShadow: [
                 BoxShadow(
                   color: brightPrimary.withAlphaFactor(isDark ? 0.25 : 0.18),
@@ -551,6 +553,9 @@ class IslandFloatingActionButton extends StatelessWidget {
               height: 64,
               iconSize: 34,
               iconColor: scheme.primary,
+              glowColor: Colors.transparent,
+              glowRadius: 0.0,
+              glowOpacity: 0.0,
               useOwnLayer: false,
               style: GlassButtonStyle.transparent,
               quality: GlassQuality.minimal,
