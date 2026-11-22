@@ -7,6 +7,7 @@ import 'package:g1455/glass_diagnostics.dart' show GlassProxyScope;
 import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_controller.dart';
+import '../../auth/auth_session_teardown.dart';
 import '../../auth/auth_user.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/exchange_rate_service.dart';
@@ -23,10 +24,8 @@ import '../calendar/calendar_screen.dart';
 import '../home/home_screen.dart'
     show HomeScreen, homeSelectedAccountProvider, homeWidgetReorderModeProvider;
 import '../notifications/notification_engine.dart';
-import '../onboarding/onboarding_controller.dart';
 import '../../services/notification_service.dart';
 import '../../theme/theme_controller.dart';
-import '../settings/permission_setup_controller.dart';
 import '../transactions/transactions_screen.dart';
 import '../../widgets/app_kit.dart';
 
@@ -656,27 +655,7 @@ class AppMainDrawer extends ConsumerWidget {
                               accentColor: scheme.error,
                               onTapOverride: () async {
                                 Navigator.of(context).pop();
-                                await ref
-                                    .read(ledgerProvider.notifier)
-                                    .flushAutoBackupBeforeSignOut();
-                                await ref
-                                    .read(cloudSyncControllerProvider.notifier)
-                                    .handleSignOut();
-                                await ref
-                                    .read(ledgerProvider.notifier)
-                                    .clearSessionOnSignOut();
-                                ref
-                                    .read(onboardingControllerProvider.notifier)
-                                    .clear();
-                                ref
-                                    .read(
-                                      permissionSetupControllerProvider
-                                          .notifier,
-                                    )
-                                    .clear();
-                                await ref
-                                    .read(authControllerProvider.notifier)
-                                    .signOut();
+                                await signOutAppSession(ref);
                                 if (context.mounted) context.go('/login');
                               },
                             ),

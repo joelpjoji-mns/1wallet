@@ -180,6 +180,42 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.10',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.10',
+    versionCode: 10,
+    runtimeVersion: '1.0.10',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-22T13:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Added Today date filter option across transactions and home widgets',
+        'Interactive left/right arrow navigation (< Period >) on date range dropdown pill',
+        'Horizontal swipe gesture support on date filter to seamlessly step between time periods',
+      ],
+      bugFixes: const [
+        'Resolved sign out failure and session teardown across multiple user profiles',
+        'Fixed Confirm Paid button right alignment in Statement Ready notification cards',
+        'Removed update checker, update banners, and install buttons from Changelog window',
+      ],
+      notes: const [
+        'Streamlined Review & Inbox notification cards and button responsiveness',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 58 * 1024 * 1024,
+      sha256: '',
+      architecture: 'arm64-v8a',
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.9',
     platform: 'android',
     channel: 'stable',

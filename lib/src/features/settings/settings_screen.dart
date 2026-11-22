@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../auth/auth_controller.dart';
-import '../../cloud_sync/cloud_sync_controller.dart';
+import '../../auth/auth_session_teardown.dart';
 import '../../data/ledger_providers.dart';
 import '../../data/ledger_models.dart';
 import '../../design/tokens.dart';
@@ -535,17 +535,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  bool _isSigningOut = false;
+
   Future<void> _signOut(WidgetRef ref) async {
     // Signing out clears the device wallet; offline mode has no other copy.
+    if (_isSigningOut) return;
     if (ref.read(authControllerProvider).isLocalOnly) return;
-    await ref.read(ledgerProvider.notifier).flushAutoBackupBeforeSignOut();
-    await ref.read(cloudSyncControllerProvider.notifier).handleSignOut();
-    await ref.read(ledgerProvider.notifier).clearSessionOnSignOut();
-    ref.read(onboardingControllerProvider.notifier).clear();
-    ref.read(permissionSetupControllerProvider.notifier).clear();
-    await ref.read(authControllerProvider.notifier).signOut();
-    if (!mounted) return;
-    context.go('/login');
+    setState(() => _isSigningOut = true);
+    try {
+      await signOutAppSession(ref);
+      if (!mounted) return;
+      context.go('/login');
+    } finally {
+      if (mounted) {
+        setState(() => _isSigningOut = false);
+      }
+    }
   }
 
   void _showMessage(String message) => showAppSnackBar(context, message);

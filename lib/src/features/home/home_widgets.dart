@@ -259,9 +259,17 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                   value: resolvedValue,
                   options: options,
                   onChanged: _onPeriodChanged,
+                  onPrevious: () {
+                    final shifted = shiftDateFilter(resolvedValue, -1);
+                    _onPeriodChanged(shifted);
+                  },
+                  onNext: () {
+                    final shifted = shiftDateFilter(resolvedValue, 1);
+                    _onPeriodChanged(shifted);
+                  },
                   icon: Icons.calendar_month_rounded,
                   semanticLabel: 'Balance period',
-                  maxLabelWidth: 80,
+                  maxLabelWidth: 54,
                 );
               }(),
               const SizedBox(width: AppSpacing.xs),
@@ -403,6 +411,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
   String _mapPeriodToDateFilter(String period) {
     if (period.startsWith('custom:')) return period;
     return switch (period) {
+      'Today' => 'today',
       'This week' => 'this_week',
       'This month' => 'this_month',
       '30 days' => '30_days',
@@ -1589,6 +1598,20 @@ class _BalanceTrendHomeWidgetState
     return GlassDropdownPill<String>(
       value: resolvedValue,
       options: options,
+      onPrevious: () {
+        final shifted = shiftDateFilter(resolvedValue, -1);
+        setState(() {
+          _period = shifted;
+          _scrollOffset = 0.0;
+        });
+      },
+      onNext: () {
+        final shifted = shiftDateFilter(resolvedValue, 1);
+        setState(() {
+          _period = shifted;
+          _scrollOffset = 0.0;
+        });
+      },
       onChanged: (value) async {
         if (value == 'Custom range' ||
             value == 'custom' ||

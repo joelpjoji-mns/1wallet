@@ -33,8 +33,9 @@ void main() {
       expect(custom.end, DateTime(2026, 5, 16));
     });
 
-    test('standard options include exactly the 7 expected options', () {
+    test('standard options include exactly the 8 expected options', () {
       expect(standardHomeDateFilterOptions, [
+        'Today',
         'This week',
         'This month',
         '30 days',

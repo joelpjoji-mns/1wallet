@@ -30,6 +30,8 @@ class TransactionCommandStrip extends StatelessWidget {
     required this.onClear,
     required this.onTypeSelected,
     required this.onDateSelected,
+    this.onPreviousDate,
+    this.onNextDate,
     required this.onAccountTap,
     required this.onCategoryTap,
     required this.onStatusSelected,
@@ -60,6 +62,8 @@ class TransactionCommandStrip extends StatelessWidget {
   final VoidCallback onClear;
   final ValueChanged<String> onTypeSelected;
   final ValueChanged<String> onDateSelected;
+  final VoidCallback? onPreviousDate;
+  final VoidCallback? onNextDate;
   final VoidCallback onAccountTap;
   final VoidCallback onCategoryTap;
   final ValueChanged<String> onStatusSelected;
@@ -138,7 +142,13 @@ class TransactionCommandStrip extends StatelessWidget {
                               label: dateLabel,
                               active: dateActive,
                               value: dateValue,
+                              onPrevious: onPreviousDate,
+                              onNext: onNextDate,
                               options: [
+                                const GlassDropdownOption(
+                                  'today',
+                                  'Today',
+                                ),
                                 const GlassDropdownOption(
                                   'this_week',
                                   'This week',
@@ -282,6 +292,8 @@ class FilterPill extends StatelessWidget {
     this.value,
     this.options,
     this.onSelected,
+    this.onPrevious,
+    this.onNext,
     super.key,
   });
 
@@ -292,6 +304,8 @@ class FilterPill extends StatelessWidget {
   final String? value;
   final List<GlassDropdownOption<String>>? options;
   final ValueChanged<String>? onSelected;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   @override
   Widget build(BuildContext context) {
@@ -307,6 +321,8 @@ class FilterPill extends StatelessWidget {
           onChanged: onSelected!,
           icon: icon,
           semanticLabel: label,
+          onPrevious: onPrevious,
+          onNext: onNext,
         ),
       );
     }

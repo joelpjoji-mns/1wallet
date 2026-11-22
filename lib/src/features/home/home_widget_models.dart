@@ -47,6 +47,7 @@ const defaultHomeWidgetOrder = [
 ];
 
 const standardHomeDateFilterOptions = [
+  'Today',
   'This week',
   'This month',
   '30 days',
@@ -61,6 +62,7 @@ const recentRecordsDateFilterOptions = standardHomeDateFilterOptions;
 const futureHomeDateFilterOptions = standardHomeDateFilterOptions;
 
 const homeWidgetDatePresets = [
+  'today',
   'thisWeek',
   'thisMonth',
   '30Days',

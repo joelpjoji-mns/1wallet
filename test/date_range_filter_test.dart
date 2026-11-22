@@ -12,6 +12,7 @@ void main() {
   group('Date Range Filter & Custom Range', () {
     test('Standard options list matches required specification', () {
       expect(standardHomeDateFilterOptions, [
+        'Today',
         'This week',
         'This month',
         '30 days',

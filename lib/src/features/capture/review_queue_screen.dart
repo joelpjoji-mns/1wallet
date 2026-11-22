@@ -733,21 +733,76 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   AppSpacing.md,
                   AppSpacing.sm,
                 ),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _dismiss(ref, notification.id),
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text('Dismiss', softWrap: false),
-                      style: AppButtonStyles.compact(context),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 360;
+                    if (isNarrow) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              IconButton(
+                                tooltip: 'View Card Details',
+                                icon: const Icon(
+                                  Icons.credit_card_outlined,
+                                  size: 20,
+                                ),
+                                onPressed: () => context.push('/cards'),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              FilledButton.icon(
+                                onPressed: () async {
+                                  final cycle =
+                                      notification.cycleKey ?? dueStatus?.cycleKey;
+                                  await ref
+                                      .read(ledgerProvider.notifier)
+                                      .markCardBillPaid(account.id, cycle);
+                                  await _dismiss(ref, notification.id);
+                                  if (context.mounted) {
+                                    showAppSnackBar(
+                                      context,
+                                      'Marked ${account.name} bill as paid',
+                                      action: SnackBarAction(
+                                        label: 'Undo',
+                                        onPressed: () {
+                                          ref
+                                              .read(ledgerProvider.notifier)
+                                              .markCardBillPaid(account.id, null);
+                                        },
+                                      ),
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.check_rounded, size: 16),
+                                label: const Text('Confirm Paid', softWrap: false),
+                                style: AppButtonStyles.compact(context),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () => _dismiss(ref, notification.id),
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              label: const Text('Dismiss', softWrap: false),
+                              style: AppButtonStyles.compact(context),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
                       children: [
+                        TextButton.icon(
+                          onPressed: () => _dismiss(ref, notification.id),
+                          icon: const Icon(Icons.close_rounded, size: 16),
+                          label: const Text('Dismiss', softWrap: false),
+                          style: AppButtonStyles.compact(context),
+                        ),
+                        const Spacer(),
                         IconButton(
                           tooltip: 'View Card Details',
                           icon: const Icon(
@@ -785,8 +840,8 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                           style: AppButtonStyles.compact(context),
                         ),
                       ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -911,28 +966,38 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             ),
             Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
+                horizontal: AppSpacing.sm,
                 vertical: AppSpacing.xxs,
               ),
-              child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton.icon(
-                    onPressed: () => _dismiss(ref, notification.id),
-                    icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('Dismiss', softWrap: false),
-                    style: AppButtonStyles.compact(context),
-                  ),
-                  if (notification.actionRoute != null)
-                    TextButton.icon(
-                      onPressed: () =>
-                          _openNotification(context, ref, notification),
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                      label: const Text('View', softWrap: false),
+                  Flexible(
+                    child: TextButton.icon(
+                      onPressed: () => _dismiss(ref, notification.id),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: const Text(
+                        'Dismiss',
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: AppButtonStyles.compact(context),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  if (notification.actionRoute != null)
+                    Flexible(
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            _openNotification(context, ref, notification),
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                        label: const Text(
+                          'View',
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: AppButtonStyles.compact(context),
+                      ),
                     ),
                 ],
               ),

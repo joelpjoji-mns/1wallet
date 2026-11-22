@@ -1,10 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../design/tokens.dart';
-import '../../utils/app_reload.dart';
 import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
 import 'app_update_provider.dart';
@@ -36,15 +34,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final updateState = ref.read(appUpdateProvider);
-      if (updateState.status != UpdateStatus.downloading &&
-          updateState.status != UpdateStatus.installing &&
-          updateState.status != UpdateStatus.checking) {
-        ref.read(appUpdateProvider.notifier).checkForUpdates(force: true);
-      }
-    });
   }
 
   bool _isReleaseExpanded(String releaseId) =>
@@ -76,63 +65,18 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appUpdateProvider);
-    final provider = ref.read(appUpdateProvider.notifier);
-    final hasUpdate = state.latestRelease != null;
-
     final releases = _resolveReleases(state);
-
-    // Dedicated download screen while downloading
-    if (state.status == UpdateStatus.downloading) {
-      return RouteScaffold(
-        title: 'Downloading Update',
-        actions: [
-          HeaderIconButton(
-            icon: Icons.close_rounded,
-            onPressed: () => provider.cancelDownload(),
-            semanticLabel: 'Cancel download',
-            tooltip: 'Cancel download',
-          ),
-        ],
-        child: _buildDedicatedDownloadView(context, state, provider),
-      );
-    }
 
     return RouteScaffold(
       title: 'Changelog',
-      actions: [
-        HeaderIconButton(
-          icon: Icons.refresh_rounded,
-          loading: state.status == UpdateStatus.checking,
-          onPressed: state.status == UpdateStatus.checking
-              ? null
-              : () => provider.checkForUpdates(force: true),
-          semanticLabel: 'Check for updates',
-          tooltip: 'Check for updates',
-        ),
-      ],
       child: GlassIsolationScope(
         defaultQuality: GlassQuality.standard,
-        child: RefreshIndicator(
-          onRefresh: () => provider.checkForUpdates(force: true),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Top Section: Hero Card with Version Transition & Update Action Button
-              _buildHeroCard(context, state, provider),
-              if (state.notificationWarning != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    state.notificationWarning!,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              ],
-              if (hasUpdate) ...[
-                const SizedBox(height: AppSpacing.md),
-                _buildReleaseInfoCard(context, state.latestRelease!),
-              ],
+              _buildChangelogHeader(context, state),
               const SizedBox(height: AppSpacing.md),
               _buildFullMorpheTimeline(context, state, releases),
               const SizedBox(height: AppSpacing.xxl),
@@ -147,9 +91,9 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
     final list = <AppUpdateRelease>[];
     final seen = <String>{};
 
-    if (state.latestRelease != null) {
+    if (state.latestRelease != null &&
+        seen.add(state.latestRelease!.versionName)) {
       list.add(state.latestRelease!);
-      seen.add(state.latestRelease!.versionName);
     }
 
     if (state.currentRelease != null &&
@@ -181,17 +125,15 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
   }
 
   // ===========================================================================
-  // HERO CARD (Morphe status header, version comparison, and update button on top)
+  // CHANGELOG HEADER (Current version & release history banner)
   // ===========================================================================
 
-  Widget _buildHeroCard(
+  Widget _buildChangelogHeader(
     BuildContext context,
     AppUpdateState state,
-    AppUpdateProvider provider,
   ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final hasUpdate = state.latestRelease != null;
 
     final versionName = state.currentVersionName.isEmpty
         ? 'Unknown'
@@ -201,256 +143,68 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
       state.currentVersionCode,
     );
 
-    String statusTitle;
-    String statusSubtitle;
-    IconData icon;
-    Color color;
-
-    if (state.status == UpdateStatus.checking) {
-      if (hasUpdate) {
-        statusTitle = 'Checking for updates…';
-        statusSubtitle =
-            'Version ${state.latestRelease!.versionName} available';
-        icon = Icons.sync_rounded;
-        color = scheme.primary;
-      } else {
-        statusTitle = 'Checking for updates…';
-        statusSubtitle = 'Connecting to update servers';
-        icon = Icons.sync_rounded;
-        color = scheme.primary;
-      }
-    } else if (state.status == UpdateStatus.idle) {
-      if (hasUpdate) {
-        statusTitle = 'Update Available';
-        statusSubtitle = 'Version ${state.latestRelease!.versionName}';
-        icon = Icons.system_update_rounded;
-        color = scheme.primary;
-      } else {
-        statusTitle = 'App is up to date';
-        statusSubtitle = 'Version $versionName (Build $displayBuild)';
-        icon = Icons.check_circle_rounded;
-        color = scheme.positive;
-      }
-    } else if (state.status == UpdateStatus.error) {
-      statusTitle = 'Update check unavailable';
-      statusSubtitle = state.errorMessage ?? 'Could not reach update server';
-      icon = Icons.error_outline_rounded;
-      color = scheme.error;
-    } else if (state.status == UpdateStatus.downloaded) {
-      statusTitle = 'Update Ready to Install';
-      statusSubtitle =
-          state.errorMessage ??
-          'Version ${state.latestRelease?.versionName ?? ''} is downloaded';
-      icon = Icons.download_done_rounded;
-      color = scheme.positive;
-    } else {
-      statusTitle = 'Opening installer…';
-      statusSubtitle = 'Confirm prompt to finish updating';
-      icon = Icons.install_mobile_rounded;
-      color = scheme.primary;
-    }
-
     return AppPanel(
       glass: true,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.16),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: color.withValues(alpha: 0.32),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Center(child: Icon(icon, color: color, size: 26)),
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.16),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: scheme.primary.withValues(alpha: 0.32),
+                  width: 1.5,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.history_edu_rounded,
+                  color: scheme.primary,
+                  size: 26,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.xs,
                     children: [
                       Text(
-                        statusTitle,
+                        'Version $versionName',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xxxs),
-                      Text(
-                        statusSubtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
+                      _buildVersionPill(
+                        context,
+                        version: 'v$versionName',
+                        badgeText: 'INSTALLED',
+                        badgeColor: scheme.positive,
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            // Morphe version transition indicator
-            AppPanel(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              child: hasUpdate
-                  ? Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      runSpacing: AppSpacing.xxs,
-                      children: [
-                        _buildVersionPill(
-                          context,
-                          version: 'v$versionName',
-                          badgeText: 'INSTALLED',
-                          badgeColor: scheme.positive,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs,
-                          ),
-                          child: Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 16,
-                            color: scheme.onSurfaceVariant.withValues(
-                              alpha: 0.7,
-                            ),
-                          ),
-                        ),
-                        _buildVersionPill(
-                          context,
-                          version: 'v${state.latestRelease!.versionName}',
-                          badgeText: 'LATEST',
-                          badgeColor: scheme.primary,
-                        ),
-                      ],
-                    )
-                  : Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.xxs,
-                      children: [
-                        _buildVersionPill(
-                          context,
-                          version: 'v$versionName',
-                          badgeText: 'INSTALLED',
-                          badgeColor: scheme.positive,
-                        ),
-                        Text(
-                          'You have the latest version installed.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: AppSpacing.xxxs),
+                  Text(
+                    'Build $displayBuild · Release History',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
                     ),
+                  ),
+                ],
+              ),
             ),
-            if (hasUpdate || state.status == UpdateStatus.downloaded) ...[
-              const SizedBox(height: AppSpacing.md),
-              // Full-width update button right on top
-              _buildTopActionButton(context, state, provider),
-            ],
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTopActionButton(
-    BuildContext context,
-    AppUpdateState state,
-    AppUpdateProvider provider,
-  ) {
-    if (kIsWeb) {
-      if (state.latestRelease != null) {
-        return _buildMorpheTextButton(
-          context,
-          label: 'Reload App',
-          onTap: reloadWebPage,
-        );
-      }
-      return const SizedBox.shrink();
-    }
-
-    if (state.status == UpdateStatus.downloaded) {
-      final label = state.latestRelease?.apk != null
-          ? 'Install Update'
-          : 'Update on Google Play';
-      return _buildMorpheTextButton(
-        context,
-        label: label,
-        onTap: () {
-          if (state.latestRelease?.apk != null) {
-            provider.installUpdate();
-          } else {
-            provider.openStoreListing();
-          }
-        },
-        prominent: true,
-      );
-    }
-
-    if (state.latestRelease != null &&
-        (state.status == UpdateStatus.idle ||
-            state.status == UpdateStatus.checking)) {
-      final sizeStr = state.latestRelease!.apk?.sizeBytes != null
-          ? ' (${(state.latestRelease!.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB)'
-          : '';
-      final label = state.latestRelease!.apk != null
-          ? 'Install Update$sizeStr'
-          : 'Update on Google Play';
-      return _buildMorpheTextButton(
-        context,
-        label: label,
-        onTap: () {
-          if (state.latestRelease!.apk != null) {
-            provider.downloadUpdate();
-          } else {
-            provider.openStoreListing();
-          }
-        },
-        prominent: true,
-      );
-    }
-
-    if (state.status == UpdateStatus.error) {
-      return _buildMorpheTextButton(
-        context,
-        label: 'Try Again',
-        onTap: () => provider.checkForUpdates(force: true),
-        prominent: false,
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildMorpheTextButton(
-    BuildContext context, {
-    required String label,
-    required VoidCallback onTap,
-    bool prominent = true,
-  }) {
-    if (prominent) {
-      return FilledButton(
-        onPressed: onTap,
-        style: AppButtonStyles.cta,
-        child: Text(label),
-      );
-    }
-    return FilledButton.tonal(
-      onPressed: onTap,
-      style: AppButtonStyles.cta,
-      child: Text(label),
     );
   }
 
@@ -498,100 +252,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  // ===========================================================================
-  // RELEASE DETAILS CARD
-  // ===========================================================================
-
-  Widget _buildReleaseInfoCard(BuildContext context, AppUpdateRelease release) {
-    final scheme = Theme.of(context).colorScheme;
-    final publishedDate = _formatReleaseDate(release.publishedAt);
-
-    return SectionCard(
-      title: 'Release Details',
-      compact: true,
-      child: Column(
-        children: [
-          _buildDetailRow(
-            context,
-            icon: Icons.tag_rounded,
-            title: 'Build Number',
-            value: AppUpdateProvider.formatDisplayBuild(
-              release.versionName,
-              release.versionCode,
-            ),
-          ),
-          const Divider(height: 1),
-          _buildDetailRow(
-            context,
-            icon: Icons.calendar_today_rounded,
-            title: 'Published',
-            value: publishedDate,
-          ),
-          if (release.apk != null) ...[
-            const Divider(height: 1),
-            _buildDetailRow(
-              context,
-              icon: Icons.sd_storage_rounded,
-              title: 'Download size',
-              value:
-                  '${(release.apk!.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB',
-            ),
-            if (release.apk!.architecture.isNotEmpty) ...[
-              const Divider(height: 1),
-              _buildDetailRow(
-                context,
-                icon: Icons.memory_rounded,
-                title: 'Architecture',
-                value: release.apk!.architecture,
-              ),
-            ],
-          ],
-          if (release.channel.isNotEmpty) ...[
-            const Divider(height: 1),
-            _buildDetailRow(
-              context,
-              icon: Icons.alt_route_rounded,
-              title: 'Channel',
-              value: release.channel.toUpperCase(),
-              valueColor: scheme.primary,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String value,
-    Color? valueColor,
-  }) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xs,
-        vertical: AppSpacing.sm,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: scheme.primary),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(title, style: theme.textTheme.bodyMedium)),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: valueColor ?? scheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1205,248 +865,6 @@ class _UpdatesScreenState extends ConsumerState<UpdatesScreen> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // DEDICATED MORPHE DOWNLOAD VIEW (Progress Ring Screen)
-  // ===========================================================================
-
-  Widget _buildDedicatedDownloadView(
-    BuildContext context,
-    AppUpdateState state,
-    AppUpdateProvider provider,
-  ) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final isAmoled = AppSurfaces.isAmoled(context);
-    final progress = state.progress.clamp(0.0, 1.0);
-    final percent = (progress * 100).toStringAsFixed(0);
-    final writtenMb = (state.bytesWritten / 1024 / 1024).toStringAsFixed(1);
-    final totalMb = (state.bytesExpected / 1024 / 1024).toStringAsFixed(1);
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              isDark && !isAmoled
-                  ? GlassCard(
-                      margin: EdgeInsets.zero,
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      shape: const LiquidRoundedSuperellipse(
-                        borderRadius: AppRadii.lg,
-                      ),
-                      quality: GlassQuality.standard,
-                      child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.xxl,
-                  ),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: 220,
-                        height: 220,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 220,
-                              height: 220,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: scheme.primary.withValues(
-                                      alpha: 0.16,
-                                    ),
-                                    blurRadius: 36,
-                                    spreadRadius: 6,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(
-                              width: 195,
-                              height: 195,
-                              child: CircularProgressIndicator(
-                                value: 1.0,
-                                strokeWidth: 10,
-                                color: scheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.5),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 195,
-                              height: 195,
-                              child: CircularProgressIndicator(
-                                value: progress > 0 ? progress : null,
-                                strokeWidth: 10,
-                                strokeCap: StrokeCap.round,
-                              ),
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '$percent%',
-                                  style: theme.textTheme.displayMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -1.5,
-                                        color: scheme.onSurface,
-                                      ),
-                                ),
-                                const SizedBox(height: AppSpacing.xxs),
-                                Text(
-                                  state.bytesExpected > 0
-                                      ? '$writtenMb / $totalMb MB'
-                                      : '$writtenMb MB downloaded',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      Text(
-                        'Downloading Update Package',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        'v${state.latestRelease?.versionName ?? ''} · Please keep the app open',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                    )
-                  : Container(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: AppSurfaces.panel(context, color: scheme.surface),
-                      child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.xxl,
-                  ),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: 220,
-                        height: 220,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 220,
-                              height: 220,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: scheme.primary.withValues(
-                                      alpha: 0.16,
-                                    ),
-                                    blurRadius: 36,
-                                    spreadRadius: 6,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(
-                              width: 195,
-                              height: 195,
-                              child: CircularProgressIndicator(
-                                value: 1.0,
-                                strokeWidth: 10,
-                                color: scheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.5),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 195,
-                              height: 195,
-                              child: CircularProgressIndicator(
-                                value: progress > 0 ? progress : null,
-                                strokeWidth: 10,
-                                strokeCap: StrokeCap.round,
-                              ),
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '$percent%',
-                                  style: theme.textTheme.displayMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -1.5,
-                                        color: scheme.onSurface,
-                                      ),
-                                ),
-                                const SizedBox(height: AppSpacing.xxs),
-                                Text(
-                                  state.bytesExpected > 0
-                                      ? '$writtenMb / $totalMb MB'
-                                      : '$writtenMb MB downloaded',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      Text(
-                        'Downloading Update Package',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(
-                        'v${state.latestRelease?.versionName ?? ''} · Please keep the app open',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                    ),
-              const SizedBox(height: AppSpacing.lg),
-              OutlinedButton.icon(
-                onPressed: () => provider.cancelDownload(),
-                style: AppButtonStyles.destructiveOutlined(
-                  context,
-                ).merge(AppButtonStyles.cta),
-                icon: const Icon(Icons.close_rounded),
-                label: const Text('Cancel Download'),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

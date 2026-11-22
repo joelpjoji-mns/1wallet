@@ -145,41 +145,37 @@ void main() {
     },
   );
 
-  testWidgets('the screenshot failure retains an actionable install button', (
-    tester,
-  ) async {
-    final provider = _UpdateFixture(
-      (_) async => throw PlatformException(
-        code: 'invalid_icon',
-        message: 'Missing ic_notification',
-      ),
-    );
-    await tester.runAsync(() async {
-      await Future<void>.delayed(Duration.zero);
-      provider.installedVersion();
-      await provider.discover(_release());
-    });
-    final container = ProviderContainer(
-      overrides: [appUpdateProvider.overrideWith((ref) => provider)],
-    );
-    addTearDown(container.dispose);
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: AppTheme.light(),
-          home: const UpdatesScreen(),
+  testWidgets(
+    'the screenshot failure displays changelog cleanly without install button in changelog window',
+    (tester) async {
+      final provider = _UpdateFixture(
+        (_) async => throw PlatformException(
+          code: 'invalid_icon',
+          message: 'Missing ic_notification',
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Update Available'), findsOneWidget);
-    expect(find.text('Update check unavailable'), findsNothing);
-    expect(find.textContaining('still download and install'), findsOneWidget);
-    final install = find.text('Install Update (1.0 MB)');
-    expect(install, findsOneWidget);
-    await tester.ensureVisible(install);
-    await tester.tap(install);
-    expect(provider.downloads, 1);
-  });
+      );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(Duration.zero);
+        provider.installedVersion();
+        await provider.discover(_release());
+      });
+      final container = ProviderContainer(
+        overrides: [appUpdateProvider.overrideWith((ref) => provider)],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const UpdatesScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Changelog'), findsOneWidget);
+      expect(find.text('Update Available'), findsNothing);
+      expect(find.textContaining('Install Update'), findsNothing);
+    },
+  );
 }

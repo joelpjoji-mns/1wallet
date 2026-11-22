@@ -196,8 +196,8 @@ void main() {
     });
   });
 
-  group('UpdatesScreen auto-check on mount', () {
-    testWidgets('triggers checkForUpdates(force: true) upon mounting', (
+  group('UpdatesScreen changelog mount', () {
+    testWidgets('does not trigger checkForUpdates upon mounting', (
       tester,
     ) async {
       final updateProvider = _TrackingUpdateProvider();
@@ -217,7 +217,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(updateProvider.forceCheckCalled, isTrue);
+      expect(updateProvider.forceCheckCalled, isFalse);
     });
   });
 }

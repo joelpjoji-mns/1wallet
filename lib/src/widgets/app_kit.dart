@@ -129,6 +129,8 @@ class GlassDropdownPill<T> extends ConsumerWidget {
     this.icon,
     this.semanticLabel,
     this.maxLabelWidth = 148,
+    this.onPrevious,
+    this.onNext,
     super.key,
   });
 
@@ -138,6 +140,8 @@ class GlassDropdownPill<T> extends ConsumerWidget {
   final IconData? icon;
   final String? semanticLabel;
   final double maxLabelWidth;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -197,58 +201,124 @@ class GlassDropdownPill<T> extends ConsumerWidget {
             onTap: () => onChanged(option.value),
           ),
       ],
-      triggerBuilder: (context, toggleMenu) => DecoratedBox(
-        decoration: BoxDecoration(
-          color: isDark
-              ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
-              : scheme.surfaceContainerHigh.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-          border: Border.all(
-            color: scheme.outlineVariant.withValues(alpha: 0.4),
-            width: 0.5,
-          ),
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
+      triggerBuilder: (context, toggleMenu) {
+        final content = DecoratedBox(
+          decoration: BoxDecoration(
+            color: isDark
+                ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
+                : scheme.surfaceContainerHigh.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(AppRadii.pill),
-            onTap: toggleMenu,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 15, color: scheme.primary),
-                    const SizedBox(width: AppSpacing.xxs),
-                  ],
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxLabelWidth),
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w700,
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.4),
+              width: 0.5,
+            ),
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onPrevious != null)
+                  InkWell(
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(AppRadii.pill),
+                    ),
+                    onTap: onPrevious,
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: AppSpacing.xs,
+                        right: 2,
+                        top: AppSpacing.xxs,
+                        bottom: AppSpacing.xxs,
+                      ),
+                      child: Icon(
+                        Icons.chevron_left_rounded,
+                        size: 15,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xxxs),
-                  Icon(
-                    Icons.expand_more_rounded,
-                    size: 17,
-                    color: scheme.onSurface,
+                InkWell(
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  onTap: toggleMenu,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      onPrevious != null ? 2 : AppSpacing.sm,
+                      AppSpacing.xxs,
+                      onNext != null ? 2 : AppSpacing.sm,
+                      AppSpacing.xxs,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (icon != null) ...[
+                          Icon(icon, size: 14, color: scheme.primary),
+                          const SizedBox(width: AppSpacing.xxs),
+                        ],
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxLabelWidth),
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: scheme.onSurface,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xxxs),
+                        Icon(
+                          Icons.expand_more_rounded,
+                          size: 16,
+                          color: scheme.onSurface,
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
+                ),
+                if (onNext != null)
+                  InkWell(
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(AppRadii.pill),
+                    ),
+                    onTap: onNext,
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        left: 2,
+                        right: AppSpacing.xs,
+                        top: AppSpacing.xxs,
+                        bottom: AppSpacing.xxs,
+                      ),
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 15,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ),
-      ),
+        );
+
+        if (onPrevious != null || onNext != null) {
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragEnd: (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity > 120 && onPrevious != null) {
+                onPrevious!();
+              } else if (velocity < -120 && onNext != null) {
+                onNext!();
+              }
+            },
+            child: content,
+          );
+        }
+
+        return content;
+      },
     );
   }
 }

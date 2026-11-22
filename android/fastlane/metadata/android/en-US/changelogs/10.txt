@@ -1,0 +1,6 @@
+- Added Today date filter option across transactions and home widgets
+- Interactive left/right arrow navigation (< Period >) on date range dropdown pill
+- Horizontal swipe gesture support on date filter to seamlessly step between time periods
+- Resolved sign out failure and session teardown across multiple user profiles
+- Fixed Confirm Paid button right alignment in Statement Ready notification cards
+- Removed update checker, update banners, and install buttons from Changelog window

@@ -515,6 +515,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             onTypeSelected: (value) =>
                 ref.read(transactionsTypeFilterProvider.notifier).state = value,
             onDateSelected: _onDateSelected,
+            onPreviousDate: () => _shiftDateFilter(-1),
+            onNextDate: () => _shiftDateFilter(1),
             onAccountTap: () => _showAccountFilter(state, accountFilter),
             onCategoryTap: () => _showCategoryFilter(state),
             onStatusSelected: (value) =>
@@ -999,6 +1001,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
+  void _shiftDateFilter(int direction) {
+    final current = ref.read(transactionsDateFilterProvider);
+    final shifted = shiftDateFilter(current, direction);
+    ref.read(transactionsDateFilterProvider.notifier).state = shifted;
+  }
+
   Future<void> _showAccountFilter(
     LedgerState state,
     String? accountFilter,
@@ -1272,6 +1280,10 @@ bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
   final current = now ?? DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
   return switch (dateFilter) {
+    'today' =>
+      date.year == current.year &&
+      date.month == current.month &&
+      date.day == current.day,
     'this_week' => () {
       final diff = current.weekday - 1; // 0 for Monday
       final start = DateTime(
@@ -1318,6 +1330,7 @@ String _dateFilterLabel(String value) {
     return formatCustomDateRangeLabel(value);
   }
   return switch (value) {
+    'today' => 'Today',
     'this_week' => 'This week',
     'this_month' => 'This month',
     '30_days' || 'last_30_days' => '30 days',

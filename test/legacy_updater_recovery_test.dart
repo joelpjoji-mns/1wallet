@@ -169,7 +169,7 @@ void main() {
   );
 
   testWidgets(
-    'a recovered 2.2.01 client exposes the normal in-app install action',
+    'a recovered 2.2.01 client changelog displays version without update prompts',
     (tester) async {
       late shipped.LegacyShippedUpdateClient provider;
       await tester.runAsync(() async {
@@ -192,9 +192,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Update Available'), findsOneWidget);
-      expect(find.text('Update check unavailable'), findsNothing);
-      expect(find.textContaining('Install Update ('), findsOneWidget);
+      expect(find.text('Changelog'), findsOneWidget);
+      expect(find.text('Update Available'), findsNothing);
+      expect(find.textContaining('Install Update'), findsNothing);
       await tester.runAsync(() => provider.downloadUpdate());
       expect(provider.installerOpened, isTrue);
       await tester.pumpWidget(const SizedBox.shrink());

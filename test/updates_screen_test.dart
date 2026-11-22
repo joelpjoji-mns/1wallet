@@ -78,19 +78,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Sanity: all three content sections actually rendered from the
-      // fixture before checking their package surfaces.
-      expect(find.text('Update Available'), findsOneWidget);
-      expect(find.text('Release Details'), findsOneWidget);
-      expect(find.text("What's new in 1.2.3"), findsOneWidget);
+      // Sanity: changelog rendered cleanly without update checker, install update, or release details cards
+      expect(find.text('Version 1.2.2'), findsOneWidget);
+      expect(find.text('INSTALLED'), findsWidgets);
+      expect(find.text('Update Available'), findsNothing);
+      expect(find.text('Release Details'), findsNothing);
       expect(find.text('Feature A'), findsOneWidget);
       expect(find.text('Fix B'), findsOneWidget);
       expect(find.text('Note C'), findsOneWidget);
 
       expect(find.byType(GlassCard), findsWidgets);
 
-      // Verify the top-right header action is the refresh/check button
-      expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
+      // Verify no update check icon action exists in app bar
+      expect(find.byIcon(Icons.refresh_rounded), findsNothing);
     },
   );
 }

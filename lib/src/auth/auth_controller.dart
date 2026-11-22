@@ -505,18 +505,25 @@ class AuthController extends StateNotifier<AuthState> {
     // strand the device-only wallet behind the sign-in screen.
     if (state.isLocalOnly) return;
     try {
-      await _repository.signOut();
-      if (!mounted) return;
-      state = state.copyWith(
-        phase: AuthPhase.signedOut,
-        user: null,
-        isSigningIn: false,
-        errorMessage: null,
+      await _repository.signOut().timeout(
+        const Duration(seconds: 6),
+        onTimeout: () {
+          debugPrint('Auth repository signOut timed out');
+        },
       );
     } catch (error) {
       if (!mounted) return;
       state = state.copyWith(errorMessage: _friendlyError(error));
       if (rethrowOnError) rethrow;
+    } finally {
+      if (mounted) {
+        state = state.copyWith(
+          phase: AuthPhase.signedOut,
+          user: null,
+          isSigningIn: false,
+          errorMessage: null,
+        );
+      }
     }
   }
 
@@ -647,10 +654,29 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
-    await Future.wait([
-      firebase_auth.FirebaseAuth.instance.signOut(),
-      GoogleSignIn().signOut(),
-    ]);
+    try {
+      final googleSignIn = GoogleSignIn(
+        scopes: const ['email', 'profile'],
+        clientId: FirebaseEnv.googleClientIdForPlatform,
+        serverClientId: kIsWeb ? null : FirebaseEnv.googleWebClientId,
+      );
+      await googleSignIn.signOut().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => null,
+      );
+    } catch (e) {
+      debugPrint('GoogleSignIn.signOut() ignored error: $e');
+    }
+
+    try {
+      await firebase_auth.FirebaseAuth.instance.signOut().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => null,
+      );
+    } catch (e) {
+      debugPrint('FirebaseAuth.signOut() error: $e');
+      rethrow;
+    }
   }
 
   Future<bool> _reauthenticate(firebase_auth.User user) async {

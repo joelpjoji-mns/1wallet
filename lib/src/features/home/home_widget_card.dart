@@ -210,6 +210,18 @@ class HomeWidgetCard extends StatelessWidget {
       value: resolvedValue,
       options: options,
       semanticLabel: '$title date filter',
+      onPrevious: onDateFilterChanged != null
+          ? () {
+              final shifted = shiftDateFilter(resolvedValue, -1);
+              onDateFilterChanged!(shifted);
+            }
+          : null,
+      onNext: onDateFilterChanged != null
+          ? () {
+              final shifted = shiftDateFilter(resolvedValue, 1);
+              onDateFilterChanged!(shifted);
+            }
+          : null,
       onChanged: (selected) async {
         if (selected == 'Custom range' ||
             selected == 'custom' ||

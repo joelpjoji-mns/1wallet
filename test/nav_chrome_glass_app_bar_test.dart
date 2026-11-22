@@ -89,7 +89,7 @@ void main() {
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(AppBackAction), findsOneWidget);
       expect(find.text('Changelog'), findsOneWidget);
-      expect(find.byTooltip('Check for updates'), findsOneWidget);
+      expect(find.byTooltip('Check for updates'), findsNothing);
     },
   );
 
