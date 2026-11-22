@@ -11,7 +11,7 @@ The flagship screen of 1Wallet. Provides a customizable, modular financial dashb
 | :--- | :--- |
 | `home_screen.dart` | Main dashboard view assembling widgets based on user reordering preferences. |
 | `home_components.dart` | Header components, greeting, quick action buttons, privacy eye toggle. |
-| `home_widgets.dart` & `home_widgets_extra.dart` | Modular widgets: `balanceHero`, `accountGrid`, `recentRecords`, `balanceTrend`, `currencyValues`, `upcomingScheduled`, `loanPayoff`, `topCategories`, `netWorth`. |
+| `home_widgets.dart` | Modular widgets: `balanceHero`, `accountGrid`, `recentRecords`, `balanceTrend`, `currencyValues`, `upcomingScheduled`, `loanPayoff`, `topCategories`, `creditUtilization`. |
 | `home_widget_card.dart` & `home_widget_models.dart` | Widget container styling, drag handles, card wrappers, and visibility configurations. |
 | `home_dashboard_selectors.dart` | Highly optimized selectors aggregating daily balances, 7-day spending trends, and top categories. |
 | `home_async_providers.dart` | Asynchronous loaders and cached view-models for dashboard metrics. |

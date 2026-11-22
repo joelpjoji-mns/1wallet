@@ -16,7 +16,6 @@ Contains shared visual widgets designed around 1Wallet's signature frosted glass
 | `privacy_text.dart` | Text widget that automatically masks monetary amounts with bullet symbols (`••••••`) when privacy mode is enabled. |
 | `color_picker_dialog.dart` | Dialog allowing users to select colors from presets or custom HSV color wheels. |
 | `currency_picker.dart` | Modal selector with search for global fiat and crypto currency codes. |
-| `liquid_progress_indicator.dart` | Smooth liquid/wave style progress bar for budget and loan payoff tracking. |
 | `user_identity_widgets.dart` | User avatar, account badges, and sign-in status indicators. |
 
 ---

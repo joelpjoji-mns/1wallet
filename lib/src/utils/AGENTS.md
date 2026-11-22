@@ -1,7 +1,7 @@
 # `lib/src/utils/` — Cryptography, Currency & Math Utilities
 
 ## 🎯 Role & Overview
-Provides shared algorithmic and platform utilities: AES-256 encryption, secure keystore access, currency and number formatting, recurrence math, and web reloading stubs.
+Provides shared algorithmic and platform utilities: AES-256 encryption, secure keystore access, currency and number formatting, and recurrence math.
 
 ---
 
@@ -13,7 +13,6 @@ Provides shared algorithmic and platform utilities: AES-256 encryption, secure k
 | `currency_utils.dart` | ISO currency code lookups, currency symbols, and precision conversion helpers. |
 | `number_formatter.dart` | High-performance number and currency formatting supporting multi-region numbering formats (Western, Indian Lakh/Crore). |
 | `recurrence_utils.dart` | Calculation routines for finding next occurrence dates given cadence, interval, day of month, or day of week rules. |
-| `app_reload.dart`, `stub_reload.dart`, `web_reload.dart` | Cross-platform utilities for triggering application reloads upon locale, theme, or user switch. |
 
 ---
 
