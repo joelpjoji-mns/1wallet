@@ -1,6 +1,5 @@
-- Added Today date filter option across transactions and home widgets
-- Interactive left/right arrow navigation (< Period >) on date range dropdown pill
-- Horizontal swipe gesture support on date filter to seamlessly step between time periods
-- Resolved sign out failure and session teardown across multiple user profiles
-- Fixed Confirm Paid button right alignment in Statement Ready notification cards
-- Removed update checker, update banners, and install buttons from Changelog window
+- Streamlined repository architecture with optimized APK build and bundle footprint
+- Performance enhancements across home dashboard and ledger selectors
+- Removed redundant prototype dependencies and unreferenced legacy components
+- Cleaned up unbundled font binaries and unused platform reload utilities
+- Over 100 MB of legacy clutter and obsolete scripts pruned from source repository

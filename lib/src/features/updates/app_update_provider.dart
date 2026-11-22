@@ -180,6 +180,40 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.11',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.11',
+    versionCode: 11,
+    runtimeVersion: '1.0.11',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-22T16:20:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Streamlined repository architecture with optimized APK build and bundle footprint',
+        'Performance enhancements across home dashboard and ledger selectors',
+      ],
+      bugFixes: const [
+        'Removed redundant prototype dependencies and unreferenced legacy components',
+        'Cleaned up unbundled font binaries and unused platform reload utilities',
+      ],
+      notes: const [
+        'Over 100 MB of legacy clutter and obsolete scripts pruned from source repository',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 52 * 1024 * 1024,
+      sha256: '',
+      architecture: 'universal',
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.10',
     platform: 'android',
     channel: 'stable',

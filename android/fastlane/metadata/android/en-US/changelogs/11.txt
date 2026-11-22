@@ -1,0 +1,5 @@
+- Streamlined repository architecture with optimized APK build and bundle footprint
+- Performance enhancements across home dashboard and ledger selectors
+- Removed redundant prototype dependencies and unreferenced legacy components
+- Cleaned up unbundled font binaries and unused platform reload utilities
+- Over 100 MB of legacy clutter and obsolete scripts pruned from source repository
