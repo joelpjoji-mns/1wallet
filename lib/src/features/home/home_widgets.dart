@@ -250,21 +250,36 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                       icon: Icons.date_range_rounded,
                     ),
                 ];
+                final matchedOption = standardHomeDateFilterOptions.cast<String?>().firstWhere(
+                  (opt) {
+                    if (opt == null) return false;
+                    if (opt == _period) return true;
+                    final o = opt.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+                    final f = _period.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+                    return o == f;
+                  },
+                  orElse: () => null,
+                );
                 final resolvedValue = isCustom
                     ? _period
-                    : (standardHomeDateFilterOptions.contains(_period)
-                          ? _period
-                          : 'This month');
+                    : (matchedOption ??
+                        (standardHomeDateFilterOptions.contains(_period)
+                            ? _period
+                            : 'This month'));
                 return GlassDropdownPill<String>(
                   value: resolvedValue,
                   options: options,
                   onChanged: _onPeriodChanged,
                   onPrevious: () {
-                    final shifted = shiftDateFilter(resolvedValue, -1);
+                    final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+                        ? shiftDateFilter('This month', -1)
+                        : shiftDateFilter(resolvedValue, -1);
                     _onPeriodChanged(shifted);
                   },
                   onNext: () {
-                    final shifted = shiftDateFilter(resolvedValue, 1);
+                    final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+                        ? 'This month'
+                        : shiftDateFilter(resolvedValue, 1);
                     _onPeriodChanged(shifted);
                   },
                   icon: Icons.calendar_month_rounded,
@@ -1589,24 +1604,39 @@ class _BalanceTrendHomeWidgetState
           icon: Icons.date_range_rounded,
         ),
     ];
+    final matchedOption = standardHomeDateFilterOptions.cast<String?>().firstWhere(
+      (opt) {
+        if (opt == null) return false;
+        if (opt == _period) return true;
+        final o = opt.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+        final f = _period.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+        return o == f;
+      },
+      orElse: () => null,
+    );
     final resolvedValue = isCustom
         ? _period
-        : (standardHomeDateFilterOptions.contains(_period)
-              ? _period
-              : 'This month');
+        : (matchedOption ??
+            (standardHomeDateFilterOptions.contains(_period)
+                ? _period
+                : 'This month'));
 
     return GlassDropdownPill<String>(
       value: resolvedValue,
       options: options,
       onPrevious: () {
-        final shifted = shiftDateFilter(resolvedValue, -1);
+        final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+            ? shiftDateFilter('This month', -1)
+            : shiftDateFilter(resolvedValue, -1);
         setState(() {
           _period = shifted;
           _scrollOffset = 0.0;
         });
       },
       onNext: () {
-        final shifted = shiftDateFilter(resolvedValue, 1);
+        final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+            ? 'This month'
+            : shiftDateFilter(resolvedValue, 1);
         setState(() {
           _period = shifted;
           _scrollOffset = 0.0;

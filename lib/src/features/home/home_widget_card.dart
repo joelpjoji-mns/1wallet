@@ -198,13 +198,25 @@ class HomeWidgetCard extends StatelessWidget {
         ),
     ];
 
+    final matchedOption = dateFilterOptions.cast<String?>().firstWhere(
+      (opt) {
+        if (opt == null) return false;
+        if (opt == filter) return true;
+        final o = opt.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+        final f = filter.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+        return o == f;
+      },
+      orElse: () => null,
+    );
+
     final resolvedValue = isCustom
         ? filter
-        : (dateFilterOptions.contains(filter)
-              ? filter
-              : (dateFilterOptions.isNotEmpty
-                    ? dateFilterOptions.first
-                    : filter));
+        : (matchedOption ??
+            (dateFilterOptions.contains(filter)
+                ? filter
+                : (dateFilterOptions.isNotEmpty
+                      ? dateFilterOptions.first
+                      : filter)));
 
     return GlassDropdownPill<String>(
       value: resolvedValue,
@@ -212,13 +224,17 @@ class HomeWidgetCard extends StatelessWidget {
       semanticLabel: '$title date filter',
       onPrevious: onDateFilterChanged != null
           ? () {
-              final shifted = shiftDateFilter(resolvedValue, -1);
+              final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+                  ? shiftDateFilter('This month', -1)
+                  : shiftDateFilter(resolvedValue, -1);
               onDateFilterChanged!(shifted);
             }
           : null,
       onNext: onDateFilterChanged != null
           ? () {
-              final shifted = shiftDateFilter(resolvedValue, 1);
+              final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+                  ? 'This month'
+                  : shiftDateFilter(resolvedValue, 1);
               onDateFilterChanged!(shifted);
             }
           : null,

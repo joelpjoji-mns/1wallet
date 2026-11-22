@@ -1,5 +1,5 @@
-- Streamlined repository architecture with optimized APK build and bundle footprint
-- Performance enhancements across home dashboard and ledger selectors
-- Removed redundant prototype dependencies and unreferenced legacy components
-- Cleaned up unbundled font binaries and unused platform reload utilities
-- Over 100 MB of legacy clutter and obsolete scripts pruned from source repository
+- Continuous multi-period date range navigation with responsive swipe and arrow controls
+- Clean Review & Inbox statement cards: single-row action layout with Confirm Paid and Dismiss
+- Fixed date range navigation getting stuck or resetting when swiping or clicking consecutively
+- Enabled date filter navigation when transitioning from All Time filter in Transactions
+- Improved touch target accessibility and tactile haptic feedback for timeframe controls

@@ -727,121 +727,48 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 color: scheme.outlineVariant.withValues(alpha: 0.3),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.xs,
-                  AppSpacing.md,
-                  AppSpacing.sm,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
                 ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 360;
-                    if (isNarrow) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              IconButton(
-                                tooltip: 'View Card Details',
-                                icon: const Icon(
-                                  Icons.credit_card_outlined,
-                                  size: 20,
-                                ),
-                                onPressed: () => context.push('/cards'),
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              FilledButton.icon(
-                                onPressed: () async {
-                                  final cycle =
-                                      notification.cycleKey ?? dueStatus?.cycleKey;
-                                  await ref
-                                      .read(ledgerProvider.notifier)
-                                      .markCardBillPaid(account.id, cycle);
-                                  await _dismiss(ref, notification.id);
-                                  if (context.mounted) {
-                                    showAppSnackBar(
-                                      context,
-                                      'Marked ${account.name} bill as paid',
-                                      action: SnackBarAction(
-                                        label: 'Undo',
-                                        onPressed: () {
-                                          ref
-                                              .read(ledgerProvider.notifier)
-                                              .markCardBillPaid(account.id, null);
-                                        },
-                                      ),
-                                    );
-                                  }
-                                },
-                                icon: const Icon(Icons.check_rounded, size: 16),
-                                label: const Text('Confirm Paid', softWrap: false),
-                                style: AppButtonStyles.compact(context),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: () => _dismiss(ref, notification.id),
-                              icon: const Icon(Icons.close_rounded, size: 16),
-                              label: const Text('Dismiss', softWrap: false),
-                              style: AppButtonStyles.compact(context),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => _dismiss(ref, notification.id),
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      label: const Text('Dismiss', softWrap: false),
+                      style: AppButtonStyles.compact(context),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        final cycle =
+                            notification.cycleKey ?? dueStatus?.cycleKey;
+                        await ref
+                            .read(ledgerProvider.notifier)
+                            .markCardBillPaid(account.id, cycle);
+                        await _dismiss(ref, notification.id);
+                        if (context.mounted) {
+                          showAppSnackBar(
+                            context,
+                            'Marked ${account.name} bill as paid',
+                            action: SnackBarAction(
+                              label: 'Undo',
+                              onPressed: () {
+                                ref
+                                    .read(ledgerProvider.notifier)
+                                    .markCardBillPaid(account.id, null);
+                              },
                             ),
-                          ),
-                        ],
-                      );
-                    }
-                    return Row(
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => _dismiss(ref, notification.id),
-                          icon: const Icon(Icons.close_rounded, size: 16),
-                          label: const Text('Dismiss', softWrap: false),
-                          style: AppButtonStyles.compact(context),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          tooltip: 'View Card Details',
-                          icon: const Icon(
-                            Icons.credit_card_outlined,
-                            size: 20,
-                          ),
-                          onPressed: () => context.push('/cards'),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        FilledButton.icon(
-                          onPressed: () async {
-                            final cycle =
-                                notification.cycleKey ?? dueStatus?.cycleKey;
-                            await ref
-                                .read(ledgerProvider.notifier)
-                                .markCardBillPaid(account.id, cycle);
-                            await _dismiss(ref, notification.id);
-                            if (context.mounted) {
-                              showAppSnackBar(
-                                context,
-                                'Marked ${account.name} bill as paid',
-                                action: SnackBarAction(
-                                  label: 'Undo',
-                                  onPressed: () {
-                                    ref
-                                        .read(ledgerProvider.notifier)
-                                        .markCardBillPaid(account.id, null);
-                                  },
-                                ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.check_rounded, size: 16),
-                          label: const Text('Confirm Paid', softWrap: false),
-                          style: AppButtonStyles.compact(context),
-                        ),
-                      ],
-                    );
-                  },
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.check_rounded, size: 16),
+                      label: const Text('Confirm Paid', softWrap: false),
+                      style: AppButtonStyles.compact(context),
+                    ),
+                  ],
                 ),
               ),
             ],

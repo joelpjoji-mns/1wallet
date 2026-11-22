@@ -219,22 +219,28 @@ class GlassDropdownPill<T> extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (onPrevious != null)
-                  InkWell(
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(AppRadii.pill),
-                    ),
-                    onTap: onPrevious,
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                        left: AppSpacing.xs,
-                        right: 2,
-                        top: AppSpacing.xxs,
-                        bottom: AppSpacing.xxs,
+                  Tooltip(
+                    message: 'Previous period',
+                    child: InkWell(
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(AppRadii.pill),
                       ),
-                      child: Icon(
-                        Icons.chevron_left_rounded,
-                        size: 15,
-                        color: scheme.onSurfaceVariant,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        onPrevious!();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: AppSpacing.xs,
+                          right: 2,
+                          top: AppSpacing.xxs,
+                          bottom: AppSpacing.xxs,
+                        ),
+                        child: Icon(
+                          Icons.chevron_left_rounded,
+                          size: 15,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
@@ -278,22 +284,28 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                   ),
                 ),
                 if (onNext != null)
-                  InkWell(
-                    borderRadius: const BorderRadius.horizontal(
-                      right: Radius.circular(AppRadii.pill),
-                    ),
-                    onTap: onNext,
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                        left: 2,
-                        right: AppSpacing.xs,
-                        top: AppSpacing.xxs,
-                        bottom: AppSpacing.xxs,
+                  Tooltip(
+                    message: 'Next period',
+                    child: InkWell(
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(AppRadii.pill),
                       ),
-                      child: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 15,
-                        color: scheme.onSurfaceVariant,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        onNext!();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 2,
+                          right: AppSpacing.xs,
+                          top: AppSpacing.xxs,
+                          bottom: AppSpacing.xxs,
+                        ),
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 15,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
@@ -303,22 +315,88 @@ class GlassDropdownPill<T> extends ConsumerWidget {
         );
 
         if (onPrevious != null || onNext != null) {
-          return GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onHorizontalDragEnd: (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              if (velocity > 120 && onPrevious != null) {
-                onPrevious!();
-              } else if (velocity < -120 && onNext != null) {
-                onNext!();
-              }
-            },
+          return _GlassDropdownPillSwipeHandler(
+            onPrevious: onPrevious,
+            onNext: onNext,
             child: content,
           );
         }
 
         return content;
       },
+    );
+  }
+}
+
+class _GlassDropdownPillSwipeHandler extends StatefulWidget {
+  const _GlassDropdownPillSwipeHandler({
+    required this.child,
+    this.onPrevious,
+    this.onNext,
+  });
+
+  final Widget child;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+
+  @override
+  State<_GlassDropdownPillSwipeHandler> createState() =>
+      _GlassDropdownPillSwipeHandlerState();
+}
+
+class _GlassDropdownPillSwipeHandlerState
+    extends State<_GlassDropdownPillSwipeHandler> {
+  double _dragDistance = 0.0;
+  bool _triggered = false;
+
+  void _triggerPrev() {
+    if (_triggered || widget.onPrevious == null) return;
+    _triggered = true;
+    HapticFeedback.lightImpact();
+    widget.onPrevious!();
+  }
+
+  void _triggerNext() {
+    if (_triggered || widget.onNext == null) return;
+    _triggered = true;
+    HapticFeedback.lightImpact();
+    widget.onNext!();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: (_) {
+        _dragDistance = 0.0;
+        _triggered = false;
+      },
+      onHorizontalDragUpdate: (details) {
+        _dragDistance += details.delta.dx;
+        // Dragging right (positive dx): moves to previous timeframe
+        if (_dragDistance > 24) {
+          _triggerPrev();
+        } else if (_dragDistance < -24) {
+          _triggerNext();
+        }
+      },
+      onHorizontalDragEnd: (details) {
+        if (!_triggered) {
+          final velocity = details.primaryVelocity ?? 0;
+          if (velocity > 80) {
+            _triggerPrev();
+          } else if (velocity < -80) {
+            _triggerNext();
+          }
+        }
+        _dragDistance = 0.0;
+        _triggered = false;
+      },
+      onHorizontalDragCancel: () {
+        _dragDistance = 0.0;
+        _triggered = false;
+      },
+      child: widget.child,
     );
   }
 }

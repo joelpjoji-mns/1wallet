@@ -1003,7 +1003,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   void _shiftDateFilter(int direction) {
     final current = ref.read(transactionsDateFilterProvider);
-    final shifted = shiftDateFilter(current, direction);
+    final shifted = (current == 'all' || current == 'All time')
+        ? (direction < 0 ? shiftDateFilter('this_month', -1) : 'this_month')
+        : shiftDateFilter(current, direction);
     ref.read(transactionsDateFilterProvider.notifier).state = shifted;
   }
 
@@ -1259,8 +1261,9 @@ Set<String> _selectedCategoryMatchIds(
 }
 
 bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
-  if (dateFilter == 'all' || dateFilter == 'All time') return true;
-  if (dateFilter.startsWith('custom:')) {
+  final norm = dateFilter.trim().toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+  if (norm == 'all' || norm == 'alltime') return true;
+  if (dateFilter.startsWith('custom:') || dateFilter.startsWith('Custom:')) {
     final range = parseCustomDateRange(dateFilter);
     if (range != null) {
       final start = range.start;
@@ -1279,12 +1282,12 @@ bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
   }
   final current = now ?? DateTime.now();
   final day = DateTime(date.year, date.month, date.day);
-  return switch (dateFilter) {
+  return switch (norm) {
     'today' =>
       date.year == current.year &&
       date.month == current.month &&
       date.day == current.day,
-    'this_week' => () {
+    'thisweek' => () {
       final diff = current.weekday - 1; // 0 for Monday
       final start = DateTime(
         current.year,
@@ -1294,8 +1297,8 @@ bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
       final end = start.add(const Duration(days: 7));
       return !date.isBefore(start) && date.isBefore(end);
     }(),
-    'this_month' => date.year == current.year && date.month == current.month,
-    'last_30_days' || '30_days' =>
+    'thismonth' => date.year == current.year && date.month == current.month,
+    'last30days' || '30days' =>
       !day.isBefore(
             DateTime(
               current.year,
@@ -1306,12 +1309,12 @@ bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
           !date.isAfter(
             DateTime(current.year, current.month, current.day, 23, 59, 59, 999),
           ),
-    '6_months' =>
+    '6months' =>
       !day.isBefore(DateTime(current.year, current.month - 6, current.day)) &&
           !date.isAfter(
             DateTime(current.year, current.month, current.day, 23, 59, 59, 999),
           ),
-    'this_year' => date.year == current.year,
+    'thisyear' => date.year == current.year,
     _ => true,
   };
 }
@@ -1326,18 +1329,19 @@ String _typeFilterLabel(String value) {
 }
 
 String _dateFilterLabel(String value) {
-  if (value.startsWith('custom:')) {
+  if (value.startsWith('custom:') || value.startsWith('Custom:')) {
     return formatCustomDateRangeLabel(value);
   }
-  return switch (value) {
+  final norm = value.trim().toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+  return switch (norm) {
     'today' => 'Today',
-    'this_week' => 'This week',
-    'this_month' => 'This month',
-    '30_days' || 'last_30_days' => '30 days',
-    '6_months' => '6 months',
-    'this_year' => 'This year',
-    'all' => 'All time',
-    'custom' => 'Custom range',
+    'thisweek' => 'This week',
+    'thismonth' => 'This month',
+    '30days' || 'last30days' => '30 days',
+    '6months' => '6 months',
+    'thisyear' => 'This year',
+    'all' || 'alltime' => 'All time',
+    'custom' || 'customrange' => 'Custom range',
     _ => 'All time',
   };
 }

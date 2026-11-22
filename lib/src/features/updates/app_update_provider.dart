@@ -180,6 +180,40 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.12',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.12',
+    versionCode: 12,
+    runtimeVersion: '1.0.12',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-22T19:15:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Continuous multi-period date range navigation with responsive swipe and arrow controls',
+      ],
+      bugFixes: const [
+        'Clean Review & Inbox statement cards: single-row action layout with Confirm Paid and Dismiss',
+        'Fixed date range navigation getting stuck or resetting when swiping or clicking consecutively',
+        'Enabled date filter navigation when transitioning from All Time filter in Transactions',
+      ],
+      notes: const [
+        'Improved touch target accessibility and tactile haptic feedback for timeframe controls',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 52 * 1024 * 1024,
+      sha256: '',
+      architecture: 'universal',
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.11',
     platform: 'android',
     channel: 'stable',

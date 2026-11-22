@@ -60,6 +60,9 @@ String formatCustomDateRangeLabel(String period, {DateTime? now}) {
     if (s.year == tomorrow.year && s.month == tomorrow.month && s.day == tomorrow.day) {
       return 'Tomorrow';
     }
+    if (s.year == current.year) {
+      return DateFormat('MMM d').format(s);
+    }
     return DateFormat('MMM d, yyyy').format(s);
   }
 
@@ -99,7 +102,10 @@ String formatCustomDateRangeLabel(String period, {DateTime? now}) {
     if (s.year == lastMonth.year && s.month == lastMonth.month) {
       return 'Last month';
     }
-    return DateFormat('MMMM yyyy').format(s);
+    if (s.year == current.year) {
+      return DateFormat('MMMM').format(s);
+    }
+    return DateFormat('MMM yyyy').format(s);
   }
 
   // Check full year ranges
@@ -121,7 +127,32 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   final today = DateTime(current.year, current.month, current.day);
   final dir = direction >= 0 ? 1 : -1;
 
-  if (currentFilter == 'all' || currentFilter == 'allTime' || currentFilter == 'All time') {
+  final isTitle = currentFilter.isNotEmpty &&
+      currentFilter[0] == currentFilter[0].toUpperCase() &&
+      !currentFilter.startsWith('custom:') &&
+      !currentFilter.startsWith('Custom:');
+  final isCamel = !isTitle &&
+      (currentFilter == 'thisWeek' ||
+          currentFilter == 'thisMonth' ||
+          currentFilter == '30Days' ||
+          currentFilter == '6Months' ||
+          currentFilter == 'thisYear' ||
+          currentFilter == 'allTime');
+
+  String formatPreset({
+    required String snake,
+    required String title,
+    required String camel,
+  }) {
+    if (isTitle) return title;
+    if (isCamel) return camel;
+    return snake;
+  }
+
+  // Preserves 'all' if caller explicitly invokes with all
+  if (currentFilter == 'all' ||
+      currentFilter == 'allTime' ||
+      currentFilter == 'All time') {
     return currentFilter;
   }
 
@@ -129,7 +160,7 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   if (currentFilter == 'today' || currentFilter == 'Today') {
     final target = addCalendarDays(today, dir);
     if (target.year == today.year && target.month == today.month && target.day == today.day) {
-      return 'today';
+      return formatPreset(snake: 'today', title: 'Today', camel: 'today');
     }
     return formatCustomDateRangeKey(DateTimeRange(start: target, end: target));
   }
@@ -144,7 +175,7 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
     if (start.year == thisWeekStart.year &&
         start.month == thisWeekStart.month &&
         start.day == thisWeekStart.day) {
-      return 'this_week';
+      return formatPreset(snake: 'this_week', title: 'This week', camel: 'thisWeek');
     }
     return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
   }
@@ -153,7 +184,9 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   if (currentFilter == 'this_month' || currentFilter == 'thisMonth' || currentFilter == 'This month') {
     final start = DateTime(current.year, current.month + dir, 1);
     final end = DateTime(start.year, start.month + 1, 0);
-    if (start.year == current.year && start.month == current.month) return 'this_month';
+    if (start.year == current.year && start.month == current.month) {
+      return formatPreset(snake: 'this_month', title: 'This month', camel: 'thisMonth');
+    }
     return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
   }
 
@@ -161,7 +194,9 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   if (currentFilter == 'last_month' || currentFilter == 'lastMonth' || currentFilter == 'Last month') {
     final start = DateTime(current.year, current.month - 1 + dir, 1);
     final end = DateTime(start.year, start.month + 1, 0);
-    if (start.year == current.year && start.month == current.month) return 'this_month';
+    if (start.year == current.year && start.month == current.month) {
+      return formatPreset(snake: 'this_month', title: 'This month', camel: 'thisMonth');
+    }
     return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
   }
 
@@ -172,7 +207,7 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
       final start = addCalendarDays(end, -29);
       return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
     } else {
-      final start = addCalendarDays(today, 30);
+      final start = addCalendarDays(today, 1);
       final end = addCalendarDays(start, 29);
       return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
     }
@@ -195,7 +230,9 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   if (currentFilter == 'this_year' || currentFilter == 'thisYear' || currentFilter == 'This year') {
     final start = DateTime(current.year + dir, 1, 1);
     final end = DateTime(start.year, 12, 31);
-    if (start.year == current.year) return 'this_year';
+    if (start.year == current.year) {
+      return formatPreset(snake: 'this_year', title: 'This year', camel: 'thisYear');
+    }
     return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
   }
 
