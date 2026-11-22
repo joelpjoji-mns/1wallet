@@ -24,9 +24,7 @@ The `features/` directory contains screen-level UI and user workflows for 1Walle
 | `main/` | Main shell, navigation bar, side drawer & navigation rail | [main/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/main/AGENTS.md) |
 | `notifications/` | Local notifications manager and budget alerts | [notifications/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/notifications/AGENTS.md) |
 | `onboarding/` | First-run setup wizard and default wallet creation | [onboarding/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/onboarding/AGENTS.md) |
-| `planner/` | Envelope budgeting and future expense allocations | [planner/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/planner/AGENTS.md) |
 | `recurring/` | Recurring payment rules, subscriptions & scheduled bills | [recurring/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/recurring/AGENTS.md) |
-| `reports/` | Financial analytics, spending breakdown & trend charts | [reports/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/reports/AGENTS.md) |
 | `routes/` | Route definitions and screen factories for GoRouter | [routes/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/routes/AGENTS.md) |
 | `settings/` | User preferences, data backup/restore, permission setup, offline mode card & Google upgrade flow | [settings/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/settings/AGENTS.md) |
 | `sync/` | Cloud sync status, manual sync triggers & conflict screen | [sync/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/sync/AGENTS.md) |

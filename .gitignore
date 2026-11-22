@@ -63,6 +63,11 @@ scratch_*
 generate_dashboard.js
 dashboard.html
 *.onewallet
+__pycache__/
+store_assets/phone_screenshots/
+store_assets/promos_*/
+store_assets/raw_screenshots_*/
+store_assets/shipshot_*/
 
 # Firebase & Deployment Cache
 .firebase/
@@ -76,8 +81,7 @@ ui-debug.log
 pubsub-debug.log
 database-debug.log
 
-# Firestore rules test tooling dependencies (installed via `npm --prefix firebase install`)
-firebase/node_modules/
-node_modules/*
+# Node.js dependencies
+node_modules/
 .gradle/
 

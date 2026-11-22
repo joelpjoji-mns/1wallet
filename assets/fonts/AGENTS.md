@@ -9,8 +9,8 @@ Houses local TrueType font binaries bundled with the app to ensure offline, cros
 
 - **Inter (`Inter-Regular`, `Inter-Medium`, `Inter-SemiBold`, `Inter-Bold`)**:
   - Primary UI typeface for all headings, body text, buttons, and navigation chrome.
-- **Roboto & Roboto Mono (`Roboto-Regular`, `Roboto-Medium`, `Roboto-Bold`, `RobotoMono-Regular`, `RobotoMono-Medium`)**:
-  - Used for fixed-width tabular numbers, account numbers, and transaction currency amounts.
+- **Roboto Mono (`RobotoMono-Regular`, `RobotoMono-Medium`)**:
+  - Used for fixed-width tabular numbers, account numbers, and monospace displays.
 
 ---
 
