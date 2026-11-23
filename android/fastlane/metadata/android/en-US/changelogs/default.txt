@@ -1,4 +1,6 @@
-- Dynamic currency icons in selectors and account setup matching active currencies
-- Fixed missing search bar and action glyphs by bundling Cupertino icons
-- Fixed currency picker to display currency-specific symbols and icons instead of generic placeholders
-- Streamlined settings and navigation chrome for enhanced Google Play compliance
+- Google Play in-app updates: check and update inline directly inside the app
+- Loan management: dedicated Pay EMI and custom repayment actions in Loan details
+- Fixed loan repayment account selector to display loan accounts and balances
+- Resolved double-counting of finished scheduled plan templates in ledger
+- Fixed EMI plan recurrence limit loop and repayment history tracking
+- Reinforced double-entry ledger integrity for all loan operations

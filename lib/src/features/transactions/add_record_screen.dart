@@ -30,6 +30,7 @@ class AddRecordScreen extends ConsumerStatefulWidget {
     super.key,
     this.transactionId,
     this.initialAccountId,
+    this.initialCounterAccountId,
     this.plannedId,
     this.captureCandidateId,
     this.initialTab = 0,
@@ -39,6 +40,7 @@ class AddRecordScreen extends ConsumerStatefulWidget {
 
   final String? transactionId;
   final String? initialAccountId;
+  final String? initialCounterAccountId;
   final String? plannedId;
   final String? captureCandidateId;
   final int initialTab;
@@ -87,10 +89,15 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     if (widget.initialType != null &&
         (widget.initialType == 'expense' ||
             widget.initialType == 'income' ||
-            widget.initialType == 'transfer')) {
+            widget.initialType == 'transfer' ||
+            widget.initialType == 'loan_repayment' ||
+            widget.initialType == 'card_payment')) {
       _type = widget.initialType!;
     }
     _accountId = widget.initialAccountId;
+    if (widget.initialCounterAccountId != null) {
+      _counterAccountId = widget.initialCounterAccountId;
+    }
     _tagFocusNode.addListener(_onTagFocusChanged);
     if (widget.autoScan) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -232,7 +239,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         (sourceAccount?.currency.toUpperCase() ??
             state.preferences.baseCurrency.toUpperCase());
     final isCrossTransfer =
-        _type == 'transfer' &&
+        (_type == 'transfer' || _type == 'loan_repayment') &&
         counterAccount != null &&
         counterAccount.currency.toUpperCase() !=
             (sourceAccount?.currency.toUpperCase() ??
@@ -290,7 +297,11 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                     if (value == 'transfer') {
                       _categoryId = null;
                     }
-                    if (value != 'transfer') _counterAccountId = null;
+                    if (value != 'transfer' &&
+                        value != 'loan_repayment' &&
+                        value != 'card_payment') {
+                      _counterAccountId = null;
+                    }
                   }),
                 ),
               ),
@@ -1275,14 +1286,30 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
 
   Future<void> _showAccountPicker(bool counter) async {
     final state = ref.read(ledgerProvider);
+    final isLoan = counter && _type == 'loan_repayment';
+    final filteredAccounts = isLoan
+        ? state.accounts.where(
+            (a) =>
+                !a.isArchived &&
+                !a.isDeleted &&
+                (a.type == 'loan' || a.type == 'overdraft'),
+          )
+        : state.accounts.where(
+            (a) =>
+                !a.isArchived &&
+                !a.isDeleted &&
+                (counter ? a.id != _accountId : true),
+          );
     final accounts = sortAccounts(
-      state.accounts.where(
-        (a) => !a.isArchived && (counter ? a.id != _accountId : true),
-      ),
+      filteredAccounts.isNotEmpty
+          ? filteredAccounts
+          : state.accounts.where((a) => !a.isArchived && !a.isDeleted),
     );
     final nextId = await showFullScreenPicker<String>(
       context: context,
-      title: counter ? 'Destination' : 'Account',
+      title: counter
+          ? (isLoan ? 'Loan account' : 'Destination')
+          : 'Account',
       selectedValue: counter ? _counterAccountId : _accountId,
       options: [
         for (final a in accounts)
@@ -1466,9 +1493,19 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     }
 
     final counterAcc = accountById(state, _counterAccountId);
-    if (_type == 'transfer') {
+    final isDoubleEntry =
+        _type == 'transfer' ||
+        _type == 'loan_repayment' ||
+        _type == 'card_payment';
+    if (isDoubleEntry) {
       if (counterAcc == null) {
-        _showMessage('Choose a destination account.');
+        _showMessage(
+          _type == 'loan_repayment'
+              ? 'Choose the loan account.'
+              : (_type == 'card_payment'
+                  ? 'Choose the card account.'
+                  : 'Choose a destination account.'),
+        );
         return;
       }
       final isCrossTransfer =
@@ -1486,10 +1523,13 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     }
 
     if (_type == 'loan_repayment' && _categoryId == null) {
-      _categoryId = 'cat-emi';
+      _categoryId =
+          firstActiveCategory(state, preferred: 'emi')?.id ?? 'cat-emi';
     }
     final selectedCategory = categoryById(state, _categoryId);
-    if (_type != 'transfer' && selectedCategory == null) {
+    if (_type != 'transfer' &&
+        _type != 'loan_repayment' &&
+        selectedCategory == null) {
       _showMessage('Choose a category.');
       return;
     }
@@ -1511,6 +1551,13 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           : state.captureCandidates.firstWhereOrNull(
               (c) => c.id == widget.captureCandidateId,
             );
+      final resolvedCategoryId = _type == 'transfer'
+          ? null
+          : (selectedCategory?.id ??
+              (_type == 'loan_repayment'
+                  ? (firstActiveCategory(state, preferred: 'emi')?.id ??
+                      'cat-emi')
+                  : null));
       await ref
           .read(ledgerProvider.notifier)
           .upsertTransaction(
@@ -1525,7 +1572,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                 (finalOriginalCurrency ?? txCurrency).toUpperCase() ==
                 account.currency.toUpperCase(),
             counterAmountMinor: finalCounterAmountMinor,
-            categoryId: _type == 'transfer' ? null : selectedCategory!.id,
+            categoryId: resolvedCategoryId,
             status: _status ?? editingTransaction?.status ?? 'cleared',
             source:
                 editingTransaction?.source ??
@@ -1555,8 +1602,47 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           );
 
       if (plannedTransaction != null) {
-        if (plannedTransaction.recurrenceFrequency != null &&
-            plannedTransaction.recurrenceFrequency != 'once') {
+        final latestLedger = ref.read(ledgerProvider);
+        final historyCount = latestLedger.transactions
+            .where(
+              (t) =>
+                  t.originalTransactionId == plannedTransaction.id &&
+                  t.status != 'scheduled' &&
+                  t.status != 'void',
+            )
+            .length;
+
+        bool isLimitReached = false;
+        if (plannedTransaction.recurrenceLimit != null &&
+            historyCount >= plannedTransaction.recurrenceLimit!) {
+          isLimitReached = true;
+        }
+
+        bool isLoanPaidOff = false;
+        if (plannedTransaction.type == 'loan_repayment' &&
+            plannedTransaction.counterAccountId != null) {
+          final loanAccount = accountById(
+            latestLedger,
+            plannedTransaction.counterAccountId,
+          );
+          if (loanAccount != null) {
+            if (isPastLoan(latestLedger, loanAccount)) {
+              isLoanPaidOff = true;
+            } else if (loanAccount.loanDetails?.repaymentCount != null &&
+                historyCount >= loanAccount.loanDetails!.repaymentCount!) {
+              isLimitReached = true;
+            }
+          }
+        }
+
+        if (isLimitReached ||
+            isLoanPaidOff ||
+            plannedTransaction.recurrenceFrequency == null ||
+            plannedTransaction.recurrenceFrequency == 'once') {
+          await ref
+              .read(ledgerProvider.notifier)
+              .updateTransactionStatus(widget.plannedId!, 'finished');
+        } else {
           final nextDate = advanceTransactionRecurrence(
             plannedTransaction.occurredAt,
             plannedTransaction,
@@ -1568,10 +1654,6 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                 'scheduled',
                 occurredAt: nextDate,
               );
-        } else {
-          await ref
-              .read(ledgerProvider.notifier)
-              .updateTransactionStatus(widget.plannedId!, 'finished');
         }
       }
 

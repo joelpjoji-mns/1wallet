@@ -662,7 +662,8 @@ class _RecurringCompactCard extends StatelessWidget {
                                         t.status == 'cleared') &&
                                     (t.accountId == loanAccount!.id ||
                                         t.counterAccountId == loanAccount.id) &&
-                                    t.type == 'loan_repayment',
+                                    (t.type == 'loan_repayment' ||
+                                        t.type == 'transfer'),
                               )
                               .length;
                           final progress = (postedCount / total).clamp(
@@ -1635,7 +1636,9 @@ class RecurringDetailView extends ConsumerWidget {
                         }
 
                         final balance = accountBalance(state, loanAccount!);
-                        final remainingMinor = balance.amountMinor.abs();
+                        final remainingMinor = balance.amountMinor < 0
+                            ? -balance.amountMinor
+                            : 0;
                         final paid = (principal - remainingMinor).clamp(
                           0,
                           principal,
@@ -1893,13 +1896,15 @@ class _RecurringHistoryList extends ConsumerWidget {
     final state = ref.watch(ledgerProvider);
     final history = state.transactions.where((t) {
       if (t.id == plan.id) return false;
-      if (t.status == 'scheduled') {
+      if (t.status == 'scheduled' || t.status == 'finished') {
         return false;
       }
       if (t.originalTransactionId == plan.id) return true;
-      if (plan.type == 'loan_repayment' && t.type == 'loan_repayment') {
-        return t.counterAccountId == plan.counterAccountId ||
-            t.accountId == plan.counterAccountId;
+      if (plan.type == 'loan_repayment' &&
+          (t.type == 'loan_repayment' || t.type == 'transfer')) {
+        return plan.counterAccountId != null &&
+            (t.counterAccountId == plan.counterAccountId ||
+                t.accountId == plan.counterAccountId);
       }
       return false;
     }).toList();

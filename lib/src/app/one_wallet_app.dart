@@ -15,6 +15,7 @@ import '../services/notification_service.dart';
 import '../services/native_widget_sync_service.dart';
 import '../startup/startup_state.dart';
 import '../security/app_lock.dart';
+import '../features/updates/play_store_update_service.dart';
 
 class OneWalletApp extends ConsumerStatefulWidget {
   const OneWalletApp({super.key});
@@ -208,6 +209,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           ref.read(ledgerProvider),
           theme: activeTheme,
         );
+        ref.read(playStoreUpdateProvider.notifier).checkForUpdate();
       }
     });
 
@@ -331,6 +333,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       child: DynamicColorBuilder(
         builder: (lightDynamic, darkDynamic) => MaterialApp.router(
           title: '1Wallet',
+          scaffoldMessengerKey: rootScaffoldMessengerKey,
           debugShowCheckedModeBanner: false,
           routerConfig: router,
           theme: AppTheme.light(

@@ -67,7 +67,8 @@ List<TransactionRecord> sortedTransactions(
         (transaction) =>
             includeScheduled ||
             (transaction.status != 'scheduled' &&
-                transaction.status != 'paused'),
+                transaction.status != 'paused' &&
+                transaction.status != 'finished'),
       )
       .where(
         (transaction) => !hideInterest || !isHiddenInterest(state, transaction),
@@ -100,7 +101,8 @@ Map<String, Money> accountBalanceMap(LedgerState state) {
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
         transaction.status == 'paused' ||
-        transaction.status == 'void') {
+        transaction.status == 'void' ||
+        transaction.status == 'finished') {
       continue;
     }
 
@@ -164,7 +166,8 @@ Money accountBalance(LedgerState state, Account account) {
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
         transaction.status == 'paused' ||
-        transaction.status == 'void') {
+        transaction.status == 'void' ||
+        transaction.status == 'finished') {
       continue;
     }
     if (transaction.accountId == account.id) {
@@ -232,7 +235,8 @@ List<Money> cashCurrencyBalancesForAccount(LedgerState state, Account account) {
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
         transaction.status == 'paused' ||
-        transaction.status == 'void') {
+        transaction.status == 'void' ||
+        transaction.status == 'finished') {
       continue;
     }
 
@@ -536,7 +540,8 @@ Money totalBalance(
   for (final transaction in state.transactions) {
     if (transaction.status == 'scheduled' ||
         transaction.status == 'paused' ||
-        transaction.status == 'void') {
+        transaction.status == 'void' ||
+        transaction.status == 'finished') {
       continue;
     }
     if (transaction.isExcludedFromReports) continue;
@@ -761,7 +766,12 @@ Map<String, int> _directCategoryUsageMap(LedgerState state) {
   if (cached != null) return cached;
   final counts = <String, int>{};
   for (final transaction in state.transactions) {
-    if (transaction.status == 'void') continue;
+    if (transaction.status == 'void' ||
+        transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'finished') {
+      continue;
+    }
     final categoryId = transaction.categoryId;
     if (categoryId != null) {
       counts[categoryId] = (counts[categoryId] ?? 0) + 1;
@@ -1462,8 +1472,8 @@ LoanProjection loanProjection(LedgerState state, Account loan) {
   final details = effectiveLoanDetails(state, loan);
   final emiTx = existingLoanEmi(state, loan.id);
   final rawEmi =
-      details.repaymentAmount?.amountMinor.abs() ??
       emiTx?.amount.amountMinor.abs() ??
+      details.repaymentAmount?.amountMinor.abs() ??
       0;
   final frequency = emiTx?.recurrenceFrequency ?? details.recurrenceFrequency;
   final interval = emiTx?.recurrenceInterval ?? details.recurrenceInterval;

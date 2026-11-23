@@ -225,7 +225,9 @@ class TransactionRow extends StatelessWidget {
         amountMinor: -transaction.amount.amountMinor.abs(),
       );
     }
-    if (side == 'transferIn') {
+    if (side == 'transferIn' ||
+        (selectedAccountId != null &&
+            selectedAccountId == transaction.counterAccountId)) {
       return transaction.counterAmount ?? transaction.amount;
     }
     if (incomeTypes.contains(transaction.type)) return transaction.amount;
@@ -287,7 +289,9 @@ class TransactionRow extends StatelessWidget {
     if (side == 'transferOut') {
       return amountColor(context, -1);
     }
-    if (side == 'transferIn') {
+    if (side == 'transferIn' ||
+        (selectedAccountId != null &&
+            selectedAccountId == transaction.counterAccountId)) {
       return amountColor(context, 1);
     }
     return amountColor(context, _primaryAmount().amountMinor);
@@ -295,18 +299,30 @@ class TransactionRow extends StatelessWidget {
 
   String _title(Category? category, Account? account, Account? counter) {
     if (transaction.type == 'transfer') {
-      if (side == 'transferIn') {
+      if (side == 'transferIn' ||
+          selectedAccountId == transaction.counterAccountId) {
         return 'Transfer from ${account?.name ?? 'account'}';
       }
       return 'Transfer to ${counter?.name ?? 'account'}';
+    }
+    if (transaction.type == 'loan_repayment') {
+      if (side == 'transferIn' ||
+          selectedAccountId == transaction.counterAccountId) {
+        return 'Repayment from ${account?.name ?? 'account'}';
+      }
+      return 'Repayment to ${counter?.name ?? 'loan'}';
     }
     final path = categoryPath(state, category);
     return path.isEmpty ? transactionTypeLabel(transaction.type) : path;
   }
 
   String _accountLine(Account? account, Account? counter) {
-    if (transaction.type == 'transfer') {
-      return '${account?.name ?? 'Account'} → ${counter?.name ?? 'Account'}';
+    if (transaction.type == 'transfer' ||
+        transaction.type == 'loan_repayment' ||
+        transaction.type == 'card_payment') {
+      if (counter != null) {
+        return '${account?.name ?? 'Account'} → ${counter.name}';
+      }
     }
     return account?.name ?? 'Missing account';
   }

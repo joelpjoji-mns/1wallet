@@ -180,6 +180,41 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.14',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.14',
+    versionCode: 14,
+    runtimeVersion: '1.0.14',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-23T21:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Google Play in-app updates: check and update inline directly inside the app',
+        'Loan management: dedicated Pay EMI and custom repayment actions in Loan details',
+      ],
+      bugFixes: const [
+        'Fixed loan repayment account selector to display loan accounts and balances',
+        'Resolved double-counting of finished scheduled plan templates in ledger',
+        'Fixed EMI plan recurrence limit loop and repayment history tracking',
+      ],
+      notes: const [
+        'Reinforced double-entry ledger integrity for all loan operations',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 52 * 1024 * 1024,
+      sha256: '',
+      architecture: 'universal',
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.13',
     platform: 'android',
     channel: 'stable',

@@ -20,6 +20,8 @@ import 'permission_setup_controller.dart';
 import 'settings_components.dart';
 import 'glass_effect_screen.dart';
 import 'theme_mode_screen.dart';
+import '../updates/app_update_provider.dart';
+import '../updates/play_store_update_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -339,6 +341,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // ── App updates & version ──
+                  const _AppUpdatesSection(),
                   const SizedBox(height: AppSpacing.md),
 
                   // ── Feedback & Support ──
@@ -735,6 +741,361 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           child: const Text('Delete everything'),
         ),
       ],
+    );
+  }
+}
+
+class _AppUpdatesSection extends ConsumerWidget {
+  const _AppUpdatesSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final updateState = ref.watch(playStoreUpdateProvider);
+    final packageInfo = ref.watch(packageInfoProvider).valueOrNull;
+
+    final version = packageInfo?.version ?? '1.0.14';
+    final buildNumber = packageInfo?.buildNumber ?? '14';
+
+    Widget leadingIcon;
+    String statusSubtitle;
+    Widget? trailingWidget;
+    VoidCallback? onUpdateTap;
+
+    switch (updateState.status) {
+      case PlayStoreUpdateStatus.checking:
+        leadingIcon = const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        );
+        statusSubtitle = 'Checking Google Play for updates...';
+        trailingWidget = null;
+        onUpdateTap = null;
+        break;
+      case PlayStoreUpdateStatus.downloading:
+        leadingIcon = const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        );
+        statusSubtitle = 'Downloading update from Google Play...';
+        trailingWidget = null;
+        onUpdateTap = null;
+        break;
+      case PlayStoreUpdateStatus.readyToInstall:
+        leadingIcon = Icon(
+          Icons.system_update_rounded,
+          color: theme.colorScheme.primary,
+        );
+        statusSubtitle = 'Update downloaded and ready to install';
+        trailingWidget = FilledButton.tonal(
+          onPressed: () => ref
+              .read(playStoreUpdateProvider.notifier)
+              .completeFlexibleUpdate(),
+          child: const Text('Restart'),
+        );
+        onUpdateTap = () => ref
+            .read(playStoreUpdateProvider.notifier)
+            .completeFlexibleUpdate();
+        break;
+      case PlayStoreUpdateStatus.updateAvailable:
+        leadingIcon = Icon(
+          Icons.new_releases_outlined,
+          color: theme.colorScheme.primary,
+        );
+        statusSubtitle = 'New update available on Google Play';
+        trailingWidget = FilledButton(
+          onPressed: () => ref
+              .read(playStoreUpdateProvider.notifier)
+              .startFlexibleUpdate(),
+          child: const Text('Update'),
+        );
+        onUpdateTap = () => ref
+            .read(playStoreUpdateProvider.notifier)
+            .startFlexibleUpdate();
+        break;
+      case PlayStoreUpdateStatus.upToDate:
+        leadingIcon = Icon(
+          Icons.check_circle_outline_rounded,
+          color: theme.brightness == Brightness.dark
+              ? AppColors.positiveDark
+              : AppColors.positiveLight,
+        );
+        statusSubtitle = 'App is up to date';
+        trailingWidget = TextButton(
+          onPressed: () => ref
+              .read(playStoreUpdateProvider.notifier)
+              .checkForUpdate(autoTrigger: true),
+          child: const Text('Check'),
+        );
+        onUpdateTap = () => ref
+            .read(playStoreUpdateProvider.notifier)
+            .checkForUpdate(autoTrigger: true);
+        break;
+      case PlayStoreUpdateStatus.failed:
+        leadingIcon = Icon(
+          Icons.sync_problem_rounded,
+          color: theme.colorScheme.error,
+        );
+        statusSubtitle = 'Check failed. Tap to retry.';
+        trailingWidget = TextButton(
+          onPressed: () => ref
+              .read(playStoreUpdateProvider.notifier)
+              .checkForUpdate(autoTrigger: true),
+          child: const Text('Retry'),
+        );
+        onUpdateTap = () => ref
+            .read(playStoreUpdateProvider.notifier)
+            .checkForUpdate(autoTrigger: true);
+        break;
+      case PlayStoreUpdateStatus.notSupported:
+        leadingIcon = const Icon(Icons.info_outline_rounded);
+        statusSubtitle = 'Google Play in-app updates available on Android';
+        trailingWidget = null;
+        onUpdateTap = null;
+        break;
+      case PlayStoreUpdateStatus.idle:
+        leadingIcon = const Icon(Icons.system_update_alt_rounded);
+        statusSubtitle = 'Check Google Play for updates';
+        trailingWidget = TextButton(
+          onPressed: () => ref
+              .read(playStoreUpdateProvider.notifier)
+              .checkForUpdate(autoTrigger: true),
+          child: const Text('Check'),
+        );
+        onUpdateTap = () => ref
+            .read(playStoreUpdateProvider.notifier)
+            .checkForUpdate(autoTrigger: true);
+        break;
+    }
+
+    return AppGroupedSection(
+      header: 'App updates & version',
+      children: [
+        AppGroupedTile(
+          leading: leadingIcon,
+          title: Text('1Wallet v$version ($buildNumber)'),
+          subtitle: Text(statusSubtitle),
+          trailing: trailingWidget,
+          onTap: onUpdateTap,
+        ),
+        const GlassDivider(),
+        AppGroupedTile(
+          leading: const Icon(Icons.auto_awesome_outlined),
+          title: const Text("What's new"),
+          subtitle: const Text('View release notes and recent improvements'),
+          showChevron: true,
+          onTap: () => _showWhatsNewSheet(context),
+        ),
+        const GlassDivider(),
+        AppGroupedTile(
+          leading: const Icon(Icons.shop_outlined),
+          title: const Text('Google Play Store'),
+          subtitle: const Text('View store listing, ratings, and reviews'),
+          showChevron: true,
+          onTap: () =>
+              ref.read(playStoreUpdateProvider.notifier).openStoreListing(),
+        ),
+      ],
+    );
+  }
+}
+
+void _showWhatsNewSheet(BuildContext context) {
+  showAppSheet<void>(
+    context: context,
+    builder: (ctx) {
+      final theme = Theme.of(ctx);
+      final releases = kBuiltInReleaseHistory.take(4).toList();
+
+      return AppSheetSurface(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.xl,
+          ),
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.xs),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    color: theme.colorScheme.onPrimaryContainer,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "What's New in 1Wallet",
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Recent releases & improvements',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            for (var i = 0; i < releases.length; i++) ...[
+              _ReleaseCard(
+                release: releases[i],
+                isLatest: i == 0,
+              ),
+              if (i < releases.length - 1)
+                const SizedBox(height: AppSpacing.md),
+            ],
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _ReleaseCard extends StatelessWidget {
+  const _ReleaseCard({
+    required this.release,
+    required this.isLatest,
+  });
+
+  final AppUpdateRelease release;
+  final bool isLatest;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final changelog = release.changelog;
+
+    return AppPanel(
+      glass: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'v${release.versionName}',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              if (isLatest)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  child: Text(
+                    'Latest',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              const Spacer(),
+              Text(
+                'Build ${release.versionCode}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          if (changelog.newFeatures.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '✨ New Features',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xxs),
+            for (final feature in changelog.newFeatures)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+          if (changelog.bugFixes.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '🛠️ Improvements & Fixes',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xxs),
+            for (final fix in changelog.bugFixes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Text(
+                        fix,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+          if (changelog.notes.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            for (final note in changelog.notes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+                child: Text(
+                  note,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
     );
   }
 }

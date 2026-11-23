@@ -757,7 +757,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
             ? null
             : (List<int>.from(_daysOfMonth)..sort()),
         recurrenceEndDate: existingLoan?.loanDetails?.recurrenceEndDate,
-        recurrenceLimit: existingLoan?.loanDetails?.recurrenceLimit,
+        recurrenceLimit: existingLoan?.loanDetails?.recurrenceLimit ?? tenure,
         hideInterestInLedger: _hideInterestInLedger,
       );
       int transactionsSum = 0;
@@ -805,6 +805,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               occurredAt: _nextEmiDate,
               recurrenceFrequency: _frequency,
               recurrenceInterval: _interval,
+              recurrenceLimit: existingEmi?.recurrenceLimit ?? tenure,
               recurrenceDaysOfWeek: _daysOfWeek.isEmpty
                   ? null
                   : (List<int>.from(_daysOfWeek)..sort()),
@@ -1007,11 +1008,19 @@ class LoanDetailView extends ConsumerWidget {
             Expanded(
               child: MetricTile(
                 label: 'Next EMI',
-                value: _nextEmiLabel(state, details, nextEmi),
+                value: _nextEmiLabel(
+                  state,
+                  details,
+                  nextEmi,
+                  isPaidOff: isPastLoan(state, loan),
+                ),
                 icon: Icons.event_repeat_rounded,
                 tone: projection.monthlyEmi <= 0
                     ? MetricTone.warning
                     : MetricTone.danger,
+                onTap: nextEmi == null
+                    ? null
+                    : () => context.push('/recurring/detail/${nextEmi.id}'),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -1051,15 +1060,61 @@ class LoanDetailView extends ConsumerWidget {
         const Gap(AppSpacing.xl),
 
         // Action Buttons
-        FilledButton.icon(
-          onPressed: () => context.push('/loans/${loan.id}/edit'),
-          icon: const Icon(Icons.edit_rounded),
-          label: const Text('Edit loan details'),
-          style: AppButtonStyles.cta,
-        ),
-        const Gap(AppSpacing.sm),
+        if (!isPastLoan(state, loan)) ...[
+          if (nextEmi != null) ...[
+            FilledButton.icon(
+              onPressed: () => context.push('/add?plannedId=${nextEmi.id}'),
+              icon: const Icon(Icons.check_circle_rounded),
+              label: Text(
+                'Pay EMI (${formatMoney(nextEmi.amount, state.preferences.locale)})',
+              ),
+              style: AppButtonStyles.cta,
+            ),
+            const Gap(AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => context.push(
+                      '/add?type=loan_repayment&counterAccountId=${loan.id}',
+                    ),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Custom repayment'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        context.push('/recurring/detail/${nextEmi.id}'),
+                    icon: const Icon(Icons.event_repeat_rounded),
+                    label: const Text('View plan'),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            FilledButton.icon(
+              onPressed: () => context.push(
+                '/add?type=loan_repayment&counterAccountId=${loan.id}',
+              ),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Record repayment'),
+              style: AppButtonStyles.cta,
+            ),
+          ],
+          const Gap(AppSpacing.sm),
+        ],
         Row(
           children: [
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: () => context.push('/loans/${loan.id}/edit'),
+                icon: const Icon(Icons.edit_rounded),
+                label: const Text('Edit details'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: FilledButton.tonalIcon(
                 onPressed: () => context.push('/loans/forecast'),
@@ -1164,7 +1219,8 @@ class _LoanCompactCard extends StatelessWidget {
     final projection = loanProjection(state, loan);
     final repayments = _postedLoanRepayments(state, loan.id);
     final nextEmi = existingLoanEmi(state, loan.id);
-    final scheduleDate = nextEmi?.occurredAt ?? details.repaymentStartsOn;
+    final isPaid = isPastLoan(state, loan);
+    final scheduleDate = isPaid ? null : nextEmi?.occurredAt;
     final status = _scheduleStatus(
       context,
       scheduleDate,
@@ -2877,6 +2933,7 @@ List<TransactionRecord> _postedLoanRepayments(
                 transaction.counterAccountId == loanId) &&
             transaction.status != 'scheduled' &&
             (transaction.type == 'loan_repayment' ||
+                transaction.type == 'transfer' ||
                 (transaction.status == 'void' &&
                     transaction.notes?.toLowerCase() == 'skipped')),
       )
@@ -2892,8 +2949,8 @@ List<TransactionRecord> _loanHistoryRepayments(
         (transaction) =>
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId) &&
-            (transaction.status != 'scheduled' ||
-                transaction.notes?.toLowerCase() == 'skipped'),
+            transaction.status != 'scheduled' &&
+            !isHiddenInterest(state, transaction),
       )
       .toList();
   items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
@@ -2970,15 +3027,18 @@ String _formatSignedMoney(
 String _nextEmiLabel(
   LedgerState state,
   AccountLoanDetails details,
-  TransactionRecord? scheduledEmi,
-) {
-  final amount = scheduledEmi?.amount ?? details.repaymentAmount;
-  final date = scheduledEmi?.occurredAt ?? details.repaymentStartsOn;
-  if (amount == null && date == null) return 'Not scheduled';
+  TransactionRecord? scheduledEmi, {
+  bool isPaidOff = false,
+}) {
+  if (isPaidOff) return 'Paid off';
+  if (scheduledEmi == null) {
+    return 'Not scheduled';
+  }
+  final amount = scheduledEmi.amount;
+  final date = scheduledEmi.occurredAt;
   final parts = [
-    if (date != null) formatLedgerDate(date, state.preferences.locale),
-    if (amount != null)
-      maskMoneyIfPrivate(state, formatMoney(amount, state.preferences.locale)),
+    formatLedgerDate(date, state.preferences.locale),
+    maskMoneyIfPrivate(state, formatMoney(amount, state.preferences.locale)),
   ];
   return parts.join(' · ');
 }

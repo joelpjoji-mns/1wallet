@@ -74,7 +74,11 @@ List<BalanceTrendPoint> balanceTrendForRange(
   final rangeEndRaw = end ?? now;
   DateTime earliest = now;
   for (final tx in state.transactions) {
-    if (tx.status == 'scheduled' || tx.status == 'void') continue;
+    if (tx.status == 'scheduled' ||
+        tx.status == 'void' ||
+        tx.status == 'finished') {
+      continue;
+    }
     if (includedAccounts.isNotEmpty) {
       if (!includedAccounts.contains(tx.accountId) &&
           !includedAccounts.contains(tx.counterAccountId)) {
@@ -311,7 +315,8 @@ List<Money> balanceBreakdownByCurrency(LedgerState state, {String? accountId}) {
     for (final transaction in state.transactions) {
       if (transaction.status == 'scheduled' ||
           transaction.status == 'paused' ||
-          transaction.status == 'void') {
+          transaction.status == 'void' ||
+          transaction.status == 'finished') {
         continue;
       }
 

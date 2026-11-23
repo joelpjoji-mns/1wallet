@@ -24,6 +24,8 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
 }
 
+final rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
   ref.listen<StartupState>(startupStateProvider, (_, _) {
@@ -175,6 +177,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             child: AddRecordScreen(
               transactionId: state.uri.queryParameters['transactionId'],
               initialAccountId: state.uri.queryParameters['accountId'],
+              initialCounterAccountId:
+                  state.uri.queryParameters['counterAccountId'],
               plannedId: state.uri.queryParameters['plannedId'],
               captureCandidateId:
                   state.uri.queryParameters['captureCandidateId'],
