@@ -358,23 +358,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
 
-                  // ── About ──
-                  AppGroupedSection(
-                    header: 'About',
-                    children: [
-                      AppGroupedTile(
-                        leading: const Icon(Icons.article_outlined),
-                        title: const Text('Changelog'),
-                        subtitle: const Text(
-                          'See what\'s new, improvements, and release history',
-                        ),
-                        showChevron: true,
-                        onTap: () => context.push('/changelog'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-
                   // ── Danger zone ──
                   AppGroupedSection(
                     header: 'Danger zone',

@@ -9,6 +9,7 @@ import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
 import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
+import '../../utils/currency_utils.dart';
 import '../../utils/date_range_utils.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
@@ -972,7 +973,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             subtitle: currency == state.preferences.baseCurrency
                 ? 'Base currency'
                 : 'Show totals and ≈ values in $currency',
-            icon: Icons.currency_exchange_outlined,
+            icon: iconForCurrency(currency),
           ),
       ],
     );

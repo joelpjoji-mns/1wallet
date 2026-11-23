@@ -1,15 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:one_wallet_flutter/src/features/updates/app_update_provider.dart';
-import 'package:one_wallet_flutter/src/features/updates/updates_screen.dart';
-import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
 import 'fixtures/legacy_update_client_2_2_01.dart' as shipped;
 
@@ -168,37 +164,4 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a recovered 2.2.01 client changelog displays version without update prompts',
-    (tester) async {
-      late shipped.LegacyShippedUpdateClient provider;
-      await tester.runAsync(() async {
-        provider = await client(apkCode);
-        await nativeWorkerRecordsDelivery(apkCode);
-        await shipped.LegacySmsSpooler.popSpooledMessages();
-        await provider.checkForUpdates(force: true);
-      });
-      final container = ProviderContainer(
-        overrides: [appUpdateProvider.overrideWith((ref) => provider)],
-      );
-      // The test owns provider disposal through client(); avoid a second dispose.
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const UpdatesScreen(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Changelog'), findsOneWidget);
-      expect(find.text('Update Available'), findsNothing);
-      expect(find.textContaining('Install Update'), findsNothing);
-      await tester.runAsync(() => provider.downloadUpdate());
-      expect(provider.installerOpened, isTrue);
-      await tester.pumpWidget(const SizedBox.shrink());
-      container.dispose();
-    },
-  );
 }

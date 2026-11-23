@@ -180,6 +180,39 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.13',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.13',
+    versionCode: 13,
+    runtimeVersion: '1.0.13',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-23T15:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Dynamic currency icons in selectors and account setup matching active currencies',
+      ],
+      bugFixes: const [
+        'Fixed missing search bar and action glyphs by bundling Cupertino icons',
+        'Fixed currency picker to display currency-specific symbols and icons instead of generic placeholders',
+      ],
+      notes: const [
+        'Streamlined settings and navigation chrome for enhanced Google Play compliance',
+      ],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 52 * 1024 * 1024,
+      sha256: '',
+      architecture: 'universal',
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.12',
     platform: 'android',
     channel: 'stable',

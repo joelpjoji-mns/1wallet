@@ -29,7 +29,7 @@ The `features/` directory contains screen-level UI and user workflows for 1Walle
 | `settings/` | User preferences, data backup/restore, permission setup, offline mode card & Google upgrade flow | [settings/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/settings/AGENTS.md) |
 | `sync/` | Cloud sync status, manual sync triggers & conflict screen | [sync/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/sync/AGENTS.md) |
 | `transactions/` | Transaction listing, creation calculator & detail editor | [transactions/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/transactions/AGENTS.md) |
-| `updates/` | In-app software update checker and release notes modal | [updates/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/updates/AGENTS.md) |
+| `updates/` | Release history provider and CI release metadata | [updates/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/features/updates/AGENTS.md) |
 
 ---
 

@@ -8,22 +8,8 @@ import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/features/home/home_screen.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets.dart';
-import 'package:one_wallet_flutter/src/features/updates/app_update_provider.dart';
-import 'package:one_wallet_flutter/src/features/updates/updates_screen.dart';
-import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
 import 'test_harness.dart';
-
-class _TrackingUpdateProvider extends AppUpdateProvider {
-  bool forceCheckCalled = false;
-
-  @override
-  Future<void> checkForUpdates({bool force = false}) async {
-    if (force) {
-      forceCheckCalled = true;
-    }
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -193,31 +179,6 @@ void main() {
 
       expect(pushedRoute, equals('/loans/loan-1'));
       expect(find.text('Loan Detail: /loans/loan-1'), findsOneWidget);
-    });
-  });
-
-  group('UpdatesScreen changelog mount', () {
-    testWidgets('does not trigger checkForUpdates upon mounting', (
-      tester,
-    ) async {
-      final updateProvider = _TrackingUpdateProvider();
-      final container = ProviderContainer(
-        overrides: [appUpdateProvider.overrideWith((ref) => updateProvider)],
-      );
-      addTearDown(container.dispose);
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const UpdatesScreen(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(updateProvider.forceCheckCalled, isFalse);
     });
   });
 }

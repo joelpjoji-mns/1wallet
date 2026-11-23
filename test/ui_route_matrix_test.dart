@@ -68,7 +68,6 @@ const _homeRoutes = <String>[
   '/import-sms',
   '/notification-capture',
   '/notification-capture/apps',
-  '/updates',
   '/device-permissions',
 ];
 

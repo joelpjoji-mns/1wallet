@@ -11,6 +11,7 @@ class PickerOption<T> {
     required this.title,
     this.subtitle,
     this.icon,
+    this.iconWidget,
     this.iconColor,
     this.color,
     this.searchText,
@@ -20,6 +21,7 @@ class PickerOption<T> {
   final String title;
   final String? subtitle;
   final IconData? icon;
+  final Widget? iconWidget;
   final Color? iconColor;
   final Color? color;
   final String? searchText;
@@ -183,6 +185,7 @@ class _FullScreenPickerState<T> extends State<_FullScreenPicker<T>> {
                   selected: option.value == widget.selectedValue,
                   child: PremiumRow(
                     icon: option.icon ?? Icons.circle_outlined,
+                    iconWidget: option.iconWidget,
                     title: option.title,
                     subtitle: option.subtitle,
                     iconColor: option.iconColor,
@@ -345,6 +348,7 @@ class _MultiSelectFullScreenPickerState<T>
                       selected: isSelected,
                       child: PremiumRow(
                         icon: option.icon ?? Icons.circle_outlined,
+                        iconWidget: option.iconWidget,
                         title: option.title,
                         subtitle: option.subtitle,
                         iconColor: option.iconColor,

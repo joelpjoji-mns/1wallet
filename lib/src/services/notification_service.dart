@@ -147,7 +147,7 @@ class NotificationService {
       title: 'Update Available',
       body: 'Version $version is ready to install',
       notificationDetails: notificationDetails,
-      payload: '/updates',
+      payload: '/settings',
     );
   }
 

@@ -19,7 +19,7 @@ import '../../widgets/color_picker_dialog.dart';
 import '../../widgets/currency_picker.dart';
 import '../../widgets/privacy_text.dart';
 import '../../widgets/app_kit.dart';
-import '../../utils/currency_utils.dart' show getCurrencyInfo;
+import '../../utils/currency_utils.dart' show getCurrencyInfo, iconForCurrency;
 import '../../utils/number_formatter.dart';
 import '../common/full_screen_picker.dart';
 
@@ -462,7 +462,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 const SizedBox(height: AppSpacing.xs),
                 PremiumRow(
                   glass: true,
-                  icon: Icons.currency_exchange_outlined,
+                  icon: iconForCurrency(_baseCurrency),
                   title: _baseCurrency,
                   subtitle: getCurrencyInfo(_baseCurrency).name,
                   onTap: () async {
@@ -762,7 +762,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 const SizedBox(height: AppSpacing.xs),
                 PremiumRow(
                   glass: true,
-                  icon: Icons.currency_exchange_outlined,
+                  icon: iconForCurrency(_currentDraft.currency),
                   title: _currentDraft.currency,
                   subtitle:
                       '${getCurrencyInfo(_currentDraft.currency).name} • Tap to change',

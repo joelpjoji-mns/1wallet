@@ -1,13 +1,9 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/features/updates/app_update_provider.dart';
-import 'package:one_wallet_flutter/src/features/updates/updates_screen.dart';
-import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
 class _UpdateFixture extends AppUpdateProvider {
   _UpdateFixture(Future<void> Function(String) notify)
@@ -142,40 +138,6 @@ void main() {
       await expectLater(pending, completes);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getInt('lastNotifiedVersionCode.stable'), isNull);
-    },
-  );
-
-  testWidgets(
-    'the screenshot failure displays changelog cleanly without install button in changelog window',
-    (tester) async {
-      final provider = _UpdateFixture(
-        (_) async => throw PlatformException(
-          code: 'invalid_icon',
-          message: 'Missing ic_notification',
-        ),
-      );
-      await tester.runAsync(() async {
-        await Future<void>.delayed(Duration.zero);
-        provider.installedVersion();
-        await provider.discover(_release());
-      });
-      final container = ProviderContainer(
-        overrides: [appUpdateProvider.overrideWith((ref) => provider)],
-      );
-      addTearDown(container.dispose);
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const UpdatesScreen(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Changelog'), findsOneWidget);
-      expect(find.text('Update Available'), findsNothing);
-      expect(find.textContaining('Install Update'), findsNothing);
     },
   );
 }

@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/features/capture/notification_apps_screen.dart';
 import 'package:one_wallet_flutter/src/features/capture/review_queue_screen.dart';
-import 'package:one_wallet_flutter/src/features/updates/updates_screen.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart' show AppBackAction;
 
@@ -76,20 +75,6 @@ void main() {
       expect(find.byTooltip('SMS auto-capture'), findsOneWidget);
       expect(find.byTooltip('Notification capture'), findsOneWidget);
       expect(find.byTooltip('Capture diagnostics'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'UpdatesScreen uses GlassAppBar nav chrome, preserving the back action '
-    'and the refresh tooltip',
-    (tester) async {
-      await _pumpPushed(tester, const UpdatesScreen());
-
-      expect(find.byType(GlassAppBar), findsOneWidget);
-      expect(find.byType(AppBar), findsNothing);
-      expect(find.byType(AppBackAction), findsOneWidget);
-      expect(find.text('Changelog'), findsOneWidget);
-      expect(find.byTooltip('Check for updates'), findsNothing);
     },
   );
 

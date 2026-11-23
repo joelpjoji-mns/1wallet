@@ -17,6 +17,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/currency_picker.dart';
+import '../../utils/currency_utils.dart';
 import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import '../../utils/number_formatter.dart';
@@ -541,7 +542,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   PremiumRow(
-                    icon: Icons.currency_exchange_outlined,
+                    icon: iconForCurrency(_currency),
                     title: 'Currency',
                     subtitle: _currency,
                     onTap: () => _showCurrencyPicker(state),

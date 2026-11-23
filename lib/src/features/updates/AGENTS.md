@@ -9,9 +9,7 @@ Maintains built-in release history and in-app Changelog, presents what's new cha
 
 - **`app_update_provider.dart`**:
   - Maintains `kBuiltInReleaseHistory` containing structured release notes (`newFeatures`, `bugFixes`, `notes`) for each version.
-  - Serves as the primary source of truth for release changelogs.
-- **`updates_screen.dart`**:
-  - Screen displaying formatted release notes, version tags, and changelogs accessible via Settings.
+  - Serves as the primary source of truth for release changelogs used by CI/CD pipelines.
 
 ---
 
@@ -30,5 +28,5 @@ Maintains built-in release history and in-app Changelog, presents what's new cha
 
 ## 🔍 LLM / Developer Checklist
 
-- [ ] Check `test/updates_screen_test.dart`.
+- [ ] Check `test/app_update_version_check_test.dart`.
 - [ ] Confirm that release notes parser safely handles Markdown headings, bullet points, and hyperlinks.

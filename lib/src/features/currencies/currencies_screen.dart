@@ -162,8 +162,8 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                     ),
                     child: PremiumRow(
                       icon: currency == state.preferences.baseCurrency
-                          ? Icons.flag_outlined
-                          : Icons.currency_exchange_outlined,
+                          ? Icons.flag_rounded
+                          : iconForCurrency(currency),
                       title: getCurrencyInfo(currency).fullName,
                       subtitle: _currencySubtitle(state, currency),
                       selected: isSelectionMode
@@ -273,8 +273,8 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
             searchText: '$currency ${getCurrencyInfo(currency).name}',
             subtitle: _currencySubtitle(state, currency),
             icon: currency == state.preferences.baseCurrency
-                ? Icons.flag_outlined
-                : Icons.currency_exchange_outlined,
+                ? Icons.flag_rounded
+                : iconForCurrency(currency),
           ),
       ],
     );
@@ -329,7 +329,7 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
             value: currency,
             title: getCurrencyInfo(currency).fullName,
             searchText: '$currency ${getCurrencyInfo(currency).name}',
-            icon: Icons.add_circle_outline_rounded,
+            icon: iconForCurrency(currency),
           ),
       ],
     );

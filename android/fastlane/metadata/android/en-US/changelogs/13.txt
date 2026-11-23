@@ -1,0 +1,4 @@
+- Dynamic currency icons in selectors and account setup matching active currencies
+- Fixed missing search bar and action glyphs by bundling Cupertino icons
+- Fixed currency picker to display currency-specific symbols and icons instead of generic placeholders
+- Streamlined settings and navigation chrome for enhanced Google Play compliance

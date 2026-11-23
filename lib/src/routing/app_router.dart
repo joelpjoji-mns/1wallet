@@ -427,16 +427,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             const AppGlassPage(child: CaptureDiagnosticsScreen()),
       ),
       GoRoute(
-        path: '/updates',
-        builder: (context, state) =>
-            const AppGlassPage(child: UpdatesScreen()),
-      ),
-      GoRoute(
-        path: '/changelog',
-        builder: (context, state) =>
-            const AppGlassPage(child: UpdatesScreen()),
-      ),
-      GoRoute(
         path: '/device-permissions',
         builder: (context, state) =>
             const AppGlassPage(child: DevicePermissionsScreen()),

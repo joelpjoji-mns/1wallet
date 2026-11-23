@@ -1,5 +1,4 @@
-- Continuous multi-period date range navigation with responsive swipe and arrow controls
-- Clean Review & Inbox statement cards: single-row action layout with Confirm Paid and Dismiss
-- Fixed date range navigation getting stuck or resetting when swiping or clicking consecutively
-- Enabled date filter navigation when transitioning from All Time filter in Transactions
-- Improved touch target accessibility and tactile haptic feedback for timeframe controls
+- Dynamic currency icons in selectors and account setup matching active currencies
+- Fixed missing search bar and action glyphs by bundling Cupertino icons
+- Fixed currency picker to display currency-specific symbols and icons instead of generic placeholders
+- Streamlined settings and navigation chrome for enhanced Google Play compliance

@@ -110,7 +110,6 @@ void main() {
       '/capture-diagnostics',
       '/notification-capture',
       '/notification-capture/apps',
-      '/updates',
       '/device-permissions',
       '/permissions-setup',
     ];

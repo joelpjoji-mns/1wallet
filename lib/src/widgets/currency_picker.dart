@@ -83,7 +83,7 @@ Future<String?> showCurrencyPicker({
           value: currency,
           title: getCurrencyInfo(currency).fullName,
           searchText: '$currency ${getCurrencyInfo(currency).name}',
-          icon: Icons.currency_exchange_outlined,
+          icon: iconForCurrency(currency),
         ),
     ],
   );

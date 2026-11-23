@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class CurrencyInfo {
   final String code;
   final String name;
@@ -7,6 +9,7 @@ class CurrencyInfo {
 
   String get fullName => '$name ($code)';
   String get shortName => code;
+  IconData get icon => iconForCurrency(code);
 }
 
 const Map<String, CurrencyInfo> currencyDetails = {
@@ -176,4 +179,30 @@ const Map<String, CurrencyInfo> currencyDetails = {
 CurrencyInfo getCurrencyInfo(String code) {
   return currencyDetails[code.toUpperCase()] ??
       CurrencyInfo(code.toUpperCase(), 'Unknown Currency', '🏳️');
+}
+
+/// Returns a currency-specific IconData for supported currencies, or a fallback icon.
+IconData iconForCurrency(String code) {
+  return switch (code.toUpperCase()) {
+    'USD' ||
+    'CAD' ||
+    'AUD' ||
+    'NZD' ||
+    'SGD' ||
+    'HKD' ||
+    'MXN' ||
+    'CLP' ||
+    'COP' ||
+    'ARS' =>
+      Icons.attach_money_rounded,
+    'EUR' => Icons.euro_rounded,
+    'GBP' => Icons.currency_pound_rounded,
+    'INR' => Icons.currency_rupee_rounded,
+    'JPY' || 'CNY' => Icons.currency_yen_rounded,
+    'RUB' => Icons.currency_ruble_rounded,
+    'TRY' => Icons.currency_lira_rounded,
+    'CHF' => Icons.currency_franc_rounded,
+    'BTC' => Icons.currency_bitcoin_rounded,
+    _ => Icons.payments_rounded,
+  };
 }

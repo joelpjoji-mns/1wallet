@@ -239,7 +239,11 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     else
                       Expanded(
                         child: _DetailField(
-                          icon: Icons.currency_exchange_outlined,
+                          icon: iconForCurrency(
+                            _selectedCurrency ??
+                                account?.currency ??
+                                state.preferences.baseCurrency,
+                          ),
                           label: getCurrencyInfo(
                             _selectedCurrency ??
                                 account?.currency ??
@@ -1051,7 +1055,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                   const SizedBox(width: AppSpacing.xs),
                 ] else ...[
                   Icon(
-                    Icons.currency_exchange_outlined,
+                    iconForCurrency(entry.currency),
                     size: 16,
                     color: Theme.of(context).colorScheme.primary,
                   ),

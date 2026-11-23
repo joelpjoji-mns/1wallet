@@ -1942,6 +1942,7 @@ class PremiumRow extends StatelessWidget {
     required this.title,
     required this.onTap,
     super.key,
+    this.iconWidget,
     this.subtitle,
     this.meta,
     this.metaSubtitle,
@@ -1953,6 +1954,7 @@ class PremiumRow extends StatelessWidget {
   });
 
   final IconData icon;
+  final Widget? iconWidget;
   final String title;
   final String? subtitle;
   final String? meta;
@@ -2000,7 +2002,8 @@ class PremiumRow extends StatelessWidget {
                   color: iconColor ?? scheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: scheme.onSurface, size: 20),
+                alignment: Alignment.center,
+                child: iconWidget ?? Icon(icon, color: scheme.onSurface, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
