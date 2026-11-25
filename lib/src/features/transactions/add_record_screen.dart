@@ -256,6 +256,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     return GlassIsolationScope(
       defaultQuality: GlassQuality.premium,
       child: DefaultTabController(
+        key: ValueKey(widget.initialTab),
         length: 2,
         initialIndex: widget.initialTab,
         child: RouteScaffold(

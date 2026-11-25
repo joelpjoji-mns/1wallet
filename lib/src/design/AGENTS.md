@@ -14,7 +14,7 @@ widgets in `lib/src/widgets/app_kit.dart`.
 | :--- | :--- | :--- |
 | `AppSpacing` | `xxxs` 2 · `xxs` 4 · `xs` 8 · `sm` 12 · `md` 16 · `lg` 20 · `xl` 24 · `xxl` 32 | Every padding, margin and gap (`EdgeInsets`, `SizedBox` gaps, `Gap`). Widget *sizes* (icon/avatar/spinner dimensions) are not spacing. |
 | `AppRadii` | `xs` 4 · `sm` 8 · `md` 14 · `lg` 22 · `xl` 28 · `pill` 999 | `xs` bars/tracks/swatches/tiny tags · `sm` chips, small tiles, icon bubbles · `md` cards, rows, panels (default) · `lg` hero panels and sheet tops · `xl` dialogs · `pill` capsules/buttons. |
-| `AppSizes` | `bottomBarClearance`, `rowLarge`, `islandMaxWidth`, `ctaHeight` 56, … | Layout constants (bottom island clearance, full-width CTA height). |
+| `AppSizes` | `bottomBarClearance`, `islandActionSize` 64, `rowLarge`, `islandMaxWidth`, `ctaHeight` 56, … | Layout constants (bottom island clearance, floating-action size/scroll clearance, full-width CTA height). |
 | `AppColors` | brand red, `positiveLight/Dark`, `dangerLight/Dark`, backgrounds, `launch*`, `accountPalette` | Theme construction, brand art (`launch*`) and user-pickable account colours. Feature screens read colours through `ColorScheme`, not `AppColors`, except `accountPalette`. |
 | `ColorScheme.positive` (`AppSemanticColors`) | `positiveLight` / `positiveDark` by brightness | Income, gains, success, "installed/healthy". Negative/danger is `scheme.error`. |
 | `AppFonts.mono` | `'monospace'` | Machine-readable text only: version strings, raw SMS/notification bodies, logs, diagnostics. |

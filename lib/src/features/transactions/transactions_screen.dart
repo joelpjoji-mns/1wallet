@@ -581,21 +581,30 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             child: AppTopFadeMask(
               enabled: transactions.isNotEmpty,
               child: transactions.isEmpty
-                  ? EmptyState(
-                      icon: Icons.format_list_bulleted_rounded,
-                      title: 'No matching transactions',
-                      body: hasActiveFilters
-                          ? 'Clear filters to see the full ledger.'
-                          : 'Add a new record to start building your ledger.',
-                      actionLabel: hasActiveFilters
-                          ? 'Clear filters'
-                          : 'Add transaction',
-                      actionIcon: hasActiveFilters
-                          ? Icons.filter_alt_off_rounded
-                          : Icons.add_rounded,
-                      onAction: hasActiveFilters
-                          ? _clearFilters
-                          : () => context.push('/add'),
+                  ? LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: EmptyState(
+                            icon: Icons.format_list_bulleted_rounded,
+                            title: 'No matching transactions',
+                            body: hasActiveFilters
+                                ? 'Clear filters to see the full ledger.'
+                                : 'Add a new record to start building your ledger.',
+                            actionLabel: hasActiveFilters
+                                ? 'Clear filters'
+                                : 'Add transaction',
+                            actionIcon: hasActiveFilters
+                                ? Icons.filter_alt_off_rounded
+                                : Icons.add_rounded,
+                            onAction: hasActiveFilters
+                                ? _clearFilters
+                                : () => context.push('/add'),
+                          ),
+                        ),
+                      ),
                     )
                   : Builder(
                       builder: (context) {

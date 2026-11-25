@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
 
 import 'test_harness.dart';
 
@@ -112,6 +114,132 @@ void main() {
       'hideSkippedInHistory is false', (tester) async {
     await pumpPastRecurring(tester, buildSeed(hideSkipped: false));
     expect(find.text('SkippedRentMarker'), findsOneWidget);
+  });
+
+  testWidgets('recurring amount remains readable at large text size', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final seed = buildSeed(hideSkipped: false);
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: seed),
+    );
+    addTearDown(container.dispose);
+    final router = container.read(appRouterProvider);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(seed);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          routerConfig: router,
+          theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+        ),
+      ),
+    );
+    router.go('/recurring/new');
+    await tester.pumpAndSettle();
+    final amount = find.widgetWithText(TextFormField, 'Amount');
+    final currency = find.widgetWithText(OutlinedButton, 'USD');
+    expect(tester.getSize(amount).width, greaterThan(250));
+    expect(
+      tester.getTopLeft(currency).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(amount).dy),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('urgent planned payments keep names and amounts readable', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    const name = 'Quarterly rent payment';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    for (final (days, badge, scale) in [
+      (-1, 'OVERDUE', 1.0),
+      (0, 'TODAY', 2.0),
+      (2, '2D', 1.0),
+    ]) {
+      final seed = buildSeed(hideSkipped: false);
+      final plan = seed.transactions.first.copyWith(
+        name: name,
+        occurredAt: today.add(Duration(days: days)),
+      );
+      final state = seed.copyWith(transactions: [plan]);
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: state),
+      );
+      await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+      final router = container.read(appRouterProvider);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            routerConfig: router,
+            theme: AppTheme.light(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+          ),
+        ),
+      );
+      router.go('/recurring');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(name));
+
+      final card = find.ancestor(
+        of: find.text(name),
+        matching: find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_RecurringCompactCard',
+        ),
+      );
+      expect(
+        tester.getSize(find.text(name)).width,
+        greaterThan(scale == 1 ? 180 : 120),
+      );
+      expect(
+        find.descendant(of: card, matching: find.text(badge)),
+        findsOneWidget,
+      );
+      final amount = find.descendant(
+        of: card,
+        matching: find.byType(PrivacyText),
+      );
+      expect(amount, findsOneWidget);
+      final amountText = find.descendant(
+        of: amount,
+        matching: find.byType(Text),
+      );
+      expect(
+        tester.renderObject<RenderParagraph>(amountText).didExceedMaxLines,
+        isFalse,
+      );
+      if (scale == 1) {
+        final fitted = find
+            .ancestor(of: amount, matching: find.byType(FittedBox))
+            .first;
+        expect(
+          tester.getSize(fitted).width + 0.01,
+          greaterThanOrEqualTo(tester.getSize(amountText).width),
+        );
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+    }
   });
 
   testWidgets(

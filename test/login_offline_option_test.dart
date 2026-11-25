@@ -24,8 +24,10 @@ Future<void> _settleFrames(WidgetTester tester) async {
 Future<(ProviderContainer, SharedPreferences)> _pumpLogin(
   WidgetTester tester, {
   LedgerState? storedWallet,
+  Size size = const Size(800, 1000),
+  double textScale = 1,
 }) async {
-  tester.view.physicalSize = const Size(800, 1000);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   SharedPreferences.setMockInitialValues({});
@@ -44,7 +46,16 @@ Future<(ProviderContainer, SharedPreferences)> _pumpLogin(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: MaterialApp(theme: AppTheme.light(), home: const LoginScreen()),
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
+        home: const LoginScreen(),
+      ),
     ),
   );
   await _settleFrames(tester);
@@ -104,6 +115,21 @@ void main() {
     expect(auth.user, isNull);
     expect(AppModeStore(prefs).mode, AppMode.offline);
     expect(container.read(ledgerProvider).userId, localOwnerId);
+  });
+
+  testWidgets('Google sign-in label keeps button padding', (tester) async {
+    await _pumpLogin(tester, size: const Size(360, 2000), textScale: 2);
+    final label = tester.getRect(find.text('Continue with Google'));
+    final button = tester.getRect(
+      find
+          .ancestor(
+            of: find.text('Continue with Google'),
+            matching: find.byType(AnimatedContainer),
+          )
+          .first,
+    );
+    expect(label.left - button.left, greaterThanOrEqualTo(16));
+    expect(button.right - label.right, greaterThanOrEqualTo(16));
   });
 
   testWidgets('cancel keeps the device on the sign-in screen', (tester) async {

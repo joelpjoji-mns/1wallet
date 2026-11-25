@@ -601,12 +601,13 @@ abstract final class AppTheme {
         color: scheme.primary,
         linearTrackColor: scheme.surfaceContainerHighest,
       ),
-      snackBarTheme: const SnackBarThemeData(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        contentTextStyle: TextStyle(color: Colors.transparent, fontSize: 0.001),
-        actionTextColor: Colors.transparent,
-        disabledActionTextColor: Colors.transparent,
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: scheme.inverseSurface,
+        contentTextStyle: Typography.material2021().englishLike.bodyMedium!
+            .merge(textTheme.bodyMedium)
+            .copyWith(color: scheme.onInverseSurface),
+        actionTextColor: scheme.inversePrimary,
+        disabledActionTextColor: scheme.onInverseSurface.withValues(alpha: 0.38),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {

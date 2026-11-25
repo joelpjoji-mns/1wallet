@@ -49,7 +49,12 @@ All features must be tested according to the 5-tier testing pyramid:
 | **2** | Widget & UI Matrix | Route matrix, responsive phone/tablet, design system guard | `flutter test test/ui_route_matrix_test.dart` |
 | **3** | BDD Executable Specs | Business-readable `.feature` files for offline & money flows | `flutter test test/bdd_suite_test.dart` |
 | **4** | Accessibility (a11y) | Automated WCAG contrast & tap target guidelines | `flutter test test/accessibility/` |
-| **5** | E2E & Perf Timeline | Frame rasterization benchmark, startup budgets | `flutter test integration_test/` |
+| **5** | E2E & Perf Timeline | Synthetic-list timeline benchmark | `flutter drive --no-dds --keep-app-running -d <disposable-device> --driver test_driver/integration_test.dart --target integration_test/perf_timeline_test.dart` |
+
+Run integration tests only on a disposable device and specify its ID explicitly.
+Flutter may install or uninstall the app and delete local data; `flutter test`
+defaults to uninstalling unless `--no-uninstall` is passed, and `flutter drive`
+does so unless `--keep-app-running` is passed.
 
 ---
 

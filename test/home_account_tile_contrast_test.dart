@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,9 +42,12 @@ void main() {
         overrides: authenticatedSampleOverrides(ledger: state),
         child: MaterialApp(
           home: Scaffold(
-            body: AccountGridHomeWidget(
-              state: state,
-              onTabSelected: (int index) {},
+            body: RepaintBoundary(
+              key: const ValueKey('account-grid'),
+              child: AccountGridHomeWidget(
+                state: state,
+                onTabSelected: (int index) {},
+              ),
             ),
           ),
         ),
@@ -49,7 +55,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final darkName = tester.widget<Text>(find.text('Dark Account Tile'));
     final accountTiles = find.byWidgetPredicate((widget) {
       if (widget is! Container) return false;
       final decoration = widget.decoration;
@@ -57,7 +62,7 @@ void main() {
     });
 
     expect(accountTiles, findsWidgets);
-    expect(darkName.style?.color, Colors.white);
+    await _expectNameColor(tester, 'Dark Account Tile', Colors.white);
   });
 
   testWidgets('All accounts tiles use dark text on light account color', (
@@ -83,9 +88,12 @@ void main() {
         overrides: authenticatedSampleOverrides(ledger: state),
         child: MaterialApp(
           home: Scaffold(
-            body: AccountGridHomeWidget(
-              state: state,
-              onTabSelected: (int index) {},
+            body: RepaintBoundary(
+              key: const ValueKey('account-grid'),
+              child: AccountGridHomeWidget(
+                state: state,
+                onTabSelected: (int index) {},
+              ),
             ),
           ),
         ),
@@ -93,7 +101,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final lightName = tester.widget<Text>(find.text('Light Account Tile'));
     final accountTiles = find.byWidgetPredicate((widget) {
       if (widget is! Container) return false;
       final decoration = widget.decoration;
@@ -101,8 +108,52 @@ void main() {
     });
 
     expect(accountTiles, findsWidgets);
-    expect(lightName.style?.color, Colors.black);
+    await _expectNameColor(tester, 'Light Account Tile', Colors.black);
   });
+}
+
+Future<void> _expectNameColor(
+  WidgetTester tester,
+  String name,
+  Color expected,
+) async {
+  final nameLabel = find.byWidgetPredicate(
+    (widget) => widget is Semantics && widget.properties.label == name,
+  );
+  final namePaint = find.descendant(
+    of: nameLabel,
+    matching: find.byType(CustomPaint),
+  );
+  expect(namePaint, findsOneWidget);
+
+  final boundaryFinder = find.byKey(const ValueKey('account-grid'));
+  final boundary = tester.renderObject<RenderRepaintBoundary>(boundaryFinder);
+  final bounds = tester
+      .getRect(namePaint)
+      .shift(-tester.getTopLeft(boundaryFinder));
+  final imageData = (await tester.runAsync(() async {
+    final image = await boundary.toImage();
+    final bytes = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+    final width = image.width;
+    image.dispose();
+    return (bytes, width);
+  }))!;
+  final (bytes, width) = imageData;
+  var found = false;
+  for (var y = bounds.top.ceil(); y < bounds.bottom.floor(); y++) {
+    for (var x = bounds.left.ceil(); x < bounds.right.floor(); x++) {
+      final offset = (y * width + x) * 4;
+      final r = bytes.getUint8(offset);
+      final g = bytes.getUint8(offset + 1);
+      final b = bytes.getUint8(offset + 2);
+      if (expected == Colors.white
+          ? r > 245 && g > 245 && b > 245
+          : r < 10 && g < 10 && b < 10) {
+        found = true;
+      }
+    }
+  }
+  expect(found, isTrue, reason: 'Account name should paint in $expected');
 }
 
 LedgerState _ledger({required List<Account> accounts}) {

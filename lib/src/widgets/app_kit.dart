@@ -671,8 +671,8 @@ class IslandFloatingActionButton extends StatelessWidget {
         finish: effectiveFinish,
         labelled: false,
         child: SizedBox(
-          width: 64,
-          height: 64,
+          width: AppSizes.islandActionSize,
+          height: AppSizes.islandActionSize,
           child: DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -889,12 +889,15 @@ class AppMenuAction extends StatelessWidget {
     }
 
     return Semantics(
+      container: true,
       label: _headerButtonSemanticLabel(
         'Open menu',
         badge,
         showIndicator: showIndicator,
       ),
       button: true,
+      onTap: onPressed,
+      excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
         child: menuButton,
@@ -1149,8 +1152,8 @@ class AppActionButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: isInteractive,
-      label: label,
-      child: DecoratedBox(
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         decoration: BoxDecoration(
           color: isInteractive ? bg : bg.withValues(alpha: 0.38),
           borderRadius: borderRadius,
@@ -2076,6 +2079,13 @@ class PremiumRow extends StatelessWidget {
       ),
     );
 
+    final row = Semantics(
+      container: true,
+      button: true,
+      selected: selected,
+      child: content,
+    );
+
     final isAmoled = AppSurfaces.isAmoled(context);
     if (glass && !isAmoled) {
       return GlassCard(
@@ -2088,14 +2098,14 @@ class PremiumRow extends StatelessWidget {
         // `premium` for static, non-scrolling hero surfaces instead.
         quality: GlassQuality.standard,
         clipBehavior: Clip.antiAlias,
-        child: content,
+        child: row,
       );
     }
 
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: AppSurfaces.panel(context),
-      child: content,
+      child: row,
     );
   }
 }
@@ -2365,10 +2375,6 @@ class AppBackAction extends StatelessWidget {
 
 /// Canonical transient feedback: floating, and replaces any visible snackbar
 /// so rapid actions never queue stale messages.
-///
-/// `AppTheme.snackBarTheme` deliberately renders snackbars visually
-/// suppressed (no floating popups over the bottom island); the message is
-/// still exposed to assistive technologies.
 void showAppSnackBar(
   BuildContext context,
   String message, {

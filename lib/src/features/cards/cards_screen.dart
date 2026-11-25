@@ -105,6 +105,19 @@ class _CardAccountTile extends ConsumerWidget {
     final dueStatus = creditCardDueStatus(state, account);
     final rawBalance = accountBalance(state, account);
     final displayBalance = convertMoneyForDisplay(state, rawBalance);
+    final panel = AppSurfaces.panel(context);
+    final accent = account.color ?? scheme.primary;
+    final iconBackground = accent.withAlphaFactor(0.18);
+    final effectiveBackground = Color.alphaBlend(iconBackground, panel.color!);
+    final foregroundLuminance = Color.alphaBlend(
+      accent,
+      effectiveBackground,
+    ).computeLuminance();
+    final backgroundLuminance = effectiveBackground.computeLuminance();
+    final contrast = foregroundLuminance > backgroundLuminance
+        ? (foregroundLuminance + 0.05) / (backgroundLuminance + 0.05)
+        : (backgroundLuminance + 0.05) / (foregroundLuminance + 0.05);
+    final iconColor = contrast >= 3 ? accent : scheme.onSurface;
 
     Color badgeColor = scheme.surfaceContainerHighest;
     Color badgeTextColor = scheme.onSurfaceVariant;
@@ -169,13 +182,13 @@ class _CardAccountTile extends ConsumerWidget {
 
     return DecoratedBox(
       decoration: billNeedsAttention
-          ? AppSurfaces.panel(context).copyWith(
+          ? panel.copyWith(
               border: Border.all(
                 color: scheme.error.withAlphaFactor(0.5),
                 width: 1.5,
               ),
             )
-          : AppSurfaces.panel(context),
+          : panel,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -191,14 +204,13 @@ class _CardAccountTile extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.xs),
                       decoration: BoxDecoration(
-                        color: (account.color ?? scheme.primary)
-                            .withAlphaFactor(0.18),
+                        color: iconBackground,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         accountIcon(account),
                         size: 20,
-                        color: account.color ?? scheme.primary,
+                        color: iconColor,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),

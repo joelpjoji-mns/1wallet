@@ -33,7 +33,7 @@ Contains shared visual widgets designed around 1Wallet's signature frosted glass
 | Buttons | `FilledButton` primary · `FilledButton.tonal`/`OutlinedButton` secondary · `TextButton` tertiary/cancel · `AppButtonStyles.cta` full-width CTA · `AppButtonStyles.compact(context)` dense · `AppButtonStyles.destructive{Filled,Outlined,Text}(context)` · `AppActionButton` for glass chrome actions | Ad-hoc `styleFrom` colours/radii/heights, raw `GlassButton` |
 | Confirm dialog | `showAppConfirmDialog(...)` → `Future<bool>` (`AppConfirmDialog`: TextButton cancel + FilledButton confirm, error-filled when `destructive`) | Hand-built confirmation `AlertDialog`s; form dialogs stay `AlertDialog` with the same action order |
 | Sheets | `showAppSheet(...)`; draggable/full-height content in `AppSheetSurface` (handle via `AppSheetHandle`) | Raw `showModalBottomSheet`, copied drag-handle/DecoratedBox surfaces |
-| Feedback | `showAppSnackBar(context, msg)` / `messenger.showAppSnackBar(msg)` (floating, replaces the current one; the theme intentionally renders snackbars visually suppressed) | Inline `SnackBar(...)` |
+| Feedback | `showAppSnackBar(context, msg)` / `messenger.showAppSnackBar(msg)` (floating, replaces the current one) | Inline `SnackBar(...)` |
 | Loading | `AppLoadingState(message:)` for an empty page/section; `AppInlineSpinner` in buttons/rows/headers | `Center(child: CircularProgressIndicator())`, hand-sized spinners |
 | Empty / error | `EmptyState(...)`; errors use `tone: MetricTone.danger` | Ad-hoc centred icon + text columns |
 | Amounts | `PrivacyText` + `formatMoney` / `NumberFormatter` (integer minor units) | Raw `Text` for money |

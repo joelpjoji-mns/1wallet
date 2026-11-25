@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:g1455/g1455.dart' as g1455;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -51,6 +53,21 @@ class BottomIslandNavBar extends StatelessWidget {
     final isTest = WidgetsBinding.instance.runtimeType.toString().contains(
       'Test',
     );
+    final labelStyle = TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      fontFamily: Theme.of(context).textTheme.labelSmall?.fontFamily,
+    );
+    final labelWidths = items.map((item) {
+      final painter = TextPainter(
+        text: TextSpan(text: item.title, style: labelStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }).toList();
 
     if (pageController != null) {
       return AnimatedBuilder(
@@ -69,6 +86,7 @@ class BottomIslandNavBar extends StatelessWidget {
             currentIsDark,
             isTest,
             page,
+            labelWidths,
           );
         },
       );
@@ -79,6 +97,7 @@ class BottomIslandNavBar extends StatelessWidget {
       isDark,
       isTest,
       selectedIndex.toDouble(),
+      labelWidths,
     );
   }
 
@@ -88,6 +107,7 @@ class BottomIslandNavBar extends StatelessWidget {
     bool isDark,
     bool isTest,
     double page,
+    List<double> labelWidths,
   ) {
     return SafeArea(
       top: false,
@@ -101,16 +121,26 @@ class BottomIslandNavBar extends StatelessWidget {
             final totalWidth = constraints.maxWidth;
             final hasAction = action != null;
 
+            final requiredLabelWidth =
+                labelWidths.fold<double>(
+                  0,
+                  (widest, width) => math.max(widest, math.max(48.0, width + 12)),
+                ) *
+                items.length;
+            final normalWidth = math.min(totalWidth, AppSizes.islandMaxWidth);
+            final smallestIslandWidth = hasAction
+                ? math.max(0.0, normalWidth - 76)
+                : normalWidth;
+            final compactLabels = requiredLabelWidth > normalWidth;
+            final canDockAction = requiredLabelWidth <= smallestIslandWidth;
+
             // Calendar is at tab index 2. Compute how close we are to calendar tab (0.0 to 1.0)
-            final calendarProgress = hasAction
+            final calendarProgress = hasAction && canDockAction
                 ? (1.0 - (page - 2.0).abs()).clamp(0.0, 1.0)
                 : 0.0;
 
-            final normalWidth = totalWidth
-                .clamp(320.0, AppSizes.islandMaxWidth)
-                .toDouble();
             final compactWidth = (totalWidth - 76)
-                .clamp(240.0, AppSizes.islandMaxWidth - 76)
+                .clamp(0.0, AppSizes.islandMaxWidth - 76)
                 .toDouble();
             final islandWidth =
                 normalWidth + (compactWidth - normalWidth) * calendarProgress;
@@ -121,13 +151,34 @@ class BottomIslandNavBar extends StatelessWidget {
                 normalLeft + (compactLeft - normalLeft) * calendarProgress;
 
             const normalFabBottom = AppSizes.bottomBar + AppSizes.bottomBarGap;
-            const compactFabBottom = (AppSizes.bottomBar - 64.0) / 2;
+            const compactFabBottom =
+                (AppSizes.bottomBar - AppSizes.islandActionSize) / 2;
             final fabBottom =
                 normalFabBottom +
                 (compactFabBottom - normalFabBottom) * calendarProgress;
 
             final containerHeight = action != null ? 176.0 : AppSizes.bottomBar;
             final activeTab = page.round().clamp(0, items.length - 1);
+            final selectedWidth = compactLabels
+                ? math.min(
+                    math.max(48.0, labelWidths[activeTab] + 16),
+                    math.max(0.0, islandWidth - 48 * (items.length - 1)),
+                  )
+                : islandWidth / items.length;
+            final otherWidth = items.length > 1
+                ? (islandWidth - selectedWidth) / (items.length - 1)
+                : 0.0;
+            final indicatorAlignment = compactLabels &&
+                    islandWidth > selectedWidth
+                ? (activeTab * otherWidth / (islandWidth - selectedWidth)) *
+                          2 -
+                      1
+                : items.length > 1
+                ? -1.0 +
+                      (page.clamp(0.0, items.length - 1.0) /
+                              (items.length - 1.0)) *
+                          2.0
+                : 0.0;
 
             final primaryColor = scheme.primary;
             final brightPrimary = isDark
@@ -149,7 +200,7 @@ class BottomIslandNavBar extends StatelessWidget {
                       bottom: 0,
                       width: islandWidth,
                       height: AppSizes.bottomBar,
-                      child: isTest
+                      child: isTest && canDockAction
                           // In widget tests, render GlassTabBar directly for geometry & swipe verification
                           ? GlassTabBar.bottom(
                               tabs: [
@@ -292,21 +343,14 @@ class BottomIslandNavBar extends StatelessWidget {
                                         if (items.isNotEmpty)
                                           Align(
                                             alignment: Alignment(
-                                              items.length > 1
-                                                  ? -1.0 +
-                                                        (page.clamp(
-                                                                  0.0,
-                                                                  items.length -
-                                                                      1.0,
-                                                                ) /
-                                                                (items.length -
-                                                                    1.0)) *
-                                                            2.0
-                                                  : 0.0,
+                                              indicatorAlignment,
                                               0.0,
                                             ),
                                             child: FractionallySizedBox(
-                                              widthFactor: 1.0 / items.length,
+                                              widthFactor: compactLabels &&
+                                                      islandWidth > 0
+                                                  ? selectedWidth / islandWidth
+                                                  : 1.0 / items.length,
                                               heightFactor: 1.0,
                                               child: Padding(
                                                 padding:
@@ -376,15 +420,29 @@ class BottomIslandNavBar extends StatelessWidget {
                                               i < items.length;
                                               i++
                                             )
-                                              Expanded(
-                                                child: _IslandTabButton(
-                                                  item: items[i],
-                                                  isSelected: activeTab == i,
-                                                  onTap: () => onSelected(
-                                                    items[i].pageIndex ?? i,
+                                              if (compactLabels &&
+                                                  i == activeTab)
+                                                SizedBox(
+                                                  width: selectedWidth,
+                                                  child: _IslandTabButton(
+                                                    item: items[i],
+                                                    isSelected: true,
+                                                    onTap: () => onSelected(
+                                                      items[i].pageIndex ?? i,
+                                                    ),
+                                                  ),
+                                                )
+                                              else
+                                                Expanded(
+                                                  child: _IslandTabButton(
+                                                    item: items[i],
+                                                    isSelected: activeTab == i,
+                                                    showLabel: !compactLabels,
+                                                    onTap: () => onSelected(
+                                                      items[i].pageIndex ?? i,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
                                           ],
                                         ),
                                       ],
@@ -427,11 +485,13 @@ class _IslandTabButton extends StatelessWidget {
     required this.item,
     required this.isSelected,
     required this.onTap,
+    this.showLabel = true,
   });
 
   final IslandTabItem item;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -466,8 +526,13 @@ class _IslandTabButton extends StatelessWidget {
 
     return Semantics(
       label: item.title,
+      value: item.badgeCount != null && item.badgeCount! > 0
+          ? '${item.badgeCount}'
+          : null,
       selected: isSelected,
       button: true,
+      onTap: onTap,
+      excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
@@ -477,20 +542,22 @@ class _IslandTabButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               iconWidget,
-              const SizedBox(height: 2),
-              Text(
-                item.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: color,
-                  fontFamily: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.fontFamily,
+              if (showLabel) ...[
+                const SizedBox(height: 2),
+                Text(
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: color,
+                    fontFamily: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.fontFamily,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

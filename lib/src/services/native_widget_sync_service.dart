@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
@@ -46,7 +47,7 @@ class NativeWidgetSyncService {
 
   /// Synchronises current ledger data into native HomeWidget bitmaps.
   static Future<void> syncWidgets(LedgerState state, {ThemeData? theme}) async {
-    if (!Platform.isAndroid && !Platform.isIOS) return;
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) return;
 
     final renderTheme = theme ?? await _resolveTheme();
 

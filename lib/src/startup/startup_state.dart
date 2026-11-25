@@ -82,9 +82,12 @@ final startupStateProvider = Provider<StartupState>((ref) {
       ledgerSummary.hasWalletData;
 
   if (permissionSetup.userId != userId && !permissionSetup.isLoading) {
-    Future.microtask(() {
-      ref.read(permissionSetupControllerProvider.notifier).loadForUser(userId);
-    });
+    _deferStartupAction(
+      ref,
+      (container) => container
+          .read(permissionSetupControllerProvider.notifier)
+          .loadForUser(userId),
+    );
     return const StartupState.pending(
       stage: StartupStage.wallet,
       message: 'Preparing permission setup',
@@ -121,11 +124,12 @@ final startupStateProvider = Provider<StartupState>((ref) {
       cloudSync.metadata?.lastPulledAt != null;
   if (hasWalletData || hasVerifiedLocalEmptyWallet) {
     if (!onboarding.completed || onboarding.userId != userId) {
-      Future.microtask(() {
-        ref
+      _deferStartupAction(
+        ref,
+        (container) => container
             .read(onboardingControllerProvider.notifier)
-            .setCompleted(userId, true);
-      });
+            .setCompleted(userId, true),
+      );
     }
     return const StartupState.ready(destination: StartupDestination.home);
   }
@@ -155,9 +159,12 @@ final startupStateProvider = Provider<StartupState>((ref) {
   }
 
   if (onboarding.userId != userId && !onboarding.isLoading) {
-    Future.microtask(() {
-      ref.read(onboardingControllerProvider.notifier).loadForUser(userId);
-    });
+    _deferStartupAction(
+      ref,
+      (container) => container
+          .read(onboardingControllerProvider.notifier)
+          .loadForUser(userId),
+    );
     return const StartupState.pending(
       stage: StartupStage.wallet,
       message: 'Loading your wallet setup',
@@ -203,6 +210,22 @@ final startupStateProvider = Provider<StartupState>((ref) {
   return const StartupState.ready(destination: StartupDestination.onboarding);
 });
 
+void _deferStartupAction(
+  Ref ref,
+  Future<void> Function(ProviderContainer) action,
+) {
+  final container = ref.container;
+  var active = true;
+  ref.onDispose(() => active = false);
+  Future<void>.microtask(() async {
+    if (!active) return;
+    // Flush changed dependencies before acting on a snapshot of startup state.
+    // A rebuild disposes this snapshot and schedules its replacement action.
+    container.read(startupStateProvider);
+    if (active) await action(container);
+  });
+}
+
 /// Offline mode startup: the same permissions → onboarding → home flow as a
 /// signed-in account, owned by [localOwnerId], with no cloud-sync gating and
 /// no dependency on Firebase or the network.
@@ -242,11 +265,12 @@ StartupState _offlineStartupState(
         message: auth.errorMessage!,
       );
     }
-    Future.microtask(() {
-      ref
+    _deferStartupAction(
+      ref,
+      (container) => container
           .read(authControllerProvider.notifier)
-          .verifyLocalOwnership(ledgerOwner);
-    });
+          .verifyLocalOwnership(ledgerOwner),
+    );
     return const StartupState.pending(
       stage: StartupStage.wallet,
       message: 'Checking your offline wallet',
@@ -254,9 +278,12 @@ StartupState _offlineStartupState(
   }
 
   if (permissionSetup.userId != ownerId && !permissionSetup.isLoading) {
-    Future.microtask(() {
-      ref.read(permissionSetupControllerProvider.notifier).loadForUser(ownerId);
-    });
+    _deferStartupAction(
+      ref,
+      (container) => container
+          .read(permissionSetupControllerProvider.notifier)
+          .loadForUser(ownerId),
+    );
     return const StartupState.pending(
       stage: StartupStage.wallet,
       message: 'Preparing permission setup',
@@ -285,19 +312,23 @@ StartupState _offlineStartupState(
 
   if (hasWalletData) {
     if (!onboarding.completed || onboarding.userId != ownerId) {
-      Future.microtask(() {
-        ref
+      _deferStartupAction(
+        ref,
+        (container) => container
             .read(onboardingControllerProvider.notifier)
-            .setCompleted(ownerId, true);
-      });
+            .setCompleted(ownerId, true),
+      );
     }
     return const StartupState.ready(destination: StartupDestination.home);
   }
 
   if (onboarding.userId != ownerId && !onboarding.isLoading) {
-    Future.microtask(() {
-      ref.read(onboardingControllerProvider.notifier).loadForUser(ownerId);
-    });
+    _deferStartupAction(
+      ref,
+      (container) => container
+          .read(onboardingControllerProvider.notifier)
+          .loadForUser(ownerId),
+    );
     return const StartupState.pending(
       stage: StartupStage.wallet,
       message: 'Loading your wallet setup',

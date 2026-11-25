@@ -313,14 +313,17 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
                     ],
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Opening balance',
-                      prefixIcon: Icon(Icons.savings_outlined),
-                      helperText:
-                          'Use a negative amount if this account already '
-                          'carries a balance you owe (e.g. credit card or '
-                          'loan debt).',
-                      helperMaxLines: 2,
+                      prefixIcon: const Icon(Icons.savings_outlined),
+                      helper: Text(
+                        'Use a negative amount if this account already '
+                        'carries a balance you owe (e.g. credit card or '
+                        'loan debt).',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                   ),
                 const SizedBox(height: AppSpacing.md),

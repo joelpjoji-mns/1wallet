@@ -729,6 +729,7 @@ class RecoveryState extends StatelessWidget {
     this.onSecondaryAction,
     this.tertiaryLabel,
     this.onTertiaryAction,
+    this.onSignOut,
   });
 
   final String title;
@@ -739,6 +740,9 @@ class RecoveryState extends StatelessWidget {
   final VoidCallback? onSecondaryAction;
   final String? tertiaryLabel;
   final VoidCallback? onTertiaryAction;
+
+  /// Escape hatch so a session stuck on startup can always return to sign-in.
+  final VoidCallback? onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -806,6 +810,22 @@ class RecoveryState extends StatelessWidget {
                           style: textTheme.labelMedium?.copyWith(
                             color: palette.mutedText.withValues(alpha: 0.6),
                           ),
+                        ),
+                      ),
+                    ],
+                    if (onSignOut != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      TextButton.icon(
+                        key: const Key('recovery-sign-out'),
+                        onPressed: onSignOut,
+                        icon: Icon(
+                          Icons.logout_rounded,
+                          size: 18,
+                          color: palette.mutedText,
+                        ),
+                        label: Text(
+                          'Sign out',
+                          style: TextStyle(color: palette.mutedText),
                         ),
                       ),
                     ],

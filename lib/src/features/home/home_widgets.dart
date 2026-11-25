@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
@@ -203,28 +204,33 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
-              HomeWidgetReorderableIcon(
-                icon: Icons.account_balance_wallet_outlined,
-                iconColor: scheme.primary,
-                size: 32,
-                iconSize: 18,
-                borderRadius: AppRadii.sm,
-                onTap: () => widget.onTabSelected(1),
-                tooltip: 'View records',
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(
-                  'Balance',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w900,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HomeWidgetReorderableIcon(
+                    icon: Icons.account_balance_wallet_outlined,
+                    iconColor: scheme.primary,
+                    size: 32,
+                    iconSize: 18,
+                    borderRadius: AppRadii.sm,
+                    onTap: () => widget.onTabSelected(1),
+                    tooltip: 'View records',
                   ),
-                ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'Balance',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
               ),
               () {
                 final isCustom = _period.startsWith('custom:');
@@ -250,44 +256,53 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                       icon: Icons.date_range_rounded,
                     ),
                 ];
-                final matchedOption = standardHomeDateFilterOptions.cast<String?>().firstWhere(
-                  (opt) {
-                    if (opt == null) return false;
-                    if (opt == _period) return true;
-                    final o = opt.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
-                    final f = _period.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
-                    return o == f;
-                  },
-                  orElse: () => null,
-                );
+                final matchedOption = standardHomeDateFilterOptions
+                    .cast<String?>()
+                    .firstWhere((opt) {
+                      if (opt == null) return false;
+                      if (opt == _period) return true;
+                      final o = opt.toLowerCase().replaceAll(
+                        RegExp(r'[\s_]'),
+                        '',
+                      );
+                      final f = _period.toLowerCase().replaceAll(
+                        RegExp(r'[\s_]'),
+                        '',
+                      );
+                      return o == f;
+                    }, orElse: () => null);
                 final resolvedValue = isCustom
                     ? _period
                     : (matchedOption ??
-                        (standardHomeDateFilterOptions.contains(_period)
-                            ? _period
-                            : 'This month'));
+                          (standardHomeDateFilterOptions.contains(_period)
+                              ? _period
+                              : 'This month'));
                 return GlassDropdownPill<String>(
                   value: resolvedValue,
                   options: options,
                   onChanged: _onPeriodChanged,
                   onPrevious: () {
-                    final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+                    final shifted =
+                        (resolvedValue == 'All time' ||
+                            resolvedValue == 'all' ||
+                            resolvedValue == 'allTime')
                         ? shiftDateFilter('This month', -1)
                         : shiftDateFilter(resolvedValue, -1);
                     _onPeriodChanged(shifted);
                   },
                   onNext: () {
-                    final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+                    final shifted =
+                        (resolvedValue == 'All time' ||
+                            resolvedValue == 'all' ||
+                            resolvedValue == 'allTime')
                         ? 'This month'
                         : shiftDateFilter(resolvedValue, 1);
                     _onPeriodChanged(shifted);
                   },
                   icon: Icons.calendar_month_rounded,
                   semanticLabel: 'Balance period',
-                  maxLabelWidth: 54,
                 );
               }(),
-              const SizedBox(width: AppSpacing.xs),
               if (allCurrencies.length > 1 && forcedCurrency == null)
                 GlassDropdownPill<String>(
                   value: displayCurrency,
@@ -339,8 +354,8 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
             },
           ),
           const SizedBox(height: AppSpacing.xs),
-          SizedBox(
-            height: 24,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 24),
             child: currencyBreakdown.isNotEmpty
                 ? SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -482,31 +497,59 @@ class AccountGridHomeWidget extends ConsumerWidget {
           final availableWidth = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : MediaQuery.sizeOf(context).width - AppSpacing.md * 2;
-          const columns = 3;
           const spacing = AppSpacing.xs;
+          final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
+          final columns =
+              ((availableWidth + spacing) / (96 * textScale + spacing))
+                  .floor()
+                  .clamp(1, 3);
           final tileWidth =
               (availableWidth - spacing * (columns - 1)) / columns;
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
+          // Reserve the secondary balance line on every tile when any tile
+          // needs it so the grid keeps a uniform tile height.
+          final reserveSecondaryLine = accounts.any(
+            (account) =>
+                _accountTileLabels(state, account, balances).secondary != null,
+          );
+          Widget tile(Account account) => SizedBox(
+            width: tileWidth.clamp(0, availableWidth),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity:
+                  selectedAccountId == null || selectedAccountId == account.id
+                  ? 1.0
+                  : 0.35,
+              child: _AccountTile(
+                state: state,
+                account: account,
+                balances: balances,
+                reserveSecondaryLine: reserveSecondaryLine,
+              ),
+            ),
+          );
+          // Rows stretch every tile to the tallest one so badges or scaled
+          // amounts never make neighbouring tiles visibly uneven.
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final account in accounts)
-                SizedBox(
-                  width: tileWidth.clamp(0, availableWidth),
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity:
-                        selectedAccountId == null ||
-                            selectedAccountId == account.id
-                        ? 1.0
-                        : 0.35,
-                    child: _AccountTile(
-                      state: state,
-                      account: account,
-                      balances: balances,
-                    ),
+              for (var i = 0; i < accounts.length; i += columns) ...[
+                if (i > 0) const SizedBox(height: spacing),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (
+                        var j = i;
+                        j < math.min(i + columns, accounts.length);
+                        j++
+                      ) ...[
+                        if (j > i) const SizedBox(width: spacing),
+                        tile(accounts[j]),
+                      ],
+                    ],
                   ),
                 ),
+              ],
             ],
           );
         },
@@ -581,28 +624,29 @@ class RecentRecordsHomeWidget extends ConsumerWidget {
           layoutBuilder: (currentChild, previousChildren) {
             return Stack(
               alignment: Alignment.topCenter,
-              children: <Widget>[
-                ...previousChildren,
-                ?currentChild,
-              ],
+              children: <Widget>[...previousChildren, ?currentChild],
             );
           },
           transitionBuilder: (child, animation) {
-            final inAnimation = Tween<Offset>(
-              begin: const Offset(0.0, 0.12),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            ));
-            final outAnimation = Tween<Offset>(
-              begin: const Offset(0.0, -0.15),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeInCubic,
-            ));
-            final isIncoming = child.key ==
+            final inAnimation =
+                Tween<Offset>(
+                  begin: const Offset(0.0, 0.12),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                );
+            final outAnimation =
+                Tween<Offset>(
+                  begin: const Offset(0.0, -0.15),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeInCubic),
+                );
+            final isIncoming =
+                child.key ==
                 (recent.isEmpty
                     ? ValueKey(
                         'recent_empty_${selectedAccountId ?? "all"}_$period',
@@ -1604,28 +1648,30 @@ class _BalanceTrendHomeWidgetState
           icon: Icons.date_range_rounded,
         ),
     ];
-    final matchedOption = standardHomeDateFilterOptions.cast<String?>().firstWhere(
-      (opt) {
-        if (opt == null) return false;
-        if (opt == _period) return true;
-        final o = opt.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
-        final f = _period.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
-        return o == f;
-      },
-      orElse: () => null,
-    );
+    final matchedOption = standardHomeDateFilterOptions
+        .cast<String?>()
+        .firstWhere((opt) {
+          if (opt == null) return false;
+          if (opt == _period) return true;
+          final o = opt.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+          final f = _period.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+          return o == f;
+        }, orElse: () => null);
     final resolvedValue = isCustom
         ? _period
         : (matchedOption ??
-            (standardHomeDateFilterOptions.contains(_period)
-                ? _period
-                : 'This month'));
+              (standardHomeDateFilterOptions.contains(_period)
+                  ? _period
+                  : 'This month'));
 
     return GlassDropdownPill<String>(
       value: resolvedValue,
       options: options,
       onPrevious: () {
-        final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+        final shifted =
+            (resolvedValue == 'All time' ||
+                resolvedValue == 'all' ||
+                resolvedValue == 'allTime')
             ? shiftDateFilter('This month', -1)
             : shiftDateFilter(resolvedValue, -1);
         setState(() {
@@ -1634,7 +1680,10 @@ class _BalanceTrendHomeWidgetState
         });
       },
       onNext: () {
-        final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+        final shifted =
+            (resolvedValue == 'All time' ||
+                resolvedValue == 'all' ||
+                resolvedValue == 'allTime')
             ? 'This month'
             : shiftDateFilter(resolvedValue, 1);
         setState(() {
@@ -2810,11 +2859,13 @@ class _AccountTile extends ConsumerWidget {
     required this.state,
     required this.account,
     required this.balances,
+    this.reserveSecondaryLine = false,
   });
 
   final LedgerState state;
   final Account account;
   final Map<String, Money> balances;
+  final bool reserveSecondaryLine;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -2822,33 +2873,19 @@ class _AccountTile extends ConsumerWidget {
     final color = accountDisplayColor(account);
     final foreground = _legibleForegroundFor(color);
     final nativeBalance = accountBalanceFromMap(balances, account);
-    final displayBalance = convertMoneyForDisplay(state, nativeBalance);
     final isForeignCurrency =
         nativeBalance.currency.toUpperCase() !=
         state.preferences.displayCurrency.toUpperCase();
-    final isCash = account.type == 'cash';
-
-    String primaryLabel;
-    String? secondaryLabel;
-
-    if (isCash) {
-      final breakdown = cashCurrencyBalancesForAccount(state, account);
-      if (breakdown.isNotEmpty) {
-        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
-        secondaryLabel = breakdown
-            .map((m) => formatMoney(m, state.preferences.locale))
-            .join(' | ');
-      } else {
-        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
-      }
-    } else {
-      if (isForeignCurrency) {
-        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
-        secondaryLabel = formatMoney(nativeBalance, state.preferences.locale);
-      } else {
-        primaryLabel = formatMoney(displayBalance, state.preferences.locale);
-      }
-    }
+    final labels = _accountTileLabels(state, account, balances);
+    final primaryLabel = labels.primary;
+    final secondaryLabel = labels.secondary;
+    final secondaryStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: foreground == Colors.white
+          ? Colors.white.withValues(alpha: 0.85)
+          : foreground.withValues(alpha: 0.75),
+      height: 1.1,
+      fontWeight: FontWeight.w600,
+    );
 
     final isSelected = ref.watch(homeSelectedAccountProvider) == account.id;
 
@@ -2872,8 +2909,8 @@ class _AccountTile extends ConsumerWidget {
         child: Container(
           // A fixed `height` clips/overflows once accessibility text scaling
           // makes the name/balance/currency rows taller than 60 logical
-          // pixels; a `minHeight` lets the tile grow instead (the surrounding
-          // `Wrap` sizes each row to its tallest tile, so this is safe here).
+          // pixels; a `minHeight` lets the tile grow instead (each grid row
+          // stretches its tiles to the tallest one, so this is safe here).
           constraints: const BoxConstraints(minHeight: 60),
           padding: const EdgeInsets.all(AppSpacing.xs),
           decoration: BoxDecoration(
@@ -2916,10 +2953,8 @@ class _AccountTile extends ConsumerWidget {
                   ),
                   const SizedBox(width: AppSpacing.xxxs),
                   Expanded(
-                    child: Text(
-                      account.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: _SingleLineAccountName(
+                      name: account.name,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: foreground,
                         height: 1.1,
@@ -2935,15 +2970,12 @@ class _AccountTile extends ConsumerWidget {
                     ),
                     const SizedBox(width: AppSpacing.xxxs),
                   ],
-                  // Currency badge for foreign accounts. Capped and scaled down
-                  // so very large accessibility text can't push it past the
-                  // narrow tile.
                   if (isForeignCurrency)
                     Container(
-                      constraints: const BoxConstraints(maxWidth: 48),
+                      // No vertical padding: the badge must never be taller
+                      // than the name line, or foreign-currency tiles grow.
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.xxs,
-                        vertical: AppSpacing.xxxs,
                       ),
                       decoration: BoxDecoration(
                         color: foreground == Colors.white
@@ -2957,34 +2989,37 @@ class _AccountTile extends ConsumerWidget {
                           width: 0.5,
                         ),
                       ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          nativeBalance.currency,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: foreground,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.3,
-                              ),
+                      child: Text(
+                        nativeBalance.currency,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: foreground,
+                          height: 1.0,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
                 ],
               ),
               const SizedBox(height: AppSpacing.xxxs),
-              // Display in base currency
-              PrivacyText(
-                primaryLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: foreground == Colors.white
-                      ? Colors.white
-                      : foreground,
-                  height: 1.1,
-                  letterSpacing: -0.3,
-                  fontWeight: FontWeight.w900,
+              // Amounts are never ellipsized; an unusually long figure scales
+              // down slightly so the tile stays on one line.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: PrivacyText(
+                  primaryLabel,
+                  maxLines: 1,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: foreground == Colors.white
+                        ? Colors.white
+                        : foreground,
+                    height: 1.1,
+                    letterSpacing: -0.3,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               if (secondaryLabel != null)
@@ -2992,13 +3027,11 @@ class _AccountTile extends ConsumerWidget {
                   secondaryLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: foreground == Colors.white
-                        ? Colors.white.withValues(alpha: 0.85)
-                        : foreground.withValues(alpha: 0.75),
-                    height: 1.1,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: secondaryStyle,
+                )
+              else if (reserveSecondaryLine)
+                ExcludeSemantics(
+                  child: Text(' ', maxLines: 1, style: secondaryStyle),
                 ),
             ],
           ),
@@ -3006,6 +3039,104 @@ class _AccountTile extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _SingleLineAccountName extends StatelessWidget {
+  const _SingleLineAccountName({required this.name, required this.style});
+
+  final String name;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final textDirection = Directionality.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final metrics = TextPainter(
+      text: TextSpan(text: name, style: style),
+      textDirection: textDirection,
+      textScaler: textScaler,
+    )..layout();
+    final height = metrics.height;
+    metrics.dispose();
+
+    return Semantics(
+      label: name,
+      child: ExcludeSemantics(
+        child: CustomPaint(
+          size: Size(0, height),
+          painter: _AccountNamePainter(
+            name: name,
+            style: style,
+            textDirection: textDirection,
+            textScaler: textScaler,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountNamePainter extends CustomPainter {
+  const _AccountNamePainter({
+    required this.name,
+    required this.style,
+    required this.textDirection,
+    required this.textScaler,
+  });
+
+  final String name;
+  final TextStyle? style;
+  final ui.TextDirection textDirection;
+  final TextScaler textScaler;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final painter = TextPainter(
+      text: TextSpan(text: name, style: style),
+      textDirection: textDirection,
+      textScaler: textScaler,
+      maxLines: 1,
+      ellipsis: '..',
+    )..layout(maxWidth: size.width);
+    painter.paint(canvas, Offset.zero);
+    painter.dispose();
+  }
+
+  @override
+  bool shouldRepaint(_AccountNamePainter oldDelegate) =>
+      name != oldDelegate.name ||
+      style != oldDelegate.style ||
+      textDirection != oldDelegate.textDirection ||
+      textScaler != oldDelegate.textScaler;
+}
+
+({String primary, String? secondary}) _accountTileLabels(
+  LedgerState state,
+  Account account,
+  Map<String, Money> balances,
+) {
+  final locale = state.preferences.locale;
+  final nativeBalance = accountBalanceFromMap(balances, account);
+  final primary = formatMoney(
+    convertMoneyForDisplay(state, nativeBalance),
+    locale,
+  );
+  if (account.type == 'cash') {
+    final breakdown = cashCurrencyBalancesForAccount(state, account);
+    return (
+      primary: primary,
+      secondary: breakdown.isEmpty
+          ? null
+          : breakdown.map((m) => formatMoney(m, locale)).join(' | '),
+    );
+  }
+  final isForeignCurrency =
+      nativeBalance.currency.toUpperCase() !=
+      state.preferences.displayCurrency.toUpperCase();
+  return (
+    primary: primary,
+    secondary: isForeignCurrency ? formatMoney(nativeBalance, locale) : null,
+  );
 }
 
 Color _legibleForegroundFor(Color background) {

@@ -30,6 +30,7 @@ abstract final class AppFonts {
 }
 
 abstract final class AppSizes {
+  static const double islandActionSize = 64;
   static const double bottomBarContentHeight = 80;
   // GlassTabBar includes internal top/bottom padding around its
   // configured bar height, so this is its measured outer extent.

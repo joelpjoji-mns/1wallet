@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/features/cards/cards_screen.dart';
+import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
@@ -86,4 +89,66 @@ void main() {
       expect(find.text('Credit Card'), findsNothing);
     },
   );
+
+  testWidgets('custom card icons remain visible on light and dark surfaces', (
+    tester,
+  ) async {
+    final cases = [
+      (AppTheme.amoled(), const Color(0xFF111827), false),
+      (AppTheme.light(), const Color(0xFFF8FAFC), false),
+      (AppTheme.light(), const Color(0xFF1565C0), true),
+    ];
+    for (final (theme, color, preservesAccent) in cases) {
+      final account = Account(
+        id: 'contrast-card',
+        name: 'Contrast card',
+        type: 'credit_card',
+        currency: 'USD',
+        openingBalance: const Money(amountMinor: 0, currency: 'USD'),
+        color: color,
+      );
+      final state = sampleLedgerState().copyWith(accounts: [account]);
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: state),
+      );
+      await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(theme: theme, home: const CardsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final tile = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_CardAccountTile',
+      );
+      final icon = find.descendant(
+        of: tile,
+        matching: find.byIcon(accountIcon(account)),
+      );
+      final iconColor = tester.widget<Icon>(icon).color!;
+      final bubble = tester.widget<Container>(
+        find.ancestor(of: icon, matching: find.byType(Container)).first,
+      );
+      final panel = tester.widget<DecoratedBox>(
+        find.descendant(of: tile, matching: find.byType(DecoratedBox)).first,
+      );
+      final background = Color.alphaBlend(
+        (bubble.decoration! as BoxDecoration).color!,
+        (panel.decoration as BoxDecoration).color!,
+      );
+      final foreground = Color.alphaBlend(iconColor, background);
+      final foregroundLuminance = foreground.computeLuminance();
+      final backgroundLuminance = background.computeLuminance();
+      final contrast = foregroundLuminance > backgroundLuminance
+          ? (foregroundLuminance + 0.05) / (backgroundLuminance + 0.05)
+          : (backgroundLuminance + 0.05) / (foregroundLuminance + 0.05);
+      expect(contrast, greaterThanOrEqualTo(3));
+      if (preservesAccent) expect(iconColor, color);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+    }
+  });
 }

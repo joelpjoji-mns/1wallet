@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
@@ -108,6 +110,114 @@ void main() {
     expect(find.bySemanticsLabel('Save'), findsOneWidget);
     handle.dispose();
   });
+
+  testWidgets(
+    'large-text navigation keeps the selected label and all targets',
+    (tester) async {
+      final fontLoader = FontLoader('Inter');
+      for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+        fontLoader.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+      }
+      await fontLoader.load();
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final handle = tester.ensureSemantics();
+      var selected = 2;
+      final actionKey = GlobalKey();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: StatefulBuilder(
+                builder: (context, setState) => BottomIslandNavBar(
+                  items: const [
+                    IslandTabItem(
+                      title: 'Home',
+                      icon: Icons.home_outlined,
+                      activeIcon: Icons.home,
+                    ),
+                    IslandTabItem(
+                      title: 'History',
+                      icon: Icons.receipt_long_outlined,
+                      activeIcon: Icons.receipt_long,
+                    ),
+                    IslandTabItem(
+                      title: 'Calendar',
+                      icon: Icons.calendar_month_outlined,
+                      activeIcon: Icons.calendar_month,
+                    ),
+                    IslandTabItem(
+                      title: 'Accounts',
+                      icon: Icons.wallet_outlined,
+                      activeIcon: Icons.wallet,
+                      badgeCount: 3,
+                    ),
+                  ],
+                  selectedIndex: selected,
+                  onSelected: (index) => setState(() => selected = index),
+                  action: SizedBox(key: actionKey, width: 64, height: 64),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final title in ['Home', 'History', 'Calendar', 'Accounts']) {
+        final tab = find.bySemanticsLabel(title);
+        expect(tab, findsOneWidget);
+        expect(tester.getSemantics(tab).label, title);
+        final size = tester.getSize(tab);
+        expect(size.width, greaterThanOrEqualTo(48), reason: title);
+        expect(size.height, greaterThanOrEqualTo(48), reason: title);
+        expect(
+          tester.getRect(tab).overlaps(tester.getRect(find.byKey(actionKey))),
+          isFalse,
+          reason: '$title overlaps the action',
+        );
+      }
+      expect(tester.getSemantics(find.bySemanticsLabel('Accounts')).value, '3');
+      expect(
+        tester
+            .renderObject<RenderParagraph>(find.text('Calendar'))
+            .didExceedMaxLines,
+        isFalse,
+        reason: 'selected label is truncated',
+      );
+      await tester.tap(find.bySemanticsLabel('Accounts'));
+      await tester.pumpAndSettle();
+      expect(selected, 3);
+      expect(
+        tester
+            .renderObject<RenderParagraph>(find.text('Accounts'))
+            .didExceedMaxLines,
+        isFalse,
+      );
+      tester.view.physicalSize = const Size(426, 800);
+      await tester.pumpAndSettle();
+      for (final title in ['Home', 'History', 'Calendar', 'Accounts']) {
+        expect(find.bySemanticsLabel(title), findsOneWidget);
+      }
+      expect(
+        tester
+            .renderObject<RenderParagraph>(find.text('Accounts'))
+            .didExceedMaxLines,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+      handle.dispose();
+    },
+  );
 }
 
 void _ignoreIndex(int _) {}

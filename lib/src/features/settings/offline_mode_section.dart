@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+import '../../auth/auth_session_teardown.dart';
 import '../../design/tokens.dart';
 import '../../offline_mode/offline_mode_controller.dart';
 import '../../widgets/app_kit.dart';
@@ -58,6 +59,41 @@ class OfflineModeCard extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+bool _offlineSignOutInFlight = false;
+
+/// Confirms, then signs out of offline mode by erasing the device-only
+/// wallet and returning to the sign-in screen.
+Future<void> confirmOfflineSignOut(BuildContext context, WidgetRef ref) async {
+  if (_offlineSignOutInFlight) return;
+  final confirmed = await showAppConfirmDialog(
+    context,
+    title: 'Sign out of offline wallet?',
+    message:
+        'Your offline wallet is stored only on this device. Signing out '
+        'permanently erases its accounts, transactions, and categories. '
+        'To keep them, back up & sync with Google or export a backup from '
+        'Data backup first.',
+    confirmLabel: 'Erase & sign out',
+    destructive: true,
+  );
+  if (!confirmed || !context.mounted) return;
+  _offlineSignOutInFlight = true;
+  try {
+    await signOutOfflineWallet(ref);
+    if (context.mounted) context.go('/login');
+  } catch (error) {
+    debugPrint('Offline sign-out failed: $error');
+    if (context.mounted) {
+      showAppSnackBar(
+        context,
+        'Could not sign out. Your offline wallet was not changed.',
+      );
+    }
+  } finally {
+    _offlineSignOutInFlight = false;
   }
 }
 

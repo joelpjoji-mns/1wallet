@@ -21,6 +21,7 @@ import '../../widgets/bottom_island_nav.dart';
 import 'main_drawer_components.dart';
 import '../accounts/accounts_screen.dart';
 import '../calendar/calendar_screen.dart';
+import '../settings/offline_mode_section.dart';
 import '../home/home_screen.dart'
     show HomeScreen, homeSelectedAccountProvider, homeWidgetReorderModeProvider;
 import '../notifications/notification_engine.dart';
@@ -30,9 +31,10 @@ import '../transactions/transactions_screen.dart';
 import '../../widgets/app_kit.dart';
 
 class MainShell extends ConsumerStatefulWidget {
-  const MainShell({this.initialTab = 0, super.key});
+  const MainShell({this.initialTab = 0, this.routeTabParameter, super.key});
 
   final int initialTab;
+  final String? routeTabParameter;
 
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
@@ -46,6 +48,8 @@ class _MainShellState extends ConsumerState<MainShell>
   Timer? _lightBackgroundPeriodicTimer;
   late final List<Widget> _screens;
   late final Widget _mainBody;
+  RouteInformationProvider? _routeInformationProvider;
+  RouteInformation? _lastRouteInformation;
 
   void _noteGlassChange() {
     if (mounted) {
@@ -134,6 +138,54 @@ class _MainShellState extends ConsumerState<MainShell>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = GoRouter.maybeOf(context)?.routeInformationProvider;
+    if (identical(provider, _routeInformationProvider)) return;
+    _routeInformationProvider?.removeListener(_handleRouteInformation);
+    _routeInformationProvider = provider;
+    _lastRouteInformation = provider?.value;
+    provider?.addListener(_handleRouteInformation);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && identical(provider, _routeInformationProvider)) {
+        _lastRouteInformation = provider?.value;
+      }
+    });
+  }
+
+  void _handleRouteInformation() {
+    final information = _routeInformationProvider?.value;
+    final previous = _lastRouteInformation;
+    _lastRouteInformation = information;
+    if (information == null || identical(information.state, previous?.state)) {
+      return;
+    }
+    final repeatedRoot =
+        previous != null &&
+        information.uri == previous.uri &&
+        information.uri.path == '/';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final current = _routeInformationProvider?.value;
+      if (current?.uri != information.uri) return;
+      _lastRouteInformation = current;
+      // go_router can retain the same page when a deep link is reopened.
+      if (repeatedRoot) {
+        _selectTab(widget.initialTab);
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant MainShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab != oldWidget.initialTab ||
+        widget.routeTabParameter != oldWidget.routeTabParameter) {
+      _selectTab(widget.initialTab);
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
@@ -144,6 +196,7 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   void dispose() {
+    _routeInformationProvider?.removeListener(_handleRouteInformation);
     WidgetsBinding.instance.removeObserver(this);
     _lightBackgroundPeriodicTimer?.cancel();
     _pageController.removeListener(_noteGlassChange);
@@ -347,19 +400,39 @@ class _MainShellState extends ConsumerState<MainShell>
             ),
           );
 
-          return Scaffold(
-            key: _scaffoldKey,
-            drawerEdgeDragWidth: 40,
-            drawer: AppResponsiveLayout.isDesktop(context)
-                ? null
-                : AppMainDrawer(
-                    selectedIndex: selectedIndex,
-                    onTabSelected: (index) {
-                      Navigator.of(context).pop();
-                      _selectTab(index);
-                    },
-                  ),
-            body: AppResponsiveLayout(mobile: mobileBody, desktop: desktopBody),
+          final isDesktop = AppResponsiveLayout.isDesktop(context);
+          final snackBarBottomInset = isDesktop
+              ? AppSpacing.md
+              : (AppSizes.bottomBarClearance + 64 + AppSpacing.md).clamp(
+                  0.0,
+                  MediaQuery.sizeOf(context).height * 0.35,
+                );
+          return SnackBarTheme(
+            data: theme.snackBarTheme.copyWith(
+              insetPadding: EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.xs,
+                AppSpacing.md,
+                snackBarBottomInset,
+              ),
+            ),
+            child: Scaffold(
+              key: _scaffoldKey,
+              drawerEdgeDragWidth: 40,
+              drawer: isDesktop
+                  ? null
+                  : AppMainDrawer(
+                      selectedIndex: selectedIndex,
+                      onTabSelected: (index) {
+                        Navigator.of(context).pop();
+                        _selectTab(index);
+                      },
+                    ),
+              body: AppResponsiveLayout(
+                mobile: mobileBody,
+                desktop: desktopBody,
+              ),
+            ),
           );
         },
       ),
@@ -629,9 +702,9 @@ class AppMainDrawer extends ConsumerWidget {
                             accentColor: scheme.primary,
                           ),
                           const SizedBox(height: AppSpacing.xs),
-                          if (auth.isLocalOnly)
-                            // Signing out wipes the device wallet, so offline
-                            // mode offers the Google upgrade (in Settings).
+                          if (auth.isLocalOnly) ...[
+                            // Offline mode leads with the Google upgrade;
+                            // signing out erases the device-only wallet.
                             DrawerRouteTile(
                               config: DrawerRowConfig.route(
                                 'Back up with Google',
@@ -641,8 +714,24 @@ class AppMainDrawer extends ConsumerWidget {
                               selectedIndex: selectedIndex,
                               onTabSelected: onTabSelected,
                               accentColor: scheme.primary,
-                            )
-                          else
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            DrawerRouteTile(
+                              config: DrawerRowConfig.route(
+                                'Sign out',
+                                Icons.logout_outlined,
+                                '/login',
+                              ),
+                              selectedIndex: selectedIndex,
+                              onTabSelected: onTabSelected,
+                              danger: true,
+                              accentColor: scheme.error,
+                              // The dialog opens over the drawer so its
+                              // context stays mounted until confirmation.
+                              onTapOverride: () =>
+                                  confirmOfflineSignOut(context, ref),
+                            ),
+                          ] else
                             DrawerRouteTile(
                               config: DrawerRowConfig.route(
                                 'Sign out',
@@ -721,11 +810,7 @@ class _DrawerPrivacyToggle extends ConsumerWidget {
             size: 18,
             color: scheme.primary,
           ),
-          title: Text(
-            enabled ? 'Privacy mode · On' : 'Privacy mode · Off',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          title: const Text('Privacy mode'),
           value: enabled,
           onChanged: (_) => toggle(),
           contentPadding: const EdgeInsets.symmetric(

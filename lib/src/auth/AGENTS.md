@@ -19,7 +19,7 @@ This directory manages the session: Google Sign-In via Firebase Auth (plus QA-on
   - `AuthController`:
     - Reads `AppMode` synchronously at construction. Offline starts `localOnly` immediately, with no network and no Firebase dependency.
     - Online behaviour (Google sign-in, QA email/password, sign-out, re-authentication for backend-managed erasure) is unchanged.
-    - Offline APIs: `continueOffline()`, `signInWithGoogleForUpgrade()` (signs in **without publishing**), `completeOfflineUpgrade()`, `discardUpgradeSession()`, `verifyLocalOwnership()`, `retryLocalOwnershipCheck()`, `setLocalDisplayName()`.
+    - Offline APIs: `continueOffline()`, `signInWithGoogleForUpgrade()` (signs in **without publishing**), `completeOfflineUpgrade()`, `discardUpgradeSession()`, `verifyLocalOwnership()`, `retryLocalOwnershipCheck()`, `setLocalDisplayName()`, `leaveOfflineMode()` (persists online mode, clears the local name, then returns to `signedOut`/`unavailable`).
     - It must not delete Firebase credentials directly; the backend deletion job owns that final step.
 
 ---
@@ -30,7 +30,7 @@ This directory manages the session: Google Sign-In via Firebase Auth (plus QA-on
    - When a user logs out or switches accounts, `LedgerController` must be notified to reset or reload the corresponding ledger repository. Never allow one user's transactions to leak into another's session.
 2. **Offline mode keeps Firebase Auth untouched**:
    - No anonymous Firebase account is ever created. In `localOnly`, `AuthState.user` is always `null`, which keeps every cloud-sync, Firestore and account-deletion path (all keyed off `user`) unreachable.
-   - `signInWithGoogle()` and `signOut()` are no-ops in `localOnly`: upgrades go through `OfflineModeController` (`lib/src/offline_mode/`), and "signing out" would strand the device-only wallet.
+   - `signInWithGoogle()` and `signOut()` are no-ops in `localOnly`: upgrades go through `OfflineModeController` (`lib/src/offline_mode/`). Offline sign-out is `signOutOfflineWallet()` (`auth_session_teardown.dart`): it erases the device-only wallet **before** `leaveOfflineMode()`, because a leftover `'local-user'` wallet would be adopted by the next signed-in account. UI must confirm via `confirmOfflineSignOut()`.
    - Offline mode may only open a `'local-user'` wallet. `verifyLocalOwnership` finishes an interrupted upgrade, or returns the device to sign-in when the stored wallet belongs to a Google account.
 3. **No Direct Firestore Queries Here**:
    - `auth/` is strictly for authentication and session mode. Firestore synchronization logic belongs in `lib/src/cloud_sync/`.

@@ -266,6 +266,30 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     final loan = accountById(state, widget.accountId);
     _syncLoanDraft(state, loan);
     final sourceAccount = accountById(state, _sourceAccountId);
+    Widget fieldPair(Widget first, Widget second) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+          if (constraints.maxWidth < 480 * textScale) {
+            return Column(
+              children: [
+                first,
+                const SizedBox(height: AppSpacing.sm),
+                second,
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: first),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: second),
+            ],
+          );
+        },
+      );
+    }
+
     return RouteScaffold(
       title: loan == null ? 'New loan' : 'Edit loan',
       actions: [HeaderSaveAction(onPressed: () => _saveLoan(state, loan))],
@@ -291,78 +315,64 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                     prefixIcon: const Icon(Icons.business_outlined),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GlassTextField(
-                          controller: _principalController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [
-                            ThousandsSeparatorInputFormatter(
-                              state.preferences.locale,
-                            ),
-                          ],
-                          placeholder: 'Original Principal',
-                          prefixIcon: const Icon(Icons.payments_outlined),
-                        ),
+                  fieldPair(
+                    GlassTextField(
+                      controller: _principalController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: GlassTextField(
-                          controller: _currentBalanceController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [
-                            ThousandsSeparatorInputFormatter(
-                              state.preferences.locale,
-                            ),
-                          ],
-                          placeholder: 'Current Balance',
-                          prefixIcon: const Icon(
-                            Icons.account_balance_wallet_outlined,
-                          ),
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(
+                          state.preferences.locale,
                         ),
+                      ],
+                      placeholder: 'Original Principal',
+                      prefixIcon: const Icon(Icons.payments_outlined),
+                    ),
+                    GlassTextField(
+                      controller: _currentBalanceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                    ],
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(
+                          state.preferences.locale,
+                        ),
+                      ],
+                      placeholder: 'Current Balance',
+                      prefixIcon: const Icon(
+                        Icons.account_balance_wallet_outlined,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GlassTextField(
-                          controller: _emiController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [
-                            ThousandsSeparatorInputFormatter(
-                              state.preferences.locale,
-                            ),
-                          ],
-                          placeholder: 'Repayment amount',
-                          prefixIcon: const Icon(Icons.event_repeat_outlined),
-                        ),
+                  fieldPair(
+                    GlassTextField(
+                      controller: _emiController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: GlassTextField(
-                          controller: _rateController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [
-                            ThousandsSeparatorInputFormatter(
-                              state.preferences.locale,
-                            ),
-                          ],
-                          placeholder: 'Rate %',
-                          prefixIcon: const Icon(Icons.percent_rounded),
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(
+                          state.preferences.locale,
                         ),
+                      ],
+                      placeholder: 'Repayment amount',
+                      prefixIcon: const Icon(Icons.event_repeat_outlined),
+                    ),
+                    GlassTextField(
+                      controller: _rateController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                    ],
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(
+                          state.preferences.locale,
+                        ),
+                      ],
+                      placeholder: 'Rate %',
+                      prefixIcon: const Icon(Icons.percent_rounded),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   GlassTextField(
@@ -392,6 +402,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue:
                         const [
                           'daily',
@@ -491,7 +502,7 @@ class _LoanFormState extends ConsumerState<LoanForm> {
                             },
                           ),
                         GlassChip(
-                          label: 'Last day of month',
+                          label: 'Last day',
                           selected: _daysOfMonth.contains(32),
                           selectedColor: Theme.of(
                             context,
@@ -1248,6 +1259,28 @@ class _LoanCompactCard extends StatelessWidget {
       negative: mode != 'past',
       locale: state.preferences.locale,
     );
+    final stackAmount = MediaQuery.textScalerOf(context).scale(14) > 20;
+    final amountInfo = Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        PrivacyText(
+          rightAmountText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+            color: mode == 'past' ? scheme.onSurface : scheme.error,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(
+          status.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: status.color, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
 
     return AppPanel(
       glass: true,
@@ -1333,33 +1366,16 @@ class _LoanCompactCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  PrivacyText(
-                    rightAmountText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: mode == 'past' ? scheme.onSurface : scheme.error,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xxs),
-                  Text(
-                    status.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: status.color,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
+              if (!stackAmount) ...[
+                const SizedBox(width: AppSpacing.md),
+                amountInfo,
+              ],
             ],
           ),
+          if (stackAmount) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Align(alignment: Alignment.centerRight, child: amountInfo),
+          ],
           if (details.principal != null) ...[
             const SizedBox(height: AppSpacing.md),
             Builder(
@@ -1481,6 +1497,7 @@ class NumberedDotPainter extends FlDotPainter {
         offsetInCanvas.dy - textPainter.height / 2,
       ),
     );
+    textPainter.dispose();
   }
 
   @override
@@ -1498,6 +1515,110 @@ class NumberedDotPainter extends FlDotPainter {
 
   @override
   List<Object?> get props => [label, color, textColor, labelStyle, radius];
+}
+
+String _forecastAxisLabel(NumberFormat format, double value, bool isPrivate) {
+  final formatted = format.format(value);
+  return isPrivate ? maskAmountDigits(formatted) : formatted;
+}
+
+double _forecastYAxisInterval(double min, double max) {
+  final raw = (max - min) / 5;
+  if (raw <= 0 || !raw.isFinite) return 1;
+  if (raw >= 1) return raw.roundToDouble();
+  final magnitude = math
+      .pow(10, (math.log(raw) / math.ln10).floor())
+      .toDouble();
+  return (raw / magnitude).roundToDouble() * magnitude;
+}
+
+List<double> _forecastAxisTicks(double min, double max, double interval) {
+  final first = (min / interval).ceilToDouble() * interval;
+  final values = <double>[];
+  for (var i = 0; i < 9; i++) {
+    final tick = first + i * interval;
+    if (tick >= max) break;
+    if (tick > min) values.add(tick);
+  }
+  return values;
+}
+
+NumberFormat _forecastNumberFormat(
+  String locale,
+  String symbol,
+  double min,
+  double max,
+  double interval,
+) {
+  final values = _forecastAxisTicks(min, max, interval);
+  var format = NumberFormat.compactCurrency(locale: locale, symbol: symbol);
+  for (var digits = 4; digits <= 17; digits++) {
+    if (values.map(format.format).toSet().length == values.length) break;
+    format =
+        NumberFormat.compactCurrency(
+            locale: locale,
+            symbol: symbol,
+            decimalDigits: digits - 2,
+          )
+          ..minimumSignificantDigits = digits
+          ..minimumSignificantDigitsStrict = false;
+  }
+  return format;
+}
+
+double _forecastYAxisWidth(
+  BuildContext context,
+  NumberFormat format,
+  double min,
+  double max,
+  double interval,
+  bool isPrivate,
+) {
+  final style = Theme.of(
+    context,
+  ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600);
+  final values = _forecastAxisTicks(min, max, interval);
+  var width = 0.0;
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  );
+  for (final value in values) {
+    painter.text = TextSpan(
+      text: _forecastAxisLabel(format, value, isPrivate),
+      style: style,
+    );
+    painter.layout();
+    width = math.max(width, painter.width);
+  }
+  painter.dispose();
+  return math.max(50, width.ceilToDouble() + AppSpacing.xs);
+}
+
+Size _forecastDateLabelSize(BuildContext context, String pattern) {
+  final formatter = DateFormat(pattern);
+  final painter = TextPainter(
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  );
+  var width = 0.0;
+  for (var month = 1; month <= 12; month++) {
+    painter.text = TextSpan(
+      text: formatter.format(DateTime(2088, month, 28)),
+      style: Theme.of(context).textTheme.labelSmall,
+    );
+    painter.layout();
+    width = math.max(width, painter.width);
+  }
+  final size = Size(width, painter.height);
+  painter.dispose();
+  return size;
+}
+
+int _forecastDateLabelCount(double plotWidth, double labelWidth) {
+  return (plotWidth / (labelWidth + AppSpacing.xs)).floor().clamp(1, 4);
 }
 
 class DynamicForecastLineChart extends StatefulWidget {
@@ -1687,291 +1808,343 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     }
   }
 
-  double get _xInterval {
-    final range = _currentMaxX - _currentMinX;
-    if (range <= 0) return 1;
-    const idealCount = 4.0;
-    final interval = (range / idealCount).ceilToDouble();
-    return interval < 1 ? 1 : interval;
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.spots.isEmpty) return const SizedBox.shrink();
 
-    double yInterval = ((_currentMaxY - _currentMinY) / 5).roundToDouble();
-    if (yInterval < 1) yInterval = 1;
+    final yInterval = _forecastYAxisInterval(_currentMinY, _currentMaxY);
 
-    final numberFormat = NumberFormat.compactCurrency(
-      locale: widget.locale,
-      symbol: widget.currencySymbol,
+    final numberFormat = _forecastNumberFormat(
+      widget.locale,
+      widget.currencySymbol,
+      _currentMinY,
+      _currentMaxY,
+      yInterval,
+    );
+    final yAxisWidth = _forecastYAxisWidth(
+      context,
+      numberFormat,
+      _currentMinY,
+      _currentMaxY,
+      yInterval,
+      widget.isPrivate,
     );
     // Themed marker color for payoff milestones so they stay legible (and
     // don't clash with the primary "today" line) across light/dark/AMOLED.
     final scheme = Theme.of(context).colorScheme;
     final payoffColor = scheme.tertiary;
     final onPayoffColor = scheme.onTertiary;
+    final xRange = _currentMaxX - _currentMinX;
+    final datePattern = xRange <= 60
+        ? 'dd MMM'
+        : xRange <= 365
+        ? 'MMM yy'
+        : 'yyyy';
+    final dateLabelSize = _forecastDateLabelSize(context, datePattern);
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Listener(
-          onPointerSignal: _onPointerSignal,
-          child: GestureDetector(
-            onScaleStart: _onScaleStart,
-            onScaleUpdate: _onScaleUpdate,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                top: AppSpacing.xs,
-                bottom: AppSpacing.xs,
-                right: AppSpacing.md,
-              ),
-              child: RepaintBoundary(
-                child: LineChart(
-                  LineChartData(
-                    minY: _currentMinY,
-                    maxY: _currentMaxY,
-                    minX: _currentMinX,
-                    maxX: _currentMaxX,
-                    clipData: const FlClipData.all(),
-                    lineTouchData: LineTouchData(
-                      touchTooltipData: LineTouchTooltipData(
-                        getTooltipColor: (spot) =>
-                            Theme.of(context).colorScheme.surfaceContainerHigh,
-                        getTooltipItems: (touchedSpots) {
-                          return touchedSpots.map((spot) {
-                            final now = DateTime.now();
-                            final today = DateTime(
-                              now.year,
-                              now.month,
-                              now.day,
-                            );
-                            final date = today.add(
-                              Duration(days: spot.x.toInt()),
-                            );
-                            final dateStr = DateFormat(
-                              'dd MMM yyyy',
-                            ).format(date);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final plotWidth = math.max(
+          0.0,
+          constraints.maxWidth - yAxisWidth - AppSpacing.md,
+        );
+        final labelCount = _forecastDateLabelCount(
+          plotWidth,
+          dateLabelSize.width,
+        );
+        final xInterval = math.max(1.0, (xRange / labelCount).ceilToDouble());
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Listener(
+                onPointerSignal: _onPointerSignal,
+                child: GestureDetector(
+                  onScaleStart: _onScaleStart,
+                  onScaleUpdate: _onScaleUpdate,
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      top: AppSpacing.xs,
+                      bottom: AppSpacing.xs,
+                      right: AppSpacing.md,
+                    ),
+                    child: RepaintBoundary(
+                      child: LineChart(
+                        LineChartData(
+                          minY: _currentMinY,
+                          maxY: _currentMaxY,
+                          minX: _currentMinX,
+                          maxX: _currentMaxX,
+                          baselineX: labelCount == 1
+                              ? (_currentMinX + _currentMaxX) / 2
+                              : 0,
+                          clipData: const FlClipData.all(),
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (spot) => Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHigh,
+                              getTooltipItems: (touchedSpots) {
+                                return touchedSpots.map((spot) {
+                                  final now = DateTime.now();
+                                  final today = DateTime(
+                                    now.year,
+                                    now.month,
+                                    now.day,
+                                  );
+                                  final date = today.add(
+                                    Duration(days: spot.x.toInt()),
+                                  );
+                                  final dateStr = DateFormat(
+                                    'dd MMM yyyy',
+                                  ).format(date);
 
-                            final amt = NumberFormat.decimalPattern(
-                              widget.locale,
-                            ).format(spot.y);
-                            final rawMoneyStr = '${widget.currencySymbol}$amt';
-                            final moneyStr = widget.isPrivate
-                                ? maskAmountDigits(rawMoneyStr)
-                                : rawMoneyStr;
+                                  final amt = NumberFormat.decimalPattern(
+                                    widget.locale,
+                                  ).format(spot.y);
+                                  final rawMoneyStr =
+                                      '${widget.currencySymbol}$amt';
+                                  final moneyStr = widget.isPrivate
+                                      ? maskAmountDigits(rawMoneyStr)
+                                      : rawMoneyStr;
 
-                            return LineTooltipItem(
-                              '$moneyStr\n',
-                              TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: dateStr,
+                                  return LineTooltipItem(
+                                    '$moneyStr\n',
+                                    TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: dateStr,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                              fontWeight: FontWeight.normal,
+                                            ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList();
+                              },
+                            ),
+                          ),
+                          extraLinesData: ExtraLinesData(
+                            verticalLines: [
+                              VerticalLine(
+                                x: 0,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.5),
+                                dashArray: [5, 5],
+                                label: VerticalLineLabel(
+                                  show: true,
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppSpacing.xl,
+                                    left: AppSpacing.xxs,
+                                  ),
                                   style: Theme.of(context).textTheme.labelSmall
                                       ?.copyWith(
                                         color: Theme.of(
                                           context,
-                                        ).colorScheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.normal,
+                                        ).colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
                                       ),
+                                  labelResolver: (_) => "Today",
                                 ),
-                              ],
-                            );
-                          }).toList();
-                        },
-                      ),
-                    ),
-                    extraLinesData: ExtraLinesData(
-                      verticalLines: [
-                        VerticalLine(
-                          x: 0,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.5),
-                          dashArray: [5, 5],
-                          label: VerticalLineLabel(
-                            show: true,
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.xl,
-                              left: AppSpacing.xxs,
-                            ),
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                            labelResolver: (_) => "Today",
-                          ),
-                        ),
-                        ...widget.payoffDots.keys.map((x) {
-                          final now = DateTime.now();
-                          final today = DateTime(now.year, now.month, now.day);
-                          final date = today.add(Duration(days: x.toInt()));
-                          final dateStr = DateFormat('dd MMM yy').format(date);
-
-                          return VerticalLine(
-                            x: x,
-                            color: payoffColor.withValues(alpha: 0.5),
-                            strokeWidth: 1,
-                            dashArray: [3, 3],
-                            label: VerticalLineLabel(
-                              show: true,
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.xxs,
-                                left: AppSpacing.xxs,
                               ),
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: payoffColor,
-                                    fontWeight: FontWeight.bold,
+                              ...widget.payoffDots.keys.map((x) {
+                                final now = DateTime.now();
+                                final today = DateTime(
+                                  now.year,
+                                  now.month,
+                                  now.day,
+                                );
+                                final date = today.add(
+                                  Duration(days: x.toInt()),
+                                );
+                                final dateStr = DateFormat(
+                                  'dd MMM yy',
+                                ).format(date);
+
+                                return VerticalLine(
+                                  x: x,
+                                  color: payoffColor.withValues(alpha: 0.5),
+                                  strokeWidth: 1,
+                                  dashArray: [3, 3],
+                                  label: VerticalLineLabel(
+                                    show: true,
+                                    padding: const EdgeInsets.only(
+                                      bottom: AppSpacing.xxs,
+                                      left: AppSpacing.xxs,
+                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: payoffColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                    labelResolver: (_) => dateStr,
                                   ),
-                              labelResolver: (_) => dateStr,
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: widget.spots,
-                        isCurved: true,
-                        color: widget.lineColor,
-                        barWidth: 4,
-                        shadow: BoxShadow(
-                          color: widget.lineColor.withValues(alpha: 0.5),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          cutOffY: _currentMinY,
-                          gradient: LinearGradient(
-                            colors: [
-                              widget.lineColor.withValues(alpha: 0.5),
-                              widget.lineColor.withValues(alpha: 0.0),
+                                );
+                              }),
                             ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
                           ),
-                        ),
-                        dotData: FlDotData(
-                          checkToShowDot: (spot, barData) =>
-                              widget.payoffDots.containsKey(spot.x),
-                          getDotPainter: (spot, percent, barData, index) {
-                            final label = widget.payoffDots[spot.x];
-                            if (label != null) {
-                              return NumberedDotPainter(
-                                label,
-                                color: payoffColor,
-                                textColor: onPayoffColor,
-                                labelStyle: Theme.of(
-                                  context,
-                                ).textTheme.labelMedium,
-                              );
-                            }
-                            return FlDotCirclePainter(
-                              radius: 0,
-                              color: Colors.transparent,
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 30,
-                          interval: _xInterval,
-                          getTitlesWidget: (value, meta) {
-                            final now = DateTime.now();
-                            final today = DateTime(
-                              now.year,
-                              now.month,
-                              now.day,
-                            );
-                            final date = today.add(
-                              Duration(days: value.toInt()),
-                            );
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: widget.spots,
+                              isCurved: true,
+                              color: widget.lineColor,
+                              barWidth: 4,
+                              shadow: BoxShadow(
+                                color: widget.lineColor.withValues(alpha: 0.5),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                cutOffY: _currentMinY,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    widget.lineColor.withValues(alpha: 0.5),
+                                    widget.lineColor.withValues(alpha: 0.0),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                              dotData: FlDotData(
+                                checkToShowDot: (spot, barData) =>
+                                    widget.payoffDots.containsKey(spot.x),
+                                getDotPainter: (spot, percent, barData, index) {
+                                  final label = widget.payoffDots[spot.x];
+                                  if (label != null) {
+                                    return NumberedDotPainter(
+                                      label,
+                                      color: payoffColor,
+                                      textColor: onPayoffColor,
+                                      labelStyle: Theme.of(
+                                        context,
+                                      ).textTheme.labelMedium,
+                                    );
+                                  }
+                                  return FlDotCirclePainter(
+                                    radius: 0,
+                                    color: Colors.transparent,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: math.max(
+                                  30,
+                                  dateLabelSize.height + AppSpacing.xs,
+                                ),
+                                interval: xInterval,
+                                minIncluded: false,
+                                maxIncluded: false,
+                                getTitlesWidget: (value, meta) {
+                                  final now = DateTime.now();
+                                  final today = DateTime(
+                                    now.year,
+                                    now.month,
+                                    now.day,
+                                  );
+                                  final date = today.add(
+                                    Duration(days: value.toInt()),
+                                  );
 
-                            final range = _currentMaxX - _currentMinX;
-                            String dateStr;
-                            if (range <= 60) {
-                              dateStr = DateFormat('dd MMM').format(date);
-                            } else if (range <= 365) {
-                              dateStr = DateFormat('MMM yy').format(date);
-                            } else {
-                              dateStr = DateFormat('yyyy').format(date);
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                top: AppSpacing.xs,
+                                  final dateStr = DateFormat(
+                                    datePattern,
+                                  ).format(date);
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: AppSpacing.xs,
+                                    ),
+                                    child: Text(
+                                      dateStr,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
+                                    ),
+                                  );
+                                },
                               ),
-                              child: Text(
-                                dateStr,
-                                style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: yAxisWidth,
+                                interval: yInterval,
+                                minIncluded: false,
+                                maxIncluded: false,
+                                getTitlesWidget: (value, meta) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                      right: AppSpacing.xs,
+                                    ),
+                                    child: Text(
+                                      _forecastAxisLabel(
+                                        numberFormat,
+                                        value,
+                                        widget.isPrivate,
+                                      ),
+                                      textAlign: TextAlign.right,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
+                            ),
+                            topTitles: const AxisTitles(),
+                            rightTitles: const AxisTitles(),
+                          ),
+                          gridData: FlGridData(
+                            verticalInterval: xInterval,
+                            horizontalInterval: yInterval,
+                          ),
+                          borderData: FlBorderData(show: false),
                         ),
+                        duration: Duration.zero,
                       ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 50,
-                          interval: yInterval,
-                          getTitlesWidget: (value, meta) {
-                            final formatted = numberFormat.format(value);
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                right: AppSpacing.xs,
-                              ),
-                              child: Text(
-                                widget.isPrivate
-                                    ? maskAmountDigits(formatted)
-                                    : formatted,
-                                textAlign: TextAlign.right,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      topTitles: const AxisTitles(),
-                      rightTitles: const AxisTitles(),
                     ),
-                    gridData: FlGridData(
-                      verticalInterval: _xInterval,
-                      horizontalInterval: yInterval,
-                    ),
-                    borderData: FlBorderData(show: false),
                   ),
-                  duration: Duration.zero,
                 ),
               ),
             ),
-          ),
-        ),
-        Positioned(
-          right: AppSpacing.xs,
-          bottom: AppSpacing.xs,
-          child: _ChartZoomControls(
-            onZoomIn: () => _applyZoom(0.6, 0.5),
-            onZoomOut: () => _applyZoom(1.0 / 0.6, 0.5),
-            onReset: () => setState(_initBounds),
-          ),
-        ),
-      ],
+            _ChartZoomControls(
+              onZoomIn: () => _applyZoom(0.6, 0.5),
+              onZoomOut: () => _applyZoom(1.0 / 0.6, 0.5),
+              onReset: () => setState(_initBounds),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
-/// Google-Maps-style floating zoom controls overlaid on the forecast chart,
-/// so zoom works on web/desktop (no pinch) too.
+/// Zoom controls for devices without pinch or scroll gestures.
 class _ChartZoomControls extends StatelessWidget {
   const _ChartZoomControls({
     required this.onZoomIn,
@@ -1987,30 +2160,32 @@ class _ChartZoomControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     Widget button(IconData icon, VoidCallback onTap, String tooltip) {
-      return Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.xs),
-        child: Material(
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
-          shape: const CircleBorder(),
-          elevation: 2,
-          child: IconButton(
-            tooltip: tooltip,
-            iconSize: 20,
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints.tightFor(width: 38, height: 38),
-            padding: EdgeInsets.zero,
-            onPressed: onTap,
-            icon: Icon(icon, color: scheme.onSurface),
+      return Material(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
+        shape: const CircleBorder(),
+        elevation: 2,
+        child: IconButton(
+          tooltip: tooltip,
+          iconSize: 20,
+          visualDensity: VisualDensity.standard,
+          constraints: const BoxConstraints.tightFor(
+            width: kMinInteractiveDimension,
+            height: kMinInteractiveDimension,
           ),
+          padding: EdgeInsets.zero,
+          onPressed: onTap,
+          icon: Icon(icon, color: scheme.onSurface),
         ),
       );
     }
 
-    return Column(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         button(Icons.add_rounded, onZoomIn, 'Zoom in'),
+        const SizedBox(width: AppSpacing.xs),
         button(Icons.remove_rounded, onZoomOut, 'Zoom out'),
+        const SizedBox(width: AppSpacing.xs),
         button(Icons.center_focus_strong_outlined, onReset, 'Reset view'),
       ],
     );
@@ -2171,24 +2346,26 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
     });
   }
 
-  double get _xInterval {
-    final range = _currentMaxX - _currentMinX;
-    if (range <= 0) return 1;
-    const idealCount = 4.0;
-    final interval = (range / idealCount).ceilToDouble();
-    return interval < 1 ? 1 : interval;
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.barGroups.isEmpty) return const SizedBox.shrink();
 
-    double yInterval = ((_currentMaxY - _currentMinY) / 5).roundToDouble();
-    if (yInterval < 1) yInterval = 1;
+    final yInterval = _forecastYAxisInterval(_currentMinY, _currentMaxY);
 
-    final numberFormat = NumberFormat.compactCurrency(
-      locale: widget.locale,
-      symbol: widget.currencySymbol,
+    final numberFormat = _forecastNumberFormat(
+      widget.locale,
+      widget.currencySymbol,
+      _currentMinY,
+      _currentMaxY,
+      yInterval,
+    );
+    final yAxisWidth = _forecastYAxisWidth(
+      context,
+      numberFormat,
+      _currentMinY,
+      _currentMaxY,
+      yInterval,
+      widget.isPrivate,
     );
 
     final visibleGroups = widget.barGroups
@@ -2210,117 +2387,155 @@ class _DynamicForecastBarChartState extends State<DynamicForecastBarChart> {
         barRods: [oldRod.copyWith(width: dynamicBarWidth)],
       );
     }).toList();
+    final xRange = _currentMaxX - _currentMinX;
+    final datePattern = xRange <= 12
+        ? 'dd MMM'
+        : xRange <= 52
+        ? 'MMM yy'
+        : 'yyyy';
+    final dateLabelSize = _forecastDateLabelSize(context, datePattern);
 
-    return Column(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onHorizontalDragUpdate: _onPanUpdate,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                top: AppSpacing.xs,
-                bottom: AppSpacing.xs,
-                right: AppSpacing.md,
-              ),
-              child: RepaintBoundary(
-                child: BarChart(
-                  BarChartData(
-                    minY: _currentMinY,
-                    maxY: _currentMaxY,
-                    barGroups: updatedVisibleGroups,
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 36,
-                          interval: _xInterval,
-                          getTitlesWidget: (value, meta) {
-                            final idx = value.toInt();
-                            if (idx >= 0 && idx < widget.timeKeys.length) {
-                              final date = widget.timeKeys[idx];
-                              final range = _currentMaxX - _currentMinX;
-                              String str;
-                              if (range <= 12) {
-                                str = DateFormat('dd MMM').format(date);
-                              } else if (range <= 52) {
-                                str = DateFormat('MMM yy').format(date);
-                              } else {
-                                str = DateFormat('yyyy').format(date);
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                  top: AppSpacing.xs,
-                                ),
-                                child: Text(
-                                  str,
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.labelSmall,
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 50,
-                          interval: yInterval,
-                          getTitlesWidget: (value, meta) {
-                            final formatted = numberFormat.format(value);
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                right: AppSpacing.xs,
-                              ),
-                              child: Text(
-                                widget.isPrivate
-                                    ? maskAmountDigits(formatted)
-                                    : formatted,
-                                textAlign: TextAlign.right,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      topTitles: const AxisTitles(),
-                      rightTitles: const AxisTitles(),
-                    ),
-                    gridData: FlGridData(
-                      drawVerticalLine: false,
-                      horizontalInterval: yInterval,
-                    ),
-                    borderData: FlBorderData(show: false),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final plotWidth = math.max(
+          0.0,
+          constraints.maxWidth - yAxisWidth - AppSpacing.md,
+        );
+        final labelCount = _forecastDateLabelCount(
+          plotWidth,
+          dateLabelSize.width,
+        );
+        final labelEvery = math.max(1, (visibleCount / labelCount).ceil());
+        final labelGroups = <int>{
+          if (labelCount == 1 && visibleGroups.isNotEmpty)
+            visibleGroups[visibleCount ~/ 2].x
+          else
+            for (var i = 0; i < visibleCount; i += labelEvery)
+              visibleGroups[i].x,
+        };
+        return Column(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onHorizontalDragUpdate: _onPanUpdate,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    top: AppSpacing.xs,
+                    bottom: AppSpacing.xs,
+                    right: AppSpacing.md,
                   ),
-                  duration: Duration.zero,
+                  child: RepaintBoundary(
+                    child: BarChart(
+                      BarChartData(
+                        minY: _currentMinY,
+                        maxY: _currentMaxY,
+                        barGroups: updatedVisibleGroups,
+                        titlesData: FlTitlesData(
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: math.max(
+                                36,
+                                dateLabelSize.height + AppSpacing.xs,
+                              ),
+                              minIncluded: false,
+                              maxIncluded: false,
+                              getTitlesWidget: (value, meta) {
+                                final idx = value.toInt();
+                                if (labelGroups.contains(idx) &&
+                                    idx >= 0 &&
+                                    idx < widget.timeKeys.length) {
+                                  final date = widget.timeKeys[idx];
+                                  final str = DateFormat(
+                                    datePattern,
+                                  ).format(date);
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: AppSpacing.xs,
+                                    ),
+                                    child: Text(
+                                      str,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: yAxisWidth,
+                              interval: yInterval,
+                              minIncluded: false,
+                              maxIncluded: false,
+                              getTitlesWidget: (value, meta) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                    right: AppSpacing.xs,
+                                  ),
+                                  child: Text(
+                                    _forecastAxisLabel(
+                                      numberFormat,
+                                      value,
+                                      widget.isPrivate,
+                                    ),
+                                    textAlign: TextAlign.right,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          topTitles: const AxisTitles(),
+                          rightTitles: const AxisTitles(),
+                        ),
+                        gridData: FlGridData(
+                          drawVerticalLine: false,
+                          horizontalInterval: yInterval,
+                        ),
+                        borderData: FlBorderData(show: false),
+                      ),
+                      duration: Duration.zero,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-        Row(
-          children: [
-            Icon(
-              Icons.zoom_out_rounded,
-              size: 20,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            Expanded(
-              child: GlassSlider(
-                value: _zoomPercent,
-                onChanged: _onSliderChange,
-              ),
-            ),
-            Icon(
-              Icons.zoom_in_rounded,
-              size: 20,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            Row(
+              children: [
+                Icon(
+                  Icons.zoom_out_rounded,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                Expanded(
+                  child: GlassSlider(
+                    value: _zoomPercent,
+                    onChanged: _onSliderChange,
+                  ),
+                ),
+                Icon(
+                  Icons.zoom_in_rounded,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ],
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }

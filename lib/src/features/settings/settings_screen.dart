@@ -369,7 +369,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     header: 'Danger zone',
                     destructive: true,
                     children: [
-                      if (auth.isLocalOnly)
+                      if (auth.isLocalOnly) ...[
+                        AppGroupedTile(
+                          key: const Key('offline-sign-out'),
+                          leading: const Icon(Icons.logout_rounded),
+                          title: const Text('Sign out'),
+                          subtitle: const Text(
+                            'Leave offline mode and return to sign-in. This erases the wallet on this device.',
+                          ),
+                          destructive: true,
+                          showChevron: true,
+                          onTap: () => confirmOfflineSignOut(context, ref),
+                        ),
+                        const GlassDivider(),
                         AppGroupedTile(
                           leading: const Icon(Icons.delete_sweep_rounded),
                           title: const Text('Clear all data'),
@@ -379,8 +391,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           destructive: true,
                           showChevron: true,
                           onTap: _showClearOfflineDataDialog,
-                        )
-                      else
+                        ),
+                      ] else
                         AppGroupedTile(
                           leading: const Icon(Icons.delete_forever_rounded),
                           title: const Text('Delete account'),

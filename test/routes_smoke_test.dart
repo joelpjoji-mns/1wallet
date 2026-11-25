@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
+import 'package:one_wallet_flutter/src/features/main/main_shell.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
@@ -188,6 +189,103 @@ void main() {
         rethrow;
       }
     }
+  });
+
+  testWidgets('tab deep links select valid tabs and reject invalid indexes', (
+    tester,
+  ) async {
+    await initializeDateFormatting('en_IN');
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(prefs: prefs),
+    );
+    addTearDown(container.dispose);
+    final router = container.read(appRouterProvider);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          routerConfig: router,
+          theme: AppTheme.light(),
+        ),
+      ),
+    );
+    await _pumpRouteTransition(tester);
+
+    for (final (route, expected) in [
+      ('/?tab=1', 1),
+      ('/?tab=3', 3),
+      ('/?tab=99', 0),
+      ('/?tab=-1', 0),
+      ('/add?tab=1', 1),
+      ('/add?tab=99', 0),
+      ('/add?tab=-1', 0),
+    ]) {
+      router.go(route);
+      await _pumpRouteTransition(tester);
+      expect(tester.takeException(), isNull, reason: route);
+      if (route.startsWith('/add')) {
+        expect(
+          tester
+              .widget<DefaultTabController>(find.byType(DefaultTabController))
+              .initialIndex,
+          expected,
+          reason: route,
+        );
+        expect(
+          DefaultTabController.of(tester.element(find.text('Keypad'))).index,
+          expected,
+          reason: route,
+        );
+      } else {
+        expect(
+          tester.widget<MainShell>(find.byType(MainShell)).initialTab,
+          expected,
+        );
+        expect(
+          tester.widget<PageView>(find.byType(PageView).first).controller!.page,
+          expected.toDouble(),
+          reason: route,
+        );
+      }
+    }
+
+    router.go('/');
+    await _pumpRouteTransition(tester);
+    final controller = tester
+        .widget<PageView>(find.byType(PageView).first)
+        .controller!;
+    controller.jumpToPage(1);
+    await _pumpRouteTransition(tester);
+    expect(controller.page, 1);
+    router.refresh();
+    await _pumpRouteTransition(tester);
+    expect(controller.page, 1, reason: 'initial router refresh');
+    router.go('/?tab=0');
+    await _pumpRouteTransition(tester);
+    expect(controller.page, 0);
+
+    router.go('/?tab=1');
+    await _pumpRouteTransition(tester);
+    controller.jumpToPage(2);
+    await _pumpRouteTransition(tester);
+    router.go('/?tab=1');
+    await _pumpRouteTransition(tester);
+    expect(controller.page, 1, reason: 'repeated deep link');
+    controller.jumpToPage(2);
+    await _pumpRouteTransition(tester);
+    router.refresh();
+    await _pumpRouteTransition(tester);
+    expect(controller.page, 2, reason: 'router refresh preserves selected tab');
+
+    router.go('/');
+    await _pumpRouteTransition(tester);
+    controller.jumpToPage(2);
+    await _pumpRouteTransition(tester);
+    router.go('/');
+    await _pumpRouteTransition(tester);
+    expect(controller.page, 0, reason: 'repeated root link');
   });
 }
 

@@ -120,7 +120,9 @@ class _GlassEffectScreenState extends ConsumerState<GlassEffectScreen> {
 
   void _selectFinish(AppGlassFinish finish) {
     HapticFeedback.selectionClick();
-    final targetBlur = (finish == AppGlassFinish.clear && _selectedTarget == GlassComponentTarget.fab)
+    final targetBlur =
+        (finish == AppGlassFinish.clear &&
+            _selectedTarget == GlassComponentTarget.fab)
         ? 1.0
         : finish.defaultBlur;
     final targetOpacity = finish.defaultBackgroundOpacity;
@@ -661,9 +663,11 @@ class _LiveGlassPreview extends StatelessWidget {
     final fillAlphaTop = backgroundOpacity.clamp(0.01, 0.85);
     final fillAlphaBottom = (fillAlphaTop * 0.45).clamp(0.005, 0.70);
     final borderAlpha = specularOpacity.clamp(0.10, 0.95);
+    final previewScale = (MediaQuery.textScalerOf(context).scale(13) / 13)
+        .clamp(1.0, double.infinity);
 
     return Container(
-      height: 260,
+      height: 260 * previewScale,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
@@ -745,10 +749,14 @@ class _LiveGlassPreview extends StatelessWidget {
                     top: 12,
                     left: 16,
                     right: 16,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xxs,
                       children: [
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
                               width: 8,
@@ -760,7 +768,7 @@ class _LiveGlassPreview extends StatelessWidget {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              '${target.label.toUpperCase()} PREVIEW',
+                              '${target.shortLabel.toUpperCase()} PREVIEW',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
@@ -802,14 +810,14 @@ class _LiveGlassPreview extends StatelessWidget {
 
                   // Account Cards in the background scene
                   Positioned(
-                    top: 40,
+                    top: 60 * previewScale,
                     left: 16,
                     right: 16,
                     child: Row(
                       children: [
                         Expanded(
                           child: Container(
-                            height: 100,
+                            height: 110 * previewScale,
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
@@ -850,7 +858,7 @@ class _LiveGlassPreview extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Container(
-                            height: 100,
+                            height: 110 * previewScale,
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
@@ -891,7 +899,7 @@ class _LiveGlassPreview extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Container(
-                            height: 100,
+                            height: 110 * previewScale,
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
@@ -935,7 +943,7 @@ class _LiveGlassPreview extends StatelessWidget {
 
                   // Chart bars spanning across the middle
                   Positioned(
-                    top: 136,
+                    top: 166 * previewScale,
                     left: 20,
                     right: 20,
                     child: Row(
@@ -1459,7 +1467,10 @@ class _GlassFinishOptionTile extends StatelessWidget {
 
     return AppGroupedTile(
       leading: Icon(icon, color: isSelected ? scheme.primary : null),
-      title: Row(
+      title: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xxs,
         children: [
           Text(
             title,
@@ -1468,18 +1479,17 @@ class _GlassFinishOptionTile extends StatelessWidget {
             ),
           ),
           if (badge != null) ...[
-            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
               decoration: BoxDecoration(
                 color: isSelected
                     ? scheme.primary.withAlphaFactor(0.20)
-                    : Colors.white.withAlphaFactor(0.08),
+                    : scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: isSelected
                       ? scheme.primary.withAlphaFactor(0.40)
-                      : Colors.white.withAlphaFactor(0.15),
+                      : scheme.outlineVariant,
                 ),
               ),
               child: Text(
@@ -1487,7 +1497,7 @@ class _GlassFinishOptionTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? scheme.primary : Colors.white70,
+                  color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
                 ),
               ),
             ),

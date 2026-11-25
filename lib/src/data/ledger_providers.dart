@@ -1125,6 +1125,16 @@ class LedgerController extends StateNotifier<LedgerState> {
     final next = emptyLedgerState(userId: effectiveUserId);
     state = next;
     await _repository.clear();
+    await _clearLocalSyncFlags();
+  }
+
+  /// An erased wallet has no local edits left to protect. A stale
+  /// `has_unsynced_changes` flag would otherwise make every later cloud
+  /// restore refuse to overwrite the (empty) local wallet.
+  Future<void> _clearLocalSyncFlags() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('has_unsynced_changes');
+    await prefs.remove('last_local_modified_at');
   }
 
   /// Prepares this device's wallet for offline mode and makes the local owner
@@ -1280,6 +1290,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     if (state.userId != target && _activeUser?.userId != target) return;
     _activeUser = null;
     await _repository.clear();
+    await _clearLocalSyncFlags();
     state = emptyLedgerState();
     _setLoadState(const LedgerLoadState.ready(hasPersistedLedger: false));
   }
@@ -4160,7 +4171,13 @@ class LedgerController extends StateNotifier<LedgerState> {
             }
             if (decoded.userId != user.userId) continue;
           }
-          await file.delete();
+          try {
+            await file.delete();
+          } on PathNotFoundException catch (e) {
+            // Already gone, or (Android scoped storage) a file left by a
+            // previous install that this install can see but not access.
+            debugPrint('Backup file not deletable, skipping ${file.path}: $e');
+          }
         }
       } catch (e) {
         debugPrint('Error deleting backup file ${file.path}: $e');

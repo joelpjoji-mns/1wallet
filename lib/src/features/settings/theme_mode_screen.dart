@@ -556,8 +556,10 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxs),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    Wrap(
+                      alignment: WrapAlignment.spaceEvenly,
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
                       children: [
                         _IntensityPresetChip(
                           label: 'Subtle (50%)',
@@ -675,8 +677,10 @@ class _ThemeModeScreenState extends ConsumerState<ThemeModeScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxs),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    Wrap(
+                      alignment: WrapAlignment.spaceEvenly,
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
                       children: [
                         _IntensityPresetChip(
                           label: 'Pure black (0%)',
@@ -1479,7 +1483,11 @@ class _ThemeLivePreview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
             children: [
               Text(
                 'Live Preview',
@@ -1487,7 +1495,6 @@ class _ThemeLivePreview extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.xs,
@@ -1525,8 +1532,11 @@ class _ThemeLivePreview extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
                   children: [
                     Text(
                       'Total Balance',

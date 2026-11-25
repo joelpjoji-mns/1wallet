@@ -170,6 +170,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             milliseconds: 200,
                                           ),
                                           height: 64,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: AppSpacing.md,
+                                          ),
                                           decoration: BoxDecoration(
                                             color:
                                                 Theme.of(context).brightness ==

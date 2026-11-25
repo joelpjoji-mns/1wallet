@@ -5,10 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_controller.dart';
+import '../../auth/auth_session_teardown.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
 import '../../data/ledger_providers.dart';
 import '../../startup/startup_state.dart';
 import '../onboarding/onboarding_controller.dart';
+import '../settings/offline_mode_section.dart';
 import 'brand_widgets.dart';
 
 final latestAutoBackupFileProvider = FutureProvider.autoDispose<File?>((
@@ -17,12 +19,42 @@ final latestAutoBackupFileProvider = FutureProvider.autoDispose<File?>((
   return ref.read(ledgerProvider.notifier).getLatestAutoBackupFile();
 });
 
-class LaunchScreen extends ConsumerWidget {
+class LaunchScreen extends ConsumerStatefulWidget {
   const LaunchScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LaunchScreen> createState() => _LaunchScreenState();
+}
+
+class _LaunchScreenState extends ConsumerState<LaunchScreen> {
+  bool _signingOut = false;
+
+  Future<void> _signOut() async {
+    if (_signingOut) return;
+    final auth = ref.read(authControllerProvider);
+    // An offline wallet has no other copy, so leaving it must be confirmed
+    // and erases it; a Google wallet stays safe in the cloud.
+    if (auth.isLocalOnly) {
+      await confirmOfflineSignOut(context, ref);
+      return;
+    }
+    setState(() => _signingOut = true);
+    final router = GoRouter.of(context);
+    try {
+      await signOutAppSession(ref);
+      router.go('/login');
+    } finally {
+      if (mounted) setState(() => _signingOut = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final startup = ref.watch(startupStateProvider);
+    final auth = ref.watch(authControllerProvider);
+    final onSignOut = (auth.user != null || auth.isLocalOnly) && !_signingOut
+        ? _signOut
+        : null;
     final autoBackupAsync = ref.watch(latestAutoBackupFileProvider);
 
     if (startup.isRecoverableError) {
@@ -50,6 +82,7 @@ class LaunchScreen extends ConsumerWidget {
             }
             ref.read(cloudSyncControllerProvider.notifier).skipBootstrap();
           },
+          onSignOut: onSignOut,
         );
       }
 
@@ -70,6 +103,7 @@ class LaunchScreen extends ConsumerWidget {
           await ref.read(ledgerProvider.notifier).clearLocalWallet();
           ref.invalidate(ledgerProvider);
         },
+        onSignOut: onSignOut,
       );
     }
 

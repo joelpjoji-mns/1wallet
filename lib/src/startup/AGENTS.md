@@ -28,4 +28,5 @@ Coordinates application warmup, local database loading from disk, migration chec
 
 - [ ] Check `test/ledger_persistence_test.dart` and `test/backup_restore_and_downgrade_guard_test.dart`.
 - [ ] Ensure any async initialization added here does not introduce unnecessary startup delay.
+- [ ] Use `_deferStartupAction` for deferred startup mutations. It discards superseded builds and avoids reading an invalidated provider `Ref` inside a microtask.
 - [ ] Offline startup must never depend on `cloudSyncControllerProvider` progress or Firebase. Run `test/offline_mode_startup_test.dart`.

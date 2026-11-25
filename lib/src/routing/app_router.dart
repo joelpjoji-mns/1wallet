@@ -26,6 +26,14 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 
 final rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
+int _tabIndex(String? value, int count) {
+  if (value == null) return 0;
+  final index = int.tryParse(value);
+  if (index != null && index >= 0 && index < count) return index;
+  debugPrint('Invalid tab index in route; opening the first tab.');
+  return 0;
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
   ref.listen<StartupState>(startupStateProvider, (_, _) {
@@ -149,9 +157,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         builder: (context, state) {
-          final tabStr = state.uri.queryParameters['tab'];
-          final initialTab = int.tryParse(tabStr ?? '0') ?? 0;
-          return AppGlassPage(child: MainShell(initialTab: initialTab));
+          final tabParameter = state.uri.queryParameters['tab'];
+          final initialTab = _tabIndex(tabParameter, 4);
+          return AppGlassPage(
+            child: MainShell(
+              initialTab: initialTab,
+              routeTabParameter: tabParameter,
+            ),
+          );
         },
       ),
       GoRoute(
@@ -169,8 +182,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/add',
         builder: (context, state) {
-          final tabStr = state.uri.queryParameters['tab'];
-          final initialTab = int.tryParse(tabStr ?? '0') ?? 0;
+          final initialTab = _tabIndex(state.uri.queryParameters['tab'], 2);
           final type = state.uri.queryParameters['type'];
           final autoScan = state.uri.queryParameters['scan'] == '1';
           return AppGlassPage(

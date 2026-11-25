@@ -143,7 +143,7 @@ void main() {
       }
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Choose category'));
+      await tester.tap(find.text('Choose'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Food').last);
       await tester.pumpAndSettle();
@@ -246,7 +246,7 @@ void main() {
       await tester.tap(find.text('5').last);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Choose category'));
+      await tester.tap(find.text('Choose'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Food').last);
       await tester.pumpAndSettle();

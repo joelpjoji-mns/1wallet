@@ -184,7 +184,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _triggerManualAutoBackup,
                     icon: const Icon(Icons.backup_outlined),
-                    label: const Text('Create auto-backup snapshot now'),
+                    label: const Text('Back up now'),
                   ),
                 ],
               ),
@@ -218,7 +218,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
                   OutlinedButton.icon(
                     onPressed: _busy ? null : _triggerManualAutoBackup,
                     icon: const Icon(Icons.backup_outlined),
-                    label: const Text('Create auto-backup snapshot now'),
+                    label: const Text('Back up now'),
                   ),
                 ],
               ),
@@ -227,7 +227,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
           SectionCard(
             title: 'Export',
             subtitle:
-                'Generate a portable 1Wallet archive and save it to your Documents/1Wallet folder.',
+                'Save a portable 1Wallet archive to Documents/1Wallet. Secure exports require a password.',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -244,7 +244,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
                       ? null
                       : () => _generateAndSaveArchive(encrypted: true),
                   icon: const Icon(Icons.lock_rounded),
-                  label: const Text('Export with password (encrypted)'),
+                  label: const Text('Secure export'),
                 ),
               ],
             ),

@@ -15,7 +15,12 @@ The testing strategy follows a 5-tier pyramid designed for rapid feedback and ri
 | **Tier 2: Widget & UI Matrix** | Route rendering, responsive design, dark/light themes, design system guard | `test/ui_route_matrix_test.dart`, `test/ui_design_system_guard_test.dart` | `flutter test test/ui_route_matrix_test.dart` |
 | **Tier 3: BDD / Executable Specs** | Business-readable `.feature` files for offline & money invariants | `test/bdd/features/*.feature`, `test/bdd_suite_test.dart` | `flutter test test/bdd_suite_test.dart` |
 | **Tier 4: Accessibility (a11y)** | WCAG 2.1 AA tap target and contrast automated guidelines | `test/accessibility/*_test.dart` | `flutter test test/accessibility/` |
-| **Tier 5: Integration / E2E & Perf** | End-to-end user flows, timeline tracing, jank detection, startup budgets | `integration_test/` | `flutter test integration_test/` |
+| **Tier 5: Integration / E2E & Perf** | End-to-end user flows, timeline tracing, jank detection, startup budgets | `integration_test/` | `flutter drive --no-dds --keep-app-running -d <disposable-device> --driver test_driver/integration_test.dart --target integration_test/perf_timeline_test.dart` |
+
+Use only a disposable device for integration tests: Flutter may install or
+uninstall the app and delete its local data. Always specify the device explicitly.
+`flutter test` defaults to uninstalling unless `--no-uninstall` is passed;
+`flutter drive` defaults to uninstalling unless `--keep-app-running` is passed.
 
 ---
 

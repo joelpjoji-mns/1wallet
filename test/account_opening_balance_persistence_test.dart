@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,6 +29,55 @@ void main() {
     of: find.text('Opening balance'),
     matching: find.byType(TextFormField),
   );
+
+  testWidgets('opening balance guidance wraps fully at large text size', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(),
+    );
+    addTearDown(container.dispose);
+    final router = container.read(appRouterProvider);
+    await container
+        .read(ledgerProvider.notifier)
+        .restoreLedgerState(sampleLedgerState());
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          routerConfig: router,
+          theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+        ),
+      ),
+    );
+    router.go('/account/new');
+    await tester.pumpAndSettle();
+
+    final guidance = find.text(
+      'Use a negative amount if this account already '
+      'carries a balance you owe (e.g. credit card or loan debt).',
+    );
+    final paragraph = tester.renderObject<RenderParagraph>(guidance);
+    final fullText = TextPainter(
+      text: paragraph.text,
+      textDirection: TextDirection.ltr,
+      textScaler: const TextScaler.linear(2),
+    )..layout(maxWidth: paragraph.size.width);
+    expect(paragraph.size.height, closeTo(fullText.height, 0.1));
+    fullText.dispose();
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'creating a new account with a negative opening balance persists the '

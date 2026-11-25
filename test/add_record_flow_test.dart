@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/transactions/add_record_screen.dart';
+import 'package:one_wallet_flutter/src/features/transactions/add_record_widgets.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
@@ -17,6 +18,55 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('transaction types remain selectable with large text', (
+    tester,
+  ) async {
+    String? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Scaffold(
+            body: SizedBox(
+              width: 320,
+              child: AddRecordTypeTabs(
+                value: 'expense',
+                onChanged: (value) => selected = value,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(ChoiceChip), findsNWidgets(3));
+    await tester.tap(find.text('Transfer'));
+    expect(selected, 'transfer');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('calculator backspace has a usable accessible label', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    String? pressed;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AddRecordCalculatorPad(
+            type: 'expense',
+            onKey: (key) => pressed = key,
+          ),
+        ),
+      ),
+    );
+    final backspace = find.bySemanticsLabel('Backspace');
+    expect(backspace, findsOneWidget);
+    await tester.tap(backspace);
+    expect(pressed, '⌫');
+    semantics.dispose();
   });
 
   testWidgets('Add Record UI saves a transaction to the ledger', (
@@ -52,7 +102,7 @@ void main() {
 
     final beforeCount = container.read(ledgerProvider).transactions.length;
     expect(find.text('Cash Wallet'), findsOneWidget);
-    expect(find.text('Choose category'), findsOneWidget);
+    expect(find.text('Choose'), findsOneWidget);
 
     await tester.tap(find.text('1').last);
     await tester.pumpAndSettle();
@@ -61,7 +111,7 @@ void main() {
     expect(container.read(ledgerProvider).transactions.length, beforeCount);
     expect(find.text('Choose a category.'), findsOneWidget);
 
-    await tester.tap(find.text('Choose category'));
+    await tester.tap(find.text('Choose'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Food').last);
     await tester.pumpAndSettle();

@@ -1,4 +1,4 @@
-import 'dart:ui' show Tristate;
+import 'dart:ui' show SemanticsAction, Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +13,63 @@ Widget _host(Widget child, {ThemeData? theme}) => MaterialApp(
 );
 
 void main() {
+  testWidgets('compact actions have one accessible 48dp tap target', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    var taps = 0;
+    for (final label in ['Manage', 'Go']) {
+      await tester.pumpWidget(
+        _host(
+          Center(
+            child: AppActionButton(
+              label: label,
+              compact: true,
+              onPressed: () => taps++,
+            ),
+          ),
+        ),
+      );
+      final action = find.byType(AppActionButton);
+      final data = tester.getSemantics(action).getSemanticsData();
+      expect(data.label, label);
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+      final bounds = tester.getRect(action);
+      expect(bounds.width, greaterThanOrEqualTo(48));
+      expect(bounds.height, greaterThanOrEqualTo(48));
+      await tester.tapAt(bounds.topLeft + const Offset(2, 2));
+    }
+    expect(taps, 2);
+    semantics.dispose();
+  });
+
+  testWidgets('PremiumRow is a separate accessible button', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _host(
+        Column(
+          children: [
+            const TextField(decoration: InputDecoration(hintText: 'Your name')),
+            PremiumRow(
+              icon: Icons.attach_money_rounded,
+              title: 'USD',
+              subtitle: 'United States Dollar',
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+    final data = tester
+        .getSemantics(find.bySemanticsLabel(RegExp('USD')))
+        .getSemanticsData();
+    expect(data.label, contains('USD'));
+    expect(data.label, isNot(contains('Your name')));
+    expect(data.hasAction(SemanticsAction.tap), isTrue);
+    expect(data.flagsCollection.isButton, isTrue);
+    semantics.dispose();
+  });
+
   group('showAppSnackBar', () {
     testWidgets('shows a floating snackbar and replaces the visible one', (
       tester,
@@ -57,6 +114,68 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
     });
+
+    for (final (name, theme) in [
+      ('light', AppTheme.light()),
+      ('dark', AppTheme.amoled()),
+    ]) {
+      testWidgets('feedback is visible and readable in $name mode', (
+        tester,
+      ) async {
+        late BuildContext captured;
+        await tester.pumpWidget(
+          _host(
+            Builder(
+              builder: (context) {
+                captured = context;
+                return const SizedBox.shrink();
+              },
+            ),
+            theme: theme,
+          ),
+        );
+        showAppSnackBar(
+          captured,
+          'Could not save',
+          action: SnackBarAction(label: 'Retry', onPressed: () {}),
+        );
+        await tester.pumpAndSettle();
+
+        final richText = tester.widget<RichText>(
+          find.descendant(
+            of: find.text('Could not save'),
+            matching: find.byType(RichText),
+          ),
+        );
+        final foreground = richText.text.style!.color!;
+        final background = theme.snackBarTheme.backgroundColor!;
+        final foregroundLuminance = foreground.computeLuminance();
+        final backgroundLuminance = background.computeLuminance();
+        final lighter = foregroundLuminance > backgroundLuminance
+            ? foregroundLuminance
+            : backgroundLuminance;
+        final darker = foregroundLuminance < backgroundLuminance
+            ? foregroundLuminance
+            : backgroundLuminance;
+        expect(foreground.a, 1);
+        expect(background.a, 1);
+        expect(richText.text.style!.fontSize, greaterThanOrEqualTo(12));
+        expect((lighter + 0.05) / (darker + 0.05), greaterThanOrEqualTo(4.5));
+        final actionColor = theme.snackBarTheme.actionTextColor!;
+        final actionLuminance = actionColor.computeLuminance();
+        final actionLighter = actionLuminance > backgroundLuminance
+            ? actionLuminance
+            : backgroundLuminance;
+        final actionDarker = actionLuminance < backgroundLuminance
+            ? actionLuminance
+            : backgroundLuminance;
+        expect(actionColor.a, 1);
+        expect(
+          (actionLighter + 0.05) / (actionDarker + 0.05),
+          greaterThanOrEqualTo(4.5),
+        );
+      });
+    }
   });
 
   group('showAppConfirmDialog', () {

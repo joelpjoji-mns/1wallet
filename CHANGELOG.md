@@ -16,8 +16,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Back up & sync with Google" upgrade for offline wallets:
   - Moves the wallet to a Google account with no data loss.
   - If the account already has a cloud wallet, the user explicitly chooses to keep this device's wallet, use the cloud wallet, or merge both.
+- Offline wallets can sign out from Settings or the drawer. After confirmation, this erases the device-only wallet and returns to sign-in, so you no longer need to clear app data in system settings.
+
+### Changed
+- The Clear glass finish is now the default for every component, including the island bar, menus, and toolbars. Menus keep a denser tint for legibility.
 
 ### Fixed
+- Account tiles expose their full names and selection action together to screen readers.
+- Planned-payment names have more room, with amounts and due status reflowing on narrow screens.
+- Forecast charts keep currency and date labels readable and distinguishable when zoomed or enlarged; zoom controls no longer cover the axis and have larger touch targets.
+- Card icons remain visible when a custom account color has poor contrast with the current theme.
+- The drawer privacy switch shows its full label without a redundant on/off suffix.
+- Clearing or signing out of an offline wallet no longer fails on Android when an auto-backup left by a previous install cannot be deleted.
+- Prevented a startup race when permissions, onboarding, or wallet ownership change before deferred setup runs.
+- Prevented an Android widget-sync exception during Flutter web startup.
+- Error and status messages are visible again in light and dark themes.
+- Appearance settings and transaction-type controls adapt to narrow screens and larger text.
+- The calendar scrolls on compact and landscape screens, and the balance header adapts to narrow widths.
+- Calendar days can scroll clear of the floating add action when large navigation labels prevent docking.
+- Calendar filter and dashboard headings wrap instead of truncating, and the calculator backspace has an accessible label.
+- Shortened backup and recurring controls, and restored contrast to unselected glass-finish badges.
+- Loan amount fields stack on narrow screens so their labels remain readable.
+- Recurring amount and currency controls reflow at large text sizes.
+- Opening-balance guidance wraps fully at larger text sizes.
+- Currency breakdown chips grow with accessibility text instead of clipping.
+- Dashboard account tiles keep account names on one line, use two-dot truncation to show more of long names, and share a uniform height; tiles grow with larger text instead of clipping, and dashboard subtitles reflow.
+- The "Cloud wallet found" recovery screen now offers sign-out, and erasing or resetting the local wallet clears stale unsynced-change flags so cloud restore is no longer blocked.
+- The Google sign-in label keeps comfortable button padding at larger text sizes.
+- Picker rows such as onboarding currency selection are announced as separate buttons.
+- Navigation tabs announce their labels once to screen readers.
+- Compact action buttons provide 48 dp minimum targets without duplicating their accessible labels.
+- At large text sizes, navigation keeps the selected label readable and exposes every tab to screen readers.
+- The calendar menu and title are exposed as separate accessibility elements.
+- The empty transaction history remains accessible in landscape.
+- Tab deep links now select the requested tab and safely fall back to the first tab for invalid indexes.
+- Reopening the same tab deep link selects that tab even after switching locally.
 - Importing a backup created by another account now re-owns it to the importing offline wallet instead of keeping the foreign account id.
 - Background SMS/notification polling now follows the active device wallet owner.
 

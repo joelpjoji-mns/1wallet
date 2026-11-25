@@ -9,7 +9,7 @@ Manages application configuration, user preferences, security lock toggles, loca
 
 | File | Responsibilities |
 | :--- | :--- |
-| `settings_screen.dart` | Main settings dashboard with preference sections (Appearance, Currency, Security, Backup, About). In offline mode it shows the `OfflineModeCard`, swaps "Sign out" for "Sync with Google", and hides account deletion (there is no account). |
+| `settings_screen.dart` | Main settings dashboard with preference sections (Appearance, Currency, Security, Backup, About). In offline mode it shows the `OfflineModeCard` and puts "Sync with Google" in the profile card. Its danger zone offers "Sign out" (confirmed erase plus return to sign-in through `confirmOfflineSignOut`) and "Clear all data" (erase while staying offline). Account deletion is hidden because there is no account. |
 | `settings_components.dart` | Reusable setting tiles, section headers, switches, and preference pickers. `SettingsProfileSection(offline:)` renders the device-only profile. |
 | `offline_mode_section.dart` | `OfflineModeCard` (offline status, "Back up & sync with Google", encrypted export/import shortcuts). `showOfflineUpgradeSheet` drives `OfflineModeController`: Google sign-in → keep local / use Google / merge choice with confirmations → migration. |
 | `data_backup_screen.dart` | Exporting encrypted wallet backup files, importing legacy JSON/zip backups, and cloud restore options. Offline restores report "restored on this device" and never attempt a cloud write. |

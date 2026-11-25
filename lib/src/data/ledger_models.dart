@@ -473,11 +473,11 @@ class GlassComponentOptics {
   static GlassComponentOptics defaultFor(GlassComponentTarget target) {
     return switch (target) {
       GlassComponentTarget.islandBar => const GlassComponentOptics(
-        finish: AppGlassFinish.regular,
-        blur: 10.0,
-        backgroundOpacity: 0.15,
+        finish: AppGlassFinish.clear,
+        blur: 0.5,
+        backgroundOpacity: 0.04,
         refractionLevel: 1.0,
-        specularOpacity: 0.20,
+        specularOpacity: 0.30,
       ),
       GlassComponentTarget.fab => const GlassComponentOptics(
         finish: AppGlassFinish.clear,
@@ -486,19 +486,20 @@ class GlassComponentOptics {
         refractionLevel: 1.0,
         specularOpacity: 0.55,
       ),
+      // Clear, but with a denser tint so menu text stays legible over content.
       GlassComponentTarget.dropdownMenu => const GlassComponentOptics(
-        finish: AppGlassFinish.regular,
-        blur: 16.0,
+        finish: AppGlassFinish.clear,
+        blur: 0.5,
         backgroundOpacity: 0.75,
         refractionLevel: 1.0,
-        specularOpacity: 0.45,
+        specularOpacity: 0.30,
       ),
       GlassComponentTarget.toolbars => const GlassComponentOptics(
-        finish: AppGlassFinish.regular,
-        blur: 12.0,
-        backgroundOpacity: 0.16,
+        finish: AppGlassFinish.clear,
+        blur: 0.5,
+        backgroundOpacity: 0.04,
         refractionLevel: 1.0,
-        specularOpacity: 0.40,
+        specularOpacity: 0.30,
       ),
       GlassComponentTarget.general => const GlassComponentOptics(
         finish: AppGlassFinish.clear,

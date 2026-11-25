@@ -1,9 +1,247 @@
-# UI consistency audit & normalisation
+# Flutter UI/UX and engineering audit
+
+## Current expanded audit: findings and release status
+
+**Status: substantial fixes verified; not a production-readiness certification.**
+The automated route inventory is broad, but not every screen, overlay, interaction,
+platform, and backend failure has been manually verified. The historical normalization
+inventory below is retained separately and must not be interpreted as current native
+device coverage.
+
+### Application overview and inventory
+
+- **34 public `*Screen` classes** in the feature tree, including the four shell tabs.
+  Editor/detail modes reuse screen classes; a screen-class count is not a count of
+  unique navigation states.
+- **At least 41 public widget classes** directly extending Flutter/Riverpod widget
+  base classes in `lib/src/widgets`, including 33 in `app_kit.dart`. Feature-local
+  widgets, helper functions, private classes, and inherited component types are
+  additional; this is a reproducible lower bound rather than a total component count.
+- **Architecture:** Riverpod controllers/providers, GoRouter, immutable local ledger
+  state, derived ledger selectors, optional Firebase Auth/Firestore synchronization,
+  shared page frames and glass design tokens. Providers supply dependencies.
+  Native integrations include OCR, capture/permissions, home widgets, and updates.
+- **Preserved:** integer minor-unit money, wallet ownership gates, offline operation,
+  data contracts, and the existing design direction. No financial model rewrite.
+
+| Screen group | Public screen classes inventoried |
+|---|---|
+| Startup and access | Launch, Login, Onboarding, PermissionsSetup, AccountDeletion |
+| Main tabs | Home, Transactions, Calendar, Accounts |
+| Transaction editors/details | AddRecord, TransactionDetail |
+| Account editors/cards | AccountEditor, SecureAccountDetails, Cards |
+| Planning | Loans, Recurring |
+| Money setup | Categories, Currencies |
+| Dashboard configuration | WidgetsManager |
+| Capture | ReviewQueue, CaptureDetail, SmsCapture, NotificationCapture, NotificationApps, CaptureDiagnostics |
+| Imports | ImportStatement, ImportBatchDetail |
+| Settings | Settings, DataBackup, DevicePermissions, GlassEffect, ThemeMode, Feedback |
+| Cloud management | Sync |
+
+The route list in `test/ui_route_matrix_test.dart` explicitly records **43 populated
+route/tab variants, 12 empty-wallet variants, and 5 startup routes**. Across 12
+presentation variants this gives **720 fixture render cases**. Some routes are aliases
+or reuse the same screen. The matrix includes light/AMOLED dark, selected phone,
+landscape and tablet sizes, and 100%, 115%, 130%, 150%, and 200% text scaling.
+It is not the full Cartesian product of every size, theme, scale, and state.
+
+Shared interactions inventoried include drawer navigation, full-screen/category
+pickers, confirmation/form dialogs, calendar day sheets, capture result sheets,
+backup passphrase flows, offline-consent/upgrade sheets, menus, snackbars, and the
+app-lock overlay. Their entire interaction/state space was not manually exercised.
+
+### Populated-account follow-up
+
+A read-only Android emulator pass used an existing populated wallet. It covered
+Home, History, Calendar, Accounts, record details, day sheets, account/category
+pickers, the add-record form, account editing, Cards, Loans, planned payments,
+forecast, Review, Auto Capture, Categories, Currencies, Widgets, Sync, Import,
+Backup, Settings, Theme, and Glass. Search, keyboard entry, picker selection,
+scrolling, and navigation were exercised without saving. The four main tabs were
+also inspected at 200% system font scale; the original 1.0 setting was restored.
+
+The interactions did not clear, sign out, edit, import, or restore the wallet.
+However, the later integration-test attempt uninstalled the app and erased its
+private data, as documented below. Screenshots and accessibility dumps contain
+private account information and remain local to the session, not in this report.
+This pass did not exercise every dialog, status, backend failure, live integration,
+or platform. A sampled Android app log showed no RenderFlex overflow or
+fatal/unhandled exception matches, but the previously documented native
+home-widget `!debugNeedsPaint` errors were still present.
+
+### Integration-test safety
+
+An earlier integration-test command automatically selected the Android emulator
+and its default cleanup uninstalled the app, deleting private app data. This was
+an operator error, not a successful test. A subsequent synthetic integration
+test was run on an empty emulator with cleanup disabled.
+
+Never run integration tests against a populated wallet. Use a disposable device
+and specify the intended device explicitly. Flutter's test runner defaults to
+uninstalling the app unless `--no-uninstall` is supplied; `flutter drive` also
+uninstalls by default unless `--keep-app-running` is supplied.
+
+### Reproduced issues and implemented fixes
+
+| Screen / component | Issue | Severity | Root cause | Fix applied |
+|---|---|---|---|---|
+| Startup | Intermittent deferred-setup assertion; Android showed an error fallback | P1 | Microtask used a provider `Ref` after a dependency changed | Flush current startup state through the container and cancel superseded/disposed actions; regression reproduces the old assertion |
+| Web startup | Native-widget synchronization threw a platform exception | P1 | Native platform checks executed on web | Explicit web guard |
+| Main navigation | Invalid indexes and changed/repeated tab links selected the wrong tab | P1 | Unsanitized indexes and retained route/page state | Validate indexes, synchronize link intent, preserve local tabs on router refresh |
+| Global feedback | Success/error snackbars were invisible | P1 | Transparent theme styling | Restore readable theme colors and shell clearance |
+| Calendar | Short/landscape layouts overflowed or hid content | P1 | Non-scrollable column and constrained header/summary rows | Sliver scrolling and responsive headers, totals, and filters |
+| Calendar day grid | Floating add action covered the last cells when large labels prevented docking | P1 | Scroll extent only cleared the bottom bar | Add trailing scroll clearance using the shared floating-action size, without shrinking the normal grid |
+| Empty transaction history | Landscape empty state overflowed | P1 | Non-scrollable fixed-viewport content | Let the existing empty-state content scroll |
+| Home balance | Currency pill clipped at 200% on Android | P1 | Fixed 24 dp viewport height | Preserve minimum height but allow natural content height |
+| Home accounts | Names/balances and subtitles truncated with enlarged text | P2 | Fixed column count, height constraints, and shrunken currency badge | Scale-aware columns, uniform growing tiles, one-line names with two-dot truncation, and naturally sized badges |
+| Home account accessibility | Full account name and selection action were separate screen-reader stops | P2 | An explicit semantics container prevented the painted name from joining the tappable tile | Merge the complete name into the selectable tile; regression invokes its accessibility tap action |
+| Planned payments | Long names were reduced to a few characters; narrow rows could overflow | P1 | Name, urgency badge, amount, and due status competed in one row | Give the name and badge their own row; stack amount/status when measured space is insufficient |
+| Loan forecast | Currency and date labels overlapped or repeated when zoomed or enlarged; zoom controls covered the date axis | P1 | Fixed axis dimensions and tick spacing, compact rounding, endpoint ticks, and controls overlaid the chart | Measure labels, adapt precision and tick spacing to the visible range, and place 48 dp zoom controls below the chart |
+| Cards | Dark or light custom account colors made icons nearly invisible on matching surfaces | P2 | Icon color was reused without checking its contrast against the tinted panel | Preserve legible custom colors and use the themed foreground when contrast is insufficient |
+| Drawer privacy switch | The label truncated even at normal text size | P2 | Redundant on/off text competed with the switch for width | Show the complete label and retain the switch's accessible state |
+| Home headers | Titles truncated beside actions | P2 | Single-line text constraint | Wrap headings within available space |
+| Loan/recurring editors | Amount/currency fields and labels became unusably narrow | P1 | Side-by-side controls retained at small widths/large text | Responsive stacking/reflow |
+| Transaction editor | Transaction types and selectors crowded narrow layouts | P2 | Inflexible control layout and long prompts | Responsive controls and shorter prompts |
+| Backup/recurring controls | Button/chip labels wrapped at large text | P2 | Wording exceeded available control width | Shorter action copy with explanatory text retained |
+| Appearance settings | Controls overflowed; unselected finish badges lacked contrast | P2 | Fixed horizontal arrangements and unsuitable text color | Reflow and theme-appropriate badge foregrounds |
+| Account editor | Opening-balance guidance truncated | P2 | Constrained explanatory text | Allow complete wrapping |
+| Calculator | Backspace lacked an accessible name | P2 | Icon-only action without a label | Explicit backspace semantics |
+| Bottom navigation | Labels announced twice and clipped at 200% | P2 | Duplicate descendant semantics and insufficient label width | Single semantic action per tab; undock FAB as needed; retain the selected readable label and icon-only unselected targets |
+| Calendar menu | Menu action merged with the page title in Android accessibility | P2 | Semantic grouping crossed the action boundary | Separate menu semantics container and action |
+| Compact action buttons | `Manage` announced twice; target only 28 dp high on Android | P2 | Explicit semantic label duplicated visible text; padding alone determined height | Use the visible label once and enforce 48 dp minimum bounds |
+
+Buttons were not globally forced to a smaller font or stripped of text scaling.
+The fixes use the existing design system and do not claim that every remaining
+button label or user-generated string is clipping-free.
+
+### UI/UX and engineering improvements
+
+- Headings, subtitles, explanatory text, amounts, and account tiles can use their
+  natural height instead of being clipped or squeezed.
+- Compact/landscape views retain intentional scrolling; no global scroll-view
+  wrapper or text-scaling disablement was introduced.
+- Navigation labels are measured with the current font/scaler. Measurements are
+  outside the page-animation callback rather than repeated every animation frame.
+- Forecast charts measure localized currency/date labels, retain distinct values
+  for narrow ranges, and reduce date-label density when the plot is too narrow.
+  Their zoom controls remain available without covering the plotted axis.
+- Tests use real Inter metrics for navigation geometry. Native accessibility trees
+  confirm distinct menu/tab actions and a single `Manage` label with a 48 dp target;
+  they do not prove complete TalkBack behavior.
+- Startup tasks now respect the lifecycle of the provider build that scheduled them.
+  Regression tests preserve offline ownership and interrupted-upgrade behavior.
+- Shared components were reused; no new dependencies or broad architecture rewrite.
+  No measured production frame-time, memory, or battery improvement is claimed.
+
+### Verification evidence
+
+Environment: Windows, Flutter 3.47.7 / Dart 3.13.5, widget-test fixtures with real
+fonts, a local Flutter web session, and Android API 37 emulator `emulator-5554`
+(1280 x 2856 physical pixels, 480 dpi). No iOS runtime/macOS build environment.
+
+| Test | Result | Details |
+|---|---|---|
+| `flutter test --no-pub --reporter expanded` | **Passed** | Final isolated run: 749 passed, 2 skipped; includes unit/widget regressions and route matrix |
+| Startup/ownership regression subset | **Passed** | `flutter test --no-pub --reporter expanded test/offline_mode_startup_test.dart test/offline_upgrade_migration_test.dart test/notification_capture_flow_test.dart`: 22 passed |
+| Dashboard regression subset | **Passed** | `flutter test --no-pub --reporter expanded test/home_account_tile_large_text_overflow_test.dart`: 3 passed |
+| `flutter analyze --no-pub` | **Not clean** | One existing `prefer_const_constructors` info in `test/loan_plan_transaction_integration_test.dart:313`; no analyzer errors/warnings in the last completed run |
+| `dart format --output=none --set-exit-if-changed lib test integration_test` | **Not clean** | 24 files have formatting differences; broad pre-existing formatter churn deliberately avoided |
+| Changed startup source/tests and dashboard regression test formatting | **Passed** | Formatted directly with `dart format` |
+| `git -c core.whitespace=cr-at-eol --no-pager diff --check` | **Passed** | Accommodates existing CRLF files |
+| `flutter build apk --debug --no-pub --target lib/main.dart` | **Passed** | Normal debug APK rebuilt after the incident but not installed; Kotlin plugin migration warnings remain |
+| Android native interaction | **Limited; interrupted** | Populated screens and earlier fixes were inspected before the incident. The final forecast changes could not be rechecked on the device |
+| Android 200% text | **Passed, limited scope** | Full Home currency pill/account name; readable selected Calendar label; grid scrolls above the undocked FAB and its last day opens the correct day sheet |
+| Manual web interaction | **Passed, limited scope** | Offline onboarding, Home/History/Calendar, calendar day sheet, disposable transaction; not every web screen |
+| Overflow/responsiveness | **Passed within fixtures** | Selected sizes/scales and focused geometry assertions; not all clipping or native states |
+| `flutter test --no-pub --reporter expanded integration_test/perf_timeline_test.dart` | **Failed; destructive cleanup** | VM-service connection refused; the runner selected the populated Android emulator and uninstalled the app afterward. The benchmark is a synthetic list, not an app performance test |
+| `flutter drive --debug --no-pub --no-dds --keep-app-running --timeout=180 -d emulator-5554 --driver test_driver\integration_test.dart --target integration_test\perf_timeline_test.dart` | **Passed** | Synthetic-list integration benchmark passed on the empty emulator; the test app was retained |
+| iOS build/device, physical Android devices, other Android API levels | **Unavailable/not run** | No cross-platform release certification |
+| Release build, full backend-failure matrix, production performance profile | **Not run** | Debug build and mocked tests are not substitutes |
+
+An intermediate parallel test/build/analyzer run had a test-load connection failure
+and a 30-second crypto-test timeout. The affected tests passed on retry; the final
+complete suite above ran without concurrent Flutter build/analysis and passed.
+
+Sixty fixture screenshots plus selected subsequent captures were generated during
+the audit; not every one of the 720 renders was manually reviewed. Final native
+Home/Calendar screenshots and accessibility XML are retained with the session
+artifacts, not committed as golden baselines. Android system font scale was restored
+to its original 1.0 after each enlarged-text check. The disposable wallet from the
+earlier audit was removed after its verification; the later populated app was
+uninstalled by the failed integration-test attempt described above.
+
+The final app-PID log sample contained zero unhandled exceptions, outdated-`Ref`
+assertions, or RenderFlex overflow messages, but still contained two native-widget
+render failures and one secure-storage key-decryption error. It is not a clean
+native-console sign-off.
+
+### Remaining issues and release blockers
+
+1. **Integration tests can remove app data.** Use a disposable device and the
+   explicit cleanup safeguards described above. The final populated-device
+   forecast recheck was interrupted and remains unverified.
+2. **Native home-widget bitmap generation still fails** on the emulator with
+   `HomeWidget.renderFlutterWidget` / `!debugNeedsPaint`. This is a separate
+   native rendering path; the web guard does not fix it. A dependency-compatible
+   rendering fix needs its own native-widget verification.
+3. **Secure-storage/persistence anomaly needs investigation.** Key-decryption
+   errors appeared in earlier and final native logs. The earlier disposable account
+   was absent after a reinstall; subsequent controlled save/reinstall/relaunch
+   checks retained a new account. The cause and recovery behavior are not isolated;
+   this is not evidence that real-wallet upgrade persistence is safe. Resetting
+   keys or suppressing the error would not be a safe audit fix.
+4. **Accessibility is incomplete.** Core tab/menu/action duplication was fixed.
+   Calendar day semantics still identify days only by number, which is ambiguous
+   for adjacent-month cells. Full TalkBack/VoiceOver,
+   focus order, every form label, contrast, and target size were not certified.
+5. **Liquid-glass grouped-layer warnings remain.** Per-widget settings can be
+   ignored without an own layer. Do not assume intended blur/contrast/performance
+   from fixture renders, or enable costly independent layers globally.
+6. **Coverage limits remain:** every overlay/keyboard state, large user-generated
+   strings, all loading/error/retry combinations, auth expiry, real cloud conflicts,
+   live OCR/capture, biometric hardware, and store-delivered update flows were not
+   exercised end-to-end. Some other labels may still truncate.
+7. Analyzer/format baseline issues and Kotlin plugin migration warnings remain.
+   The route matrix deliberately excludes a known `semantics.parentDataDirty`
+   harness error and uses bounded pumping; it cannot detect every semantic,
+   animation, clipping, or interaction defect.
+8. Debug-emulator skipped-frame logs were observed. Without profile/release traces,
+   production performance, memory behavior, and battery impact remain unverified.
+
+### Provisional quality scores
+
+These are subjective engineering estimates for the inspected implementation, not
+measured compliance or release approval. Performance and production-readiness
+scores carry especially low confidence because of the verification gaps.
+
+| Category | Score / 10 |
+|---|---:|
+| UI consistency | 8 |
+| Visual design | 8 |
+| Responsiveness | 8 |
+| Overflow safety | 7.5 |
+| Typography | 8 |
+| Navigation | 8 |
+| Accessibility | 6.5 |
+| Performance | 5.5 |
+| Code quality | 8 |
+| Production readiness | 5 |
+| **Overall** | **7.3** |
+
+Release sign-off remains blocked by the native-widget failure, unresolved
+secure-storage anomaly, and missing platform/device/accessibility coverage.
+
+## Historical UI consistency audit and normalization
 
 1Wallet grew one feature at a time, and the same UI concept ended up built several different ways:
 page frames, cards, rows, buttons, dialogs, sheets, feedback, loading/empty/error states, colours,
 radii, spacing and type. This document records the audit (Phase 1), the canonical choice made for
 each concept (Phase 2), the migration (Phase 3) and how it was verified (Phase 4).
+
+The inventory and baseline below describe that earlier migration. The current route matrix covers
+representative populated, empty and startup routes at additional phone sizes and text scales; it
+does not exercise every overlay or interaction, and it excludes a known test-harness
+`semantics.parentDataDirty` error. Widget screenshots are not a substitute for device testing.
 
 - **Baseline:** commit `d5507405` (`feat(offline): add offline-only local wallet mode…`).
   `flutter analyze` reported no issues; `flutter test` passed 479 tests and skipped 2.
@@ -81,7 +319,7 @@ each concept (Phase 2), the migration (Phase 3) and how it was verified (Phase 4
     - category filter;
     - cannot merge;
     - colour picker.
-- **Snackbars:** 49 inline `SnackBar`s with five behaviour variants (floating or fixed, queued or replacing, explicit durations) → `showAppSnackBar`. The theme deliberately renders snackbars visually suppressed; that behaviour is unchanged.
+- **Snackbars:** 49 inline `SnackBar`s with five behaviour variants (floating or fixed, queued or replacing, explicit durations) → `showAppSnackBar`. The original audit preserved visual suppression; the current theme now displays this feedback.
 - **Menus:** `GlassDropdownPill` (glass menu) and the categories `PopupMenuButton` (kept).
 
 ## 2. Concept × screen matrix

@@ -1,6 +1,7 @@
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,6 +61,7 @@ void main() {
       // GlassSwitch each exposing their own disconnected semantics nodes.
       final data = tester.getSemantics(toggleFinder).getSemanticsData();
       expect(data.label, contains('Privacy mode'));
+      expect(find.text('Privacy mode'), findsOneWidget);
       expect(data.flagsCollection.isToggled, isNot(Tristate.none));
       expect(
         data.flagsCollection.isToggled,
@@ -84,4 +86,43 @@ void main() {
       handle.dispose();
     },
   );
+
+  testWidgets('drawer privacy label remains readable at large text sizes', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(),
+    );
+    addTearDown(container.dispose);
+    for (final scale in [1.0, 2.0]) {
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: AppMainDrawer(
+                selectedIndex: 0,
+                isStatic: true,
+                onTabSelected: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final label = find.text('Privacy mode');
+      expect(label, findsOneWidget);
+      expect(
+        tester.renderObject<RenderParagraph>(label).didExceedMaxLines,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
 }

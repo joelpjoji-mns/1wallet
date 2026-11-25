@@ -141,225 +141,290 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         bottomDockClearance,
       ),
       onMenuPressed: widget.onMenuPressed,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final heading = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DateFormat.yMMMM(locale).format(_visibleMonth),
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: AppSpacing.xxxs),
+                        Text(
+                          '${_categoryFilterLabel(state)} · ${selectedAccount?.name ?? 'All accounts'}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    );
+                    final controls = g1455.GlassButtonGroup(
+                      finish: ref.watch(toolbarsGlassFinishProvider),
+                      items: [
+                        g1455.GlassToolbarItem(
+                          icon: Tooltip(
+                            message: 'Previous month',
+                            child: Icon(
+                              Icons.chevron_left_rounded,
+                              size: 20,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          label: 'Previous month',
+                          onPressed: () => setState(
+                            () => _visibleMonth = DateTime(
+                              _visibleMonth.year,
+                              _visibleMonth.month - 1,
+                            ),
+                          ),
+                        ),
+                        g1455.GlassToolbarItem(
+                          icon: Tooltip(
+                            message: 'Current month',
+                            child: Icon(
+                              Icons.today_rounded,
+                              size: 18,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          label: 'Current month',
+                          onPressed: () => setState(
+                            () => _visibleMonth = DateTime(
+                              DateTime.now().year,
+                              DateTime.now().month,
+                            ),
+                          ),
+                        ),
+                        g1455.GlassToolbarItem(
+                          icon: Tooltip(
+                            message: 'Next month',
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          label: 'Next month',
+                          onPressed: () => setState(
+                            () => _visibleMonth = DateTime(
+                              _visibleMonth.year,
+                              _visibleMonth.month + 1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                    final textScale =
+                        MediaQuery.textScalerOf(context).scale(14) / 14;
+                    if (constraints.maxWidth < 300 * textScale) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          heading,
+                          const SizedBox(height: AppSpacing.xs),
+                          controls,
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: heading),
+                        const SizedBox(width: AppSpacing.xs),
+                        controls,
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final textScale =
+                        MediaQuery.textScalerOf(context).scale(14) / 14;
+                    final stacked = constraints.maxWidth < 280 * textScale;
+                    final width = stacked
+                        ? constraints.maxWidth
+                        : (constraints.maxWidth - 2 * AppSpacing.sm) / 3;
+                    return Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        SizedBox(
+                          width: width,
+                          child: SummaryPill(
+                            label: 'Net',
+                            money: convertMoneyForDisplay(
+                              state,
+                              Money(
+                                amountMinor: net,
+                                currency: state.preferences.baseCurrency,
+                              ),
+                            ),
+                            tone: net >= 0
+                                ? MetricTone.positive
+                                : MetricTone.danger,
+                            locale: state.preferences.locale,
+                          ),
+                        ),
+                        SizedBox(
+                          width: width,
+                          child: SummaryPill(
+                            label: 'Income',
+                            money: convertMoneyForDisplay(
+                              state,
+                              Money(
+                                amountMinor: income,
+                                currency: state.preferences.baseCurrency,
+                              ),
+                            ),
+                            tone: MetricTone.positive,
+                            locale: state.preferences.locale,
+                          ),
+                        ),
+                        SizedBox(
+                          width: width,
+                          child: SummaryPill(
+                            label: 'Expense',
+                            money: convertMoneyForDisplay(
+                              state,
+                              Money(
+                                amountMinor: expense,
+                                currency: state.preferences.baseCurrency,
+                              ),
+                            ),
+                            tone: MetricTone.danger,
+                            locale: state.preferences.locale,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.xs),
+
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final categoryCard = _CalendarFilterCard(
+                      icon: Icons.category_outlined,
+                      title: 'Category',
+                      value: _categoryFilterLabel(state),
+                      subtitle: 'Filter by category',
+                      active: hasCategoryFilter,
+                      onTap: () => _showCategoryFilter(state),
+                    );
+                    final accountCard = _CalendarFilterCard(
+                      icon: Icons.account_balance_outlined,
+                      title: 'Account',
+                      value: selectedAccount?.name ?? 'All accounts',
+                      subtitle: 'Filter by account',
+                      active: _accountFilter != null,
+                      onTap: () => _showAccountFilter(state),
+                    );
+                    final textScale =
+                        MediaQuery.textScalerOf(context).scale(14) / 14;
+                    if (constraints.maxWidth < 440 * textScale) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          categoryCard,
+                          const SizedBox(height: AppSpacing.sm),
+                          accountCard,
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: categoryCard),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: accountCard),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
                   children: [
-                    Text(
-                      DateFormat.yMMMM(locale).format(_visibleMonth),
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: AppSpacing.xxxs),
-                    Text(
-                      '${_categoryFilterLabel(state)} · ${selectedAccount?.name ?? 'All accounts'}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    for (final day in [
+                      'Sun',
+                      'Mon',
+                      'Tue',
+                      'Wed',
+                      'Thu',
+                      'Fri',
+                      'Sat',
+                    ])
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            day,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+              ],
+            ),
+          ),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: SizedBox(
+              height:
+                  (days.length ~/ 7) * 48 +
+                  (days.length ~/ 7 - 1) * AppSpacing.xxs,
+              child: Column(
+                children: [
+                  for (var w = 0; w < days.length ~/ 7; w++) ...[
+                    if (w > 0) const SizedBox(height: AppSpacing.xxs),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          for (var d = 0; d < 7; d++) ...[
+                            if (d > 0) const SizedBox(width: AppSpacing.xxs),
+                            Expanded(
+                              child: Builder(
+                                builder: (context) {
+                                  final day = days[w * 7 + d];
+                                  final records =
+                                      summaries[_key(day)] ??
+                                      const <TransactionRecord>[];
+                                  return _DayCell(
+                                    date: day,
+                                    inMonth: day.month == _visibleMonth.month,
+                                    records: records,
+                                    state: state,
+                                    onTap: () =>
+                                        _showDay(context, state, day, records),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              g1455.GlassButtonGroup(
-                finish: ref.watch(toolbarsGlassFinishProvider),
-                items: [
-                  g1455.GlassToolbarItem(
-                    icon: Tooltip(
-                      message: 'Previous month',
-                      child: Icon(
-                        Icons.chevron_left_rounded,
-                        size: 20,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    label: 'Previous month',
-                    onPressed: () => setState(
-                      () => _visibleMonth = DateTime(
-                        _visibleMonth.year,
-                        _visibleMonth.month - 1,
-                      ),
-                    ),
-                  ),
-                  g1455.GlassToolbarItem(
-                    icon: Tooltip(
-                      message: 'Current month',
-                      child: Icon(
-                        Icons.today_rounded,
-                        size: 18,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    label: 'Current month',
-                    onPressed: () => setState(
-                      () => _visibleMonth = DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                      ),
-                    ),
-                  ),
-                  g1455.GlassToolbarItem(
-                    icon: Tooltip(
-                      message: 'Next month',
-                      child: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    label: 'Next month',
-                    onPressed: () => setState(
-                      () => _visibleMonth = DateTime(
-                        _visibleMonth.year,
-                        _visibleMonth.month + 1,
-                      ),
-                    ),
-                  ),
                 ],
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: SummaryPill(
-                  label: 'Net',
-                  money: convertMoneyForDisplay(
-                    state,
-                    Money(
-                      amountMinor: net,
-                      currency: state.preferences.baseCurrency,
-                    ),
-                  ),
-                  tone: net >= 0 ? MetricTone.positive : MetricTone.danger,
-                  locale: state.preferences.locale,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: SummaryPill(
-                  label: 'Income',
-                  money: convertMoneyForDisplay(
-                    state,
-                    Money(
-                      amountMinor: income,
-                      currency: state.preferences.baseCurrency,
-                    ),
-                  ),
-                  tone: MetricTone.positive,
-                  locale: state.preferences.locale,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: SummaryPill(
-                  label: 'Expense',
-                  money: convertMoneyForDisplay(
-                    state,
-                    Money(
-                      amountMinor: expense,
-                      currency: state.preferences.baseCurrency,
-                    ),
-                  ),
-                  tone: MetricTone.danger,
-                  locale: state.preferences.locale,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-
-          Row(
-            children: [
-              Expanded(
-                child: _CalendarFilterCard(
-                  icon: Icons.category_outlined,
-                  title: 'Category',
-                  value: _categoryFilterLabel(state),
-                  subtitle: 'Filter by category',
-                  active: hasCategoryFilter,
-                  onTap: () => _showCategoryFilter(state),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _CalendarFilterCard(
-                  icon: Icons.account_balance_outlined,
-                  title: 'Account',
-                  value: selectedAccount?.name ?? 'All accounts',
-                  subtitle: 'Filter by account',
-                  active: _accountFilter != null,
-                  onTap: () => _showAccountFilter(state),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              for (final day in [
-                'Sun',
-                'Mon',
-                'Tue',
-                'Wed',
-                'Thu',
-                'Fri',
-                'Sat',
-              ])
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      day,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Expanded(
-            child: Column(
-              children: [
-                for (var w = 0; w < days.length ~/ 7; w++) ...[
-                  if (w > 0) const SizedBox(height: AppSpacing.xxs),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        for (var d = 0; d < 7; d++) ...[
-                          if (d > 0) const SizedBox(width: AppSpacing.xxs),
-                          Expanded(
-                            child: Builder(
-                              builder: (context) {
-                                final day = days[w * 7 + d];
-                                final records =
-                                    summaries[_key(day)] ??
-                                    const <TransactionRecord>[];
-                                return _DayCell(
-                                  date: day,
-                                  inMonth: day.month == _visibleMonth.month,
-                                  records: records,
-                                  state: state,
-                                  onTap: () =>
-                                      _showDay(context, state, day, records),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ],
+          const SliverToBoxAdapter(
+            child: SizedBox(
+              height: AppSizes.islandActionSize + AppSizes.bottomBarGap,
             ),
           ),
         ],
@@ -645,10 +710,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           decoration: BoxDecoration(
             color: scheme.surface,
             borderRadius: BorderRadius.circular(AppRadii.xl),
-            border: Border.all(
-              color: scheme.outlineVariant,
-              width: 1.0,
-            ),
+            border: Border.all(color: scheme.outlineVariant, width: 1.0),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -678,7 +740,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             fontWeight: FontWeight.w800,
                             color: balanceMinor < 0
                                 ? scheme.error
-                                : (isDark ? scheme.primary : AppColors.positiveLight),
+                                : (isDark
+                                      ? scheme.primary
+                                      : AppColors.positiveLight),
                           ),
                         ),
                       ],
@@ -859,8 +923,8 @@ class _CalendarFilterCard extends StatelessWidget {
             color: active
                 ? scheme.primary
                 : (isDark
-                    ? scheme.outlineVariant.withValues(alpha: 0.5)
-                    : scheme.outlineVariant),
+                      ? scheme.outlineVariant.withValues(alpha: 0.5)
+                      : scheme.outlineVariant),
             width: active ? 1.5 : 1.0,
           ),
         ),
@@ -879,24 +943,18 @@ class _CalendarFilterCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
                   Text(
                     value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   Text(
                     subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
@@ -967,8 +1025,8 @@ class _DayCell extends StatelessWidget {
         decoration: BoxDecoration(
           color: isToday
               ? (isDark
-                  ? scheme.primaryContainer.withValues(alpha: 0.55)
-                  : scheme.primaryContainer.withValues(alpha: 0.70))
+                    ? scheme.primaryContainer.withValues(alpha: 0.55)
+                    : scheme.primaryContainer.withValues(alpha: 0.70))
               : (inMonth
                     ? (isDark
                           ? scheme.surfaceContainer.withValues(alpha: 0.70)
@@ -1008,9 +1066,7 @@ class _DayCell extends StatelessWidget {
                           ? scheme.onSurface.withAlphaFactor(
                               inMonth ? 1.0 : 0.42,
                             )
-                          : (inMonth
-                                ? scheme.onSurface
-                                : scheme.outline),
+                          : (inMonth ? scheme.onSurface : scheme.outline),
                     ),
                   ),
                 ),

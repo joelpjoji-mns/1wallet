@@ -57,10 +57,16 @@ void main() {
       () {
         const base = LedgerPreferences();
 
-        // Default optics for components
+        // Every component defaults to the Clear finish.
+        for (final target in GlassComponentTarget.values) {
+          expect(
+            base.opticsFor(target).finish,
+            AppGlassFinish.clear,
+            reason: target.name,
+          );
+        }
         final defaultIsland = base.opticsFor(GlassComponentTarget.islandBar);
-        expect(defaultIsland.finish, AppGlassFinish.regular);
-        expect(defaultIsland.blur, 10.0);
+        expect(defaultIsland.blur, 0.5);
 
         final defaultFab = base.opticsFor(GlassComponentTarget.fab);
         expect(defaultFab.finish, AppGlassFinish.clear);
@@ -115,13 +121,10 @@ void main() {
         final resetIsland = updatedMenu.resetComponentOptics(
           GlassComponentTarget.islandBar,
         );
-        expect(
-          resetIsland.opticsFor(GlassComponentTarget.islandBar).blur,
-          10.0,
-        );
+        expect(resetIsland.opticsFor(GlassComponentTarget.islandBar).blur, 0.5);
         expect(
           resetIsland.opticsFor(GlassComponentTarget.islandBar).finish,
-          AppGlassFinish.regular,
+          AppGlassFinish.clear,
         );
         // Menu still retains its custom optics
         expect(
@@ -297,6 +300,27 @@ void main() {
               .opticsFor(GlassComponentTarget.islandBar)
               .finish,
           AppGlassFinish.regular,
+        );
+        final badge = tester.widget<Text>(find.text('Recommended'));
+        final badgeContainer = tester.widget<Container>(
+          find
+              .ancestor(
+                of: find.text('Recommended'),
+                matching: find.byType(Container),
+              )
+              .first,
+        );
+        final background = (badgeContainer.decoration! as BoxDecoration).color!;
+        final foreground = badge.style!.color!;
+        final lighter =
+            foreground.computeLuminance() > background.computeLuminance()
+            ? foreground
+            : background;
+        final darker = lighter == foreground ? background : foreground;
+        expect(
+          (lighter.computeLuminance() + 0.05) /
+              (darker.computeLuminance() + 0.05),
+          greaterThanOrEqualTo(4.5),
         );
         expect(
           container

@@ -355,6 +355,35 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  /// Returns the device to the sign-in screen from offline mode. Callers must
+  /// erase the device-only wallet first (see `signOutOfflineWallet`): a
+  /// leftover local wallet would otherwise be adopted by the next account.
+  Future<void> leaveOfflineMode() async {
+    if (!state.isLocalOnly || state.isSigningIn) return;
+    await _appModeStore.setMode(AppMode.online);
+    await _appModeStore.setLocalDisplayName(null);
+    _upgradeInFlight = false;
+    try {
+      if (_repository.currentUser != null) await discardUpgradeSession();
+    } catch (error) {
+      debugPrint('Could not inspect the Google session: ${error.runtimeType}');
+    }
+    if (!mounted) return;
+    final available = _googleAvailable;
+    String? message;
+    if (!available) {
+      try {
+        message = _repository.availability.message;
+      } catch (_) {}
+    }
+    state = AuthState(
+      phase: available ? AuthPhase.signedOut : AuthPhase.unavailable,
+      googleSignInAvailable: available,
+      errorMessage: message,
+    );
+    if (available) _subscribe();
+  }
+
   /// Lets startup re-run [verifyLocalOwnership] after it failed.
   void retryLocalOwnershipCheck() {
     if (!state.isLocalOnly || state.localOwnershipVerified) return;

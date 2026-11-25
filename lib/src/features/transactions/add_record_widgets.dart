@@ -25,107 +25,161 @@ class AddRecordTypeTabs extends StatelessWidget {
         : ['expense', 'income', 'transfer'];
     final selectedIndex = options.indexOf(value).clamp(0, options.length - 1);
 
-    return GlassSegmentedControl(
-      selectedIndex: selectedIndex,
-      onSegmentSelected: (index) => onChanged(options[index]),
-      height: 42,
-      useOwnLayer: true,
-      quality: GlassQuality.standard,
-      segments: [
-        GlassSegment(
-          icon: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const labels = ['Expense', 'Income', 'Transfer', 'Loan'];
+        const icons = [
+          Icons.arrow_upward_rounded,
+          Icons.arrow_downward_rounded,
+          Icons.swap_horiz_rounded,
+          Icons.account_balance_outlined,
+        ];
+        final colors = [
+          scheme.error,
+          scheme.tertiary,
+          scheme.primary,
+          scheme.primary,
+        ];
+        final textStyle = Theme.of(context).textTheme.labelMedium;
+        final widestLabel = labels
+            .take(options.length)
+            .map((label) {
+              final painter = TextPainter(
+                text: TextSpan(text: label, style: textStyle),
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout();
+              final width = painter.width;
+              painter.dispose();
+              return width;
+            })
+            .reduce((a, b) => a > b ? a : b);
+        if (widestLabel + 32 > constraints.maxWidth / options.length) {
+          return Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
-              Icon(Icons.arrow_upward_rounded, size: 16, color: scheme.error),
-              const SizedBox(width: AppSpacing.xxs),
-              Text(
-                'Expense',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: selectedIndex == 0
-                      ? FontWeight.w700
-                      : FontWeight.w600,
-                  color: selectedIndex == 0
-                      ? scheme.error
-                      : scheme.onSurfaceVariant,
+              for (var index = 0; index < options.length; index++)
+                ChoiceChip(
+                  label: Text(labels[index], softWrap: false),
+                  avatar: Icon(icons[index], color: colors[index], size: 16),
+                  selected: selectedIndex == index,
+                  onSelected: (_) => onChanged(options[index]),
                 ),
-              ),
             ],
-          ),
-        ),
-        GlassSegment(
-          icon: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.arrow_downward_rounded,
-                size: 16,
-                color: scheme.tertiary,
-              ),
-              const SizedBox(width: AppSpacing.xxs),
-              Text(
-                'Income',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: selectedIndex == 1
-                      ? FontWeight.w700
-                      : FontWeight.w600,
-                  color: selectedIndex == 1
-                      ? scheme.tertiary
-                      : scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        GlassSegment(
-          icon: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.swap_horiz_rounded, size: 16, color: scheme.primary),
-              const SizedBox(width: AppSpacing.xxs),
-              Text(
-                'Transfer',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight: selectedIndex == 2
-                      ? FontWeight.w700
-                      : FontWeight.w600,
-                  color: selectedIndex == 2
-                      ? scheme.primary
-                      : scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (isLoan)
-          GlassSegment(
-            icon: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.account_balance_outlined,
-                  size: 16,
-                  color: scheme.primary,
-                ),
-                const SizedBox(width: AppSpacing.xxs),
-                Text(
-                  'Loan',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: selectedIndex == 3
-                        ? FontWeight.w700
-                        : FontWeight.w600,
-                    color: selectedIndex == 3
-                        ? scheme.primary
-                        : scheme.onSurfaceVariant,
+          );
+        }
+        return GlassSegmentedControl(
+          selectedIndex: selectedIndex,
+          onSegmentSelected: (index) => onChanged(options[index]),
+          height: 42,
+          useOwnLayer: true,
+          quality: GlassQuality.standard,
+          segments: [
+            GlassSegment(
+              icon: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.arrow_upward_rounded,
+                    size: 16,
+                    color: scheme.error,
                   ),
-                ),
-              ],
+                  const SizedBox(width: AppSpacing.xxs),
+                  Text(
+                    'Expense',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: selectedIndex == 0
+                          ? FontWeight.w700
+                          : FontWeight.w600,
+                      color: selectedIndex == 0
+                          ? scheme.error
+                          : scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-      ],
+            GlassSegment(
+              icon: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.arrow_downward_rounded,
+                    size: 16,
+                    color: scheme.tertiary,
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
+                  Text(
+                    'Income',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: selectedIndex == 1
+                          ? FontWeight.w700
+                          : FontWeight.w600,
+                      color: selectedIndex == 1
+                          ? scheme.tertiary
+                          : scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GlassSegment(
+              icon: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.swap_horiz_rounded,
+                    size: 16,
+                    color: scheme.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
+                  Text(
+                    'Transfer',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: selectedIndex == 2
+                          ? FontWeight.w700
+                          : FontWeight.w600,
+                      color: selectedIndex == 2
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isLoan)
+              GlassSegment(
+                icon: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.account_balance_outlined,
+                      size: 16,
+                      color: scheme.primary,
+                    ),
+                    const SizedBox(width: AppSpacing.xxs),
+                    Text(
+                      'Loan',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: selectedIndex == 3
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: selectedIndex == 3
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -228,7 +282,7 @@ class AddRecordSelectorGrid extends StatelessWidget {
                 ? Icons.wallet_outlined
                 : accountIcon(sourceAccount!),
             label: type == 'transfer' ? 'From' : 'Account',
-            title: sourceAccount?.name ?? 'Choose account',
+            title: sourceAccount?.name ?? 'Choose',
             subtitle: sourceAccount == null
                 ? 'Required'
                 : maskMoneyIfPrivate(
@@ -257,8 +311,8 @@ class AddRecordSelectorGrid extends StatelessWidget {
                       icon: isLoan
                           ? Icons.account_balance_outlined
                           : (isCard
-                              ? Icons.credit_card_outlined
-                              : Icons.swap_horiz_rounded),
+                                ? Icons.credit_card_outlined
+                                : Icons.swap_horiz_rounded),
                       label: isLoan
                           ? 'Loan account'
                           : (isCard ? 'Card account' : 'To account'),
@@ -277,7 +331,7 @@ class AddRecordSelectorGrid extends StatelessWidget {
                   : AddRecordSelectorBox(
                       icon: categoryIcon(category),
                       label: 'Category',
-                      title: category?.name ?? 'Choose category',
+                      title: category?.name ?? 'Choose',
                       subtitle: category == null
                           ? 'Required'
                           : categoryPath(state, category),
@@ -560,6 +614,7 @@ class _AddRecordCalcKeyState extends State<AddRecordCalcKey> {
             child: widget.label == '⌫'
                 ? Icon(
                     Icons.backspace_rounded,
+                    semanticLabel: 'Backspace',
                     color: widget.foregroundColor,
                     size: 24,
                   )

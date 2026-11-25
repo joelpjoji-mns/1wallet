@@ -9,6 +9,8 @@ import 'package:one_wallet_flutter/src/cloud_sync/cloud_sync_controller.dart';
 import 'package:one_wallet_flutter/src/cloud_sync/cloud_sync_write_guard.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/features/onboarding/onboarding_controller.dart';
+import 'package:one_wallet_flutter/src/features/settings/permission_setup_controller.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
 import 'package:one_wallet_flutter/src/theme/theme_controller.dart';
 
@@ -58,6 +60,19 @@ void main() {
   }
 
   group('offline startup', () {
+    test('deferred setup survives a startup dependency changing', () async {
+      final container = await build(
+        initialPrefs: {..._offlinePrefs, _permissionsDoneLocal: true},
+        ledger: sampleLedgerState(),
+      );
+      await settle(container);
+      container.read(permissionSetupControllerProvider.notifier).clear();
+      expect(container.read(startupStateProvider).isPending, isTrue);
+      container.read(onboardingControllerProvider.notifier).clear();
+
+      expect((await settle(container)).destination, StartupDestination.home);
+    });
+
     test('opens with no Firebase at all and never routes to login', () async {
       final container = await build(initialPrefs: _offlinePrefs);
 

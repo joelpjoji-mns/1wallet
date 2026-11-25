@@ -21,9 +21,10 @@ import 'fixtures/sample_ledger.dart';
 import 'offline_mode_fakes.dart';
 import 'test_harness.dart';
 
-/// Pumps every reachable route across the supported presentation matrix
+/// Pumps representative routes across the supported presentation matrix
 /// (light/dark AMOLED, normal/large text, narrow phone/tablet) and fails on
-/// layout overflow or any other framework exception.
+/// layout overflow or framework exceptions other than the known test-harness
+/// `semantics.parentDataDirty` error.
 ///
 /// When run with `--dart-define=UI_AUDIT_SHOTS=<dir>` it also writes a PNG per
 /// screen/variant into `<dir>` so the UI audit (`doc/ui-audit.md`) can show
@@ -37,23 +38,30 @@ const _homeRoutes = <String>[
   '/',
   '#tab1',
   '#tab2',
+  '#tab3',
   '/accounts',
   '/add',
   '/add?transactionId=tx-salary',
   '/transaction/tx-salary',
   '/account/new',
   '/account/acc-bank',
+  '/account/acc-bank/secure',
   '/widgets',
   '/review',
   '/capture/cap-1',
   '/settings',
+  '/settings/glass',
+  '/settings/theme',
+  '/settings/feedback',
   '/recurring',
   '/recurring/new',
+  '/recurring/past',
   '/recurring/tx-rent-planned',
   '/recurring/tx-rent-planned/edit',
   '/cards',
   '/loans',
   '/loans/new',
+  '/loans/past',
   '/loans/forecast',
   '/loans/acc-loan',
   '/loans/acc-loan/edit',
@@ -61,6 +69,7 @@ const _homeRoutes = <String>[
   '/currencies',
   '/sync',
   '/import-statement',
+  '/imports/missing-batch',
   '/data-backup',
   '/auto-capture',
   '/auto-capture/debug',
@@ -76,6 +85,7 @@ const _emptyLedgerRoutes = <String>[
   '/',
   '#tab1',
   '#tab2',
+  '#tab3',
   '/accounts',
   '/widgets',
   '/review',
@@ -101,6 +111,8 @@ const _gatedRoutes = <String, StartupDestination>{
   '/login': StartupDestination.login,
   '/onboarding': StartupDestination.onboarding,
   '/permissions-setup': StartupDestination.permissions,
+  '/account-deletion': StartupDestination.deletion,
+  '/launch': StartupDestination.launch,
 };
 
 @immutable
@@ -116,8 +128,14 @@ class _Variant {
 const _variants = <_Variant>[
   _Variant('phone-light', Size(360, 780), 1.0, false),
   _Variant('phone-dark', Size(360, 780), 1.0, true),
+  _Variant('phone-light-115', Size(360, 780), 1.15, false),
   _Variant('phone-light-large', Size(360, 780), 1.3, false),
   _Variant('phone-dark-large', Size(360, 780), 1.3, true),
+  _Variant('phone-light-150', Size(360, 780), 1.5, false),
+  _Variant('phone-light-200', Size(360, 780), 2.0, false),
+  _Variant('phone-dark-200', Size(360, 780), 2.0, true),
+  _Variant('compact-phone-light', Size(320, 568), 1.0, false),
+  _Variant('landscape-phone-light', Size(780, 360), 1.0, false),
   _Variant('tablet-light', Size(1024, 1366), 1.0, false),
   _Variant('tablet-dark', Size(1024, 1366), 1.0, true),
 ];
