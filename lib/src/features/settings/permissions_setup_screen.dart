@@ -81,6 +81,8 @@ class _PermissionsSetupScreenState
         children: [
           Expanded(
             child: SingleChildScrollView(
+              primary: false,
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.xl,
                 vertical: AppSpacing.md,

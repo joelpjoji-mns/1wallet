@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.15] - 2026-11-25
+
 ### Added
+- Planned details show the actual amount spent, paid, received, or transferred so far. Count-limited plans show payment progress; ongoing plans show totals without a progress bar, and date-limited plans show their end date. Existing loan payoff progress is preserved, and amounts/date/account details remain readable at enlarged text sizes.
 - Offline-only mode ("Use without an account"):
   - Run 1Wallet entirely on the device with no Google sign-in, Firebase account, or cloud sync.
   - Includes an explicit consent sheet, offline status in Settings and Sync, and encrypted backup export/import shortcuts.
@@ -22,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Clear glass finish is now the default for every component, including the island bar, menus, and toolbars. Menus keep a denser tint for legibility.
 
 ### Fixed
+- Planned-payment and loan details use a compact three-line header (name; subtitle with the amount on the right; status/frequency), a tighter "…so far" summary with a visible progress track, and compact metric tiles. The payment count and end date sit flush with the summary's right edge. Loan actions pair only when their labels fit on one line.
+- Summary tiles on Loans, Categories, Currencies, Cards, Imports, Data & Sync, and Data backup keep amounts whole instead of ellipsising, share equal heights, and stack at large text. Section headers, label/value rows, and card tiles no longer break words mid-way at 200% text.
+- Login restores full welcome branding on standard phones and balances the action placement without hiding the footer or adding unnecessary scrolling. History uses three equal filter columns and drops the period arrows beside search (swipe the date filter to step periods); Calendar keeps category/account filters side by side. Large-text controls retain full accessible names, and Tags is disabled when no tags exist.
+- The welcome screen fits normal phone viewports without scrolling and keeps its privacy footer visible. Short/large-text entry, recovery, and lock screens retain a safe overflow fallback; onboarding and setup pages no longer overscroll when their content fits.
 - Loan, planned-payment, capture, and permission actions use aligned, responsive button groups instead of uneven rows.
 - Review-queue actions use the same responsive grouping and stack when narrow widths would wrap their labels.
 - History filters wrap into visible rows instead of clipping the horizontally scrolling filter strip; large transaction-detail amounts stay on one line.

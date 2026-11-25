@@ -38,72 +38,82 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 600),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    child: Row(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxHeight < 650;
+                  return BrandPageViewport(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? AppSpacing.md : AppSpacing.xxl,
+                      vertical: compact ? AppSpacing.xs : AppSpacing.md,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(width: 48),
-                        const Spacer(),
-                        AppPanel(
-                          glass: true,
-                          radius: AppRadii.pill,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.xs,
-                          ),
-                          child: Text(
-                            'SIGN IN',
-                            style: textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 2,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        Center(
+                          child: AppPanel(
+                            glass: true,
+                            radius: AppRadii.pill,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.xs,
+                            ),
+                            child: Text(
+                              'SIGN IN',
+                              style: textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 2,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
                             ),
                           ),
                         ),
-                        const Spacer(),
-                        const SizedBox(width: 48),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xxl,
-                      ),
-                      children: [
-                        const SizedBox(height: AppSpacing.xxl + AppSpacing.xs),
+                        SizedBox(
+                          height: compact ? AppSpacing.xs : AppSpacing.md,
+                        ),
                         StaggeredFadeIn(
                           child: Text(
-                            'Welcome.\n1Wallet.',
-                            style: textTheme.displayMedium?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              height: 0.95,
-                              letterSpacing: -2.5,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            compact ? '1Wallet.' : 'Welcome.\n1Wallet.',
+                            style:
+                                (compact
+                                        ? textTheme.displaySmall
+                                        : textTheme.displayMedium)
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      height: 0.95,
+                                      letterSpacing: -2.5,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xl),
+                        SizedBox(
+                          height: compact ? AppSpacing.sm : AppSpacing.md,
+                        ),
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 100),
                           child: Text(
-                            'A smarter way to track, plan, and grow your money effortlessly.',
-                            style: textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w400,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.6),
-                              height: 1.5,
-                            ),
+                            compact
+                                ? 'Track, plan, and grow your money effortlessly.'
+                                : 'A smarter way to track, plan, and grow your money effortlessly.',
+                            style:
+                                (compact
+                                        ? textTheme.bodyLarge
+                                        : textTheme.titleLarge)
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w400,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
+                                      height: compact ? 1.4 : 1.5,
+                                    ),
                           ),
                         ),
-                        const SizedBox(
-                          height: AppSpacing.xxl * 2 + AppSpacing.md,
-                        ),
+                        const Spacer(),
+                        const SizedBox(height: AppSpacing.md),
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 200),
                           child: DecoratedBox(
@@ -117,7 +127,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ],
                             ),
                             child: BrandFrostedPanel(
-                              padding: const EdgeInsets.all(AppSpacing.xxl),
+                              padding: EdgeInsets.all(
+                                compact ? AppSpacing.md : AppSpacing.xl,
+                              ),
                               borderRadius: AppRadii.xl,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,27 +138,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     unavailable
                                         ? 'Sync offline'
                                         : 'Ready to start?',
-                                    style: textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurface,
-                                    ),
+                                    style:
+                                        (compact
+                                                ? textTheme.titleLarge
+                                                : textTheme.headlineMedium)
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurface,
+                                            ),
                                   ),
                                   const SizedBox(height: AppSpacing.sm),
                                   Text(
                                     unavailable
                                         ? 'Cloud sync is currently unavailable. You can still use the app locally.'
                                         : 'Sign in to sync your data securely across all your devices.',
-                                    style: textTheme.bodyLarge?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.6),
-                                      height: 1.4,
-                                    ),
+                                    style:
+                                        (compact
+                                                ? textTheme.bodyMedium
+                                                : textTheme.bodyLarge)
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.6),
+                                              height: 1.4,
+                                            ),
                                   ),
-                                  const SizedBox(height: AppSpacing.xxl),
+                                  SizedBox(
+                                    height: compact
+                                        ? AppSpacing.md
+                                        : AppSpacing.xl,
+                                  ),
                                   // Sign-in is unavailable (offline mode), so
                                   // dim the button — otherwise it looks fully
                                   // interactive even though onTap is null.
@@ -169,7 +193,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           duration: const Duration(
                                             milliseconds: 200,
                                           ),
-                                          height: 64,
+                                          height: compact ? 56 : 64,
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: AppSpacing.md,
                                           ),
@@ -270,7 +294,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                   if (auth.errorMessage != null &&
                                       !unavailable) ...[
-                                    const SizedBox(height: AppSpacing.lg),
+                                    SizedBox(
+                                      height: compact
+                                          ? AppSpacing.sm
+                                          : AppSpacing.lg,
+                                    ),
                                     AppPanel(
                                       glass: true,
                                       radius: AppRadii.md,
@@ -309,7 +337,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.lg),
+                        const SizedBox(height: AppSpacing.sm),
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 260),
                           child: Center(
@@ -339,7 +367,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xl),
+                        const Spacer(),
+                        const SizedBox(height: AppSpacing.xs),
                         Center(
                           child: AppPanel(
                             glass: true,
@@ -350,6 +379,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             child: Text(
                               'Secure • Private • Local First',
+                              textAlign: TextAlign.center,
                               style: textTheme.labelSmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 1,
@@ -362,8 +392,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ],
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),

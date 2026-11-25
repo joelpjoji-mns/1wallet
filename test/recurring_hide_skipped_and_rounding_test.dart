@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,10 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'test_harness.dart';
 
@@ -25,6 +28,14 @@ import 'test_harness.dart';
 ///   plan.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    final font = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      font.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await font.load();
+  });
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -100,6 +111,248 @@ void main() {
     await tester.pumpAndSettle();
     return container;
   }
+
+  LedgerState paymentSeed() {
+    final seed = buildSeed(hideSkipped: false);
+    final plan = seed.transactions.first.copyWith(
+      occurredAt: DateTime(2099, 1, 1),
+      recurrenceLimit: 6,
+    );
+    return seed.copyWith(
+      transactions: [
+        plan,
+        seed.transactions.last,
+        plan.copyWith(
+          id: 'paid-first',
+          status: 'posted',
+          amount: const Money(amountMinor: 24500, currency: 'USD'),
+          baseAmount: const Money(amountMinor: 24500, currency: 'USD'),
+          occurredAt: DateTime(2026, 1, 1),
+          originalTransactionId: plan.id,
+        ),
+        plan.copyWith(
+          id: 'paid-second',
+          status: 'cleared',
+          amount: const Money(amountMinor: 33000, currency: 'USD'),
+          baseAmount: const Money(amountMinor: 33000, currency: 'USD'),
+          occurredAt: DateTime(2026, 2, 1),
+          originalTransactionId: plan.id,
+        ),
+      ],
+    );
+  }
+
+  Future<void> pumpPlanDetails(
+    WidgetTester tester,
+    LedgerState seed, {
+    double scale = 1,
+  }) async {
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: seed),
+    );
+    addTearDown(container.dispose);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(seed);
+    final router = container.read(appRouterProvider);
+    router.go('/recurring/plan-rent');
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: scale == 1 ? AppTheme.light() : AppTheme.amoled(),
+          routerConfig: router,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  test('plan totals use actual posted amounts and exclude unpaid records', () {
+    final seed = paymentSeed();
+    final plan = seed.transactions.first;
+    final state = seed.copyWith(
+      transactions: [
+        ...seed.transactions,
+        plan.copyWith(id: 'unrelated', status: 'posted'),
+        for (final status in ['scheduled', 'paused', 'finished'])
+          plan.copyWith(
+            id: 'unpaid-$status',
+            status: status,
+            originalTransactionId: plan.id,
+          ),
+      ],
+    );
+    final summary = recurringPlanPaymentSummary(state, plan);
+    expect(summary.paymentCount, 2);
+    expect(summary.totals.single.amountMinor, 57500);
+    expect(summary.totals.single.currency, 'USD');
+  });
+
+  test('plan totals preserve original currencies without blending amounts', () {
+    final seed = paymentSeed();
+    final plan = seed.transactions.first;
+    final state = seed.copyWith(
+      transactions: [
+        plan,
+        seed.transactions[2].copyWith(
+          originalAmount: const Money(amountMinor: 22000, currency: 'EUR'),
+        ),
+        seed.transactions[3],
+      ],
+    );
+    final summary = recurringPlanPaymentSummary(state, plan);
+    expect(summary.paymentCount, 2);
+    expect(
+      {for (final money in summary.totals) money.currency: money.amountMinor},
+      {'EUR': 22000, 'USD': 33000},
+    );
+    final empty = recurringPlanPaymentSummary(
+      seed.copyWith(transactions: [plan]),
+      plan,
+    );
+    expect(empty.paymentCount, 0);
+    expect(empty.totals.single.amountMinor, 0);
+  });
+
+  testWidgets('finite plan details show total paid and occurrence progress', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final seed = paymentSeed();
+    await pumpPlanDetails(tester, seed);
+
+    expect(find.text('Spent so far'), findsOneWidget);
+    expect(find.text('\$575.00'), findsOneWidget);
+    expect(find.text('2 of 6 payments'), findsOneWidget);
+    expect(find.byType(GlassProgressIndicator), findsOneWidget);
+    // Compact summary: the count sits beside the total and the panel hugs
+    // its content (only its 12dp padding around label → bar).
+    expect(
+      tester.getTopLeft(find.text('2 of 6 payments')).dx,
+      greaterThan(tester.getTopRight(find.text('\$575.00')).dx),
+    );
+    final panel = tester.getRect(
+      find.byKey(const ValueKey('recurring-payment-summary')),
+    );
+    final label = tester.getRect(find.text('Spent so far'));
+    final bar = tester.getRect(find.byType(GlassProgressIndicator));
+    // The count hugs the panel's right edge (12dp padding), no inner gap.
+    expect(
+      panel.right - tester.getRect(find.text('2 of 6 payments')).right,
+      closeTo(12, 1),
+    );
+    expect(label.top - panel.top, closeTo(12, 1));
+    expect(panel.bottom - bar.bottom, closeTo(12, 1));
+    expect(
+      tester.getBottomLeft(find.text('Spent so far')).dy,
+      lessThan(tester.getTopLeft(find.text('Next payment')).dy),
+    );
+    final headerAmount = find.byKey(const ValueKey('detail-header-amount'));
+    final meta = tester.getRect(find.textContaining('SCHEDULED ·'));
+    final amountRect = tester.getRect(headerAmount);
+    // Line 2: amount sits between the title (line 1) and the status (line 3).
+    expect(amountRect.bottom, lessThanOrEqualTo(meta.top + 1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ongoing and date-limited totals stay readable without a bar', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    for (final (type, label, endDate) in [
+      ('expense', 'Spent so far', null),
+      ('expense', 'Spent so far', DateTime(2099, 12, 31)),
+      ('income', 'Received so far', null),
+      ('transfer', 'Transferred so far', null),
+    ]) {
+      final seed = paymentSeed();
+      final oldPlan = seed.transactions.first;
+      final plan = TransactionRecord(
+        id: oldPlan.id,
+        type: type,
+        status: oldPlan.status,
+        source: oldPlan.source,
+        accountId: oldPlan.accountId,
+        amount: const Money(amountMinor: 3200000, currency: 'USD'),
+        baseAmount: const Money(amountMinor: 3200000, currency: 'USD'),
+        occurredAt: oldPlan.occurredAt,
+        recurrenceFrequency: 'monthly',
+        recurrenceEndDate: endDate,
+      );
+      await pumpPlanDetails(
+        tester,
+        seed.copyWith(
+          transactions: [
+            plan,
+            for (final record in seed.transactions.skip(1))
+              record.copyWith(
+                type: type,
+                amount: record.amount.copyWith(
+                  amountMinor: record.amount.amountMinor * 1000,
+                ),
+                baseAmount: record.baseAmount.copyWith(
+                  amountMinor: record.baseAmount.amountMinor * 1000,
+                ),
+              ),
+          ],
+        ),
+        scale: 2,
+      );
+      expect(find.text(label), findsOneWidget);
+      final total = find.text('\$575,000.00');
+      expect(total, findsOneWidget);
+      final upcoming = find.text(
+        '${incomeTypes.contains(type) ? '+' : '-'}\$32,000.00',
+      );
+      for (final amount in [total, upcoming]) {
+        final paragraph = tester.renderObject<RenderParagraph>(amount);
+        final painter = TextPainter(
+          text: paragraph.text,
+          textDirection: paragraph.textDirection,
+          textScaler: paragraph.textScaler,
+        )..layout(maxWidth: paragraph.size.width);
+        expect(painter.computeLineMetrics(), hasLength(1));
+        expect(paragraph.didExceedMaxLines, isFalse);
+        painter.dispose();
+      }
+      expect(
+        tester
+            .getTopLeft(
+              find.text(
+                formatLedgerDate(plan.occurredAt, seed.preferences.locale),
+              ),
+            )
+            .dy,
+        greaterThan(tester.getBottomLeft(find.text('Next payment')).dy),
+      );
+      expect(
+        tester.getTopLeft(find.text('Main Checking')).dy,
+        greaterThan(tester.getBottomLeft(find.text('Account')).dy),
+      );
+      expect(find.byType(GlassProgressIndicator), findsNothing);
+      if (endDate == null) {
+        expect(find.text('No end date'), findsOneWidget);
+      } else {
+        expect(
+          find.text(
+            'Ends ${formatLedgerDate(endDate, seed.preferences.locale)}',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('No end date'), findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
 
   testWidgets(
     'Past recurring hides skipped occurrences when hideSkippedInHistory is '

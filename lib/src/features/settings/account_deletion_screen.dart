@@ -18,6 +18,8 @@ class AccountDeletionScreen extends ConsumerWidget {
       hasDrawer: false,
       scrollView: Center(
         child: SingleChildScrollView(
+          primary: false,
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
             mainAxisSize: MainAxisSize.min,

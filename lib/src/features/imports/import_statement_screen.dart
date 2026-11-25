@@ -175,36 +175,28 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              AppMetricRow(
                 children: [
-                  Expanded(
-                    child: MetricTile(
-                      label: 'Parsed',
-                      value: '${result.rows.length}',
-                      icon: Icons.check_circle_outline_rounded,
-                      compact: true,
-                      tone: result.rows.isNotEmpty
-                          ? MetricTone.positive
-                          : MetricTone.warning,
-                    ),
+                  MetricTile(
+                    label: 'Parsed',
+                    value: '${result.rows.length}',
+                    icon: Icons.check_circle_outline_rounded,
+                    compact: true,
+                    tone: result.rows.isNotEmpty
+                        ? MetricTone.positive
+                        : MetricTone.warning,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: MetricTile(
-                      label: 'Currency',
-                      value: effectiveCurrency,
-                      icon: Icons.payments_outlined,
-                      compact: true,
-                    ),
+                  MetricTile(
+                    label: 'Currency',
+                    value: effectiveCurrency,
+                    icon: Icons.payments_outlined,
+                    compact: true,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: MetricTile(
-                      label: 'Skipped',
-                      value: '${result.skippedLines}',
-                      icon: Icons.skip_next_outlined,
-                      compact: true,
-                    ),
+                  MetricTile(
+                    label: 'Skipped',
+                    value: '${result.skippedLines}',
+                    icon: Icons.skip_next_outlined,
+                    compact: true,
                   ),
                 ],
               ),

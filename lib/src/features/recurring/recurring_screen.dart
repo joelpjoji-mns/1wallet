@@ -711,9 +711,7 @@ class _RecurringCompactCard extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: AppSpacing.xs),
-                                  GlassProgressIndicator.linear(
-                                    value: progress,
-                                  ),
+                                  AppProgressBar(value: progress),
                                 ],
                               );
                             },
@@ -1488,6 +1486,41 @@ class RecurringDetailView extends ConsumerWidget {
     final category = categoryById(state, transaction.categoryId);
     final frequency = transaction.recurrenceFrequency ?? 'once';
     final scheme = Theme.of(context).colorScheme;
+    final loanDetails = account?.loanDetails ?? counter?.loanDetails;
+    final stackDetails = MediaQuery.textScalerOf(context).scale(14) > 20;
+
+    Widget detailField(String label, String value) {
+      final labelText = Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      );
+      final valueText = Text(
+        value,
+        textAlign: stackDetails ? TextAlign.start : TextAlign.end,
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+      );
+      return stackDetails
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                labelText,
+                const SizedBox(height: AppSpacing.xxs),
+                valueText,
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(child: labelText),
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(child: valueText),
+              ],
+            );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1503,122 +1536,68 @@ class RecurringDetailView extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: scheme.primaryContainer,
-                        foregroundColor: scheme.onPrimaryContainer,
-                        child: Icon(
-                          category == null
-                              ? Icons.event_repeat_rounded
-                              : Icons.category_rounded,
-                          size: 20,
-                        ),
+                  AppDetailHeader(
+                    leading: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: scheme.primaryContainer,
+                      foregroundColor: scheme.onPrimaryContainer,
+                      child: Icon(
+                        category == null
+                            ? Icons.event_repeat_rounded
+                            : Icons.category_rounded,
+                        size: 20,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              transaction.name?.trim().isNotEmpty == true
-                                  ? transaction.name!.trim()
-                                  : (category?.name ??
-                                        transactionTypeLabel(transaction.type)),
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: AppSpacing.xxxs),
-                            Text(
-                              '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' (AUTO)' : ''}',
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  PrivacyText(
-                    _recurringAmountLabel(state, transaction),
-                    textAlign: TextAlign.end,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
                     ),
+                    title: transaction.name?.trim().isNotEmpty == true
+                        ? transaction.name!.trim()
+                        : (category?.name ??
+                              transactionTypeLabel(transaction.type)),
+                    subtitle:
+                        transaction.name?.trim().isNotEmpty == true &&
+                            category != null
+                        ? category.name
+                        : transactionTypeLabel(transaction.type),
+                    amount: PrivacyText(
+                      _recurringAmountLabel(state, transaction),
+                      maxLines: 1,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    meta:
+                        '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' · AUTO' : ''}',
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  if ((loanDetails?.principal?.amountMinor.abs() ?? 0) ==
+                      0) ...[
+                    _RecurringPaymentSummary(state: state, plan: transaction),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
                   AppPanel(
                     padding: const EdgeInsets.all(AppSpacing.sm),
                     child: Column(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Next payment',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Flexible(
-                              child: Text(
-                                formatLedgerDate(
-                                  transaction.occurredAt,
-                                  state.preferences.locale,
-                                ),
-                                textAlign: TextAlign.end,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
+                        detailField(
+                          'Next payment',
+                          formatLedgerDate(
+                            transaction.occurredAt,
+                            state.preferences.locale,
+                          ),
                         ),
-                        const SizedBox(height: AppSpacing.xxs),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              counter != null ? 'From account' : 'Account',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Flexible(
-                              child: Text(
-                                account?.name ?? 'Unknown',
-                                textAlign: TextAlign.end,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
+                        SizedBox(
+                          height: stackDetails ? AppSpacing.sm : AppSpacing.xxs,
+                        ),
+                        detailField(
+                          counter != null ? 'From account' : 'Account',
+                          account?.name ?? 'Unknown',
                         ),
                         if (counter != null) ...[
-                          const SizedBox(height: AppSpacing.xxs),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'To account',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: scheme.onSurfaceVariant),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Flexible(
-                                child: Text(
-                                  counter.name,
-                                  textAlign: TextAlign.end,
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
+                          SizedBox(
+                            height: stackDetails
+                                ? AppSpacing.sm
+                                : AppSpacing.xxs,
                           ),
+                          detailField('To account', counter.name),
                         ],
                       ],
                     ),
@@ -1698,7 +1677,7 @@ class RecurringDetailView extends ConsumerWidget {
                                 ],
                               ),
                             const SizedBox(height: AppSpacing.xs),
-                            GlassProgressIndicator.linear(value: progress),
+                            AppProgressBar(value: progress),
                           ],
                         );
                       },
@@ -1889,6 +1868,130 @@ class RecurringDetailView extends ConsumerWidget {
   }
 }
 
+class _RecurringPaymentSummary extends StatelessWidget {
+  const _RecurringPaymentSummary({required this.state, required this.plan});
+
+  final LedgerState state;
+  final TransactionRecord plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = recurringPlanPaymentSummary(state, plan);
+    final isIncome = incomeTypes.contains(plan.type);
+    final isTransfer = transferTypes.contains(plan.type);
+    final label = isIncome
+        ? 'Received so far'
+        : isTransfer
+        ? 'Transferred so far'
+        : plan.type == 'expense' ||
+              plan.type == 'fee' ||
+              plan.type == 'interest_out' ||
+              plan.type == 'investment_buy'
+        ? 'Spent so far'
+        : 'Paid so far';
+    final noun = isIncome
+        ? 'receipt'
+        : isTransfer
+        ? 'transfer'
+        : 'payment';
+    final limit = (plan.recurrenceFrequency ?? 'once') == 'once'
+        ? 1
+        : plan.recurrenceLimit;
+    final hasLimit = limit != null && limit > 0;
+    final countLabel = hasLimit
+        ? '${summary.paymentCount} of $limit $noun${limit == 1 ? '' : 's'}'
+        : '${summary.paymentCount} $noun${summary.paymentCount == 1 ? '' : 's'}';
+    final textTheme = Theme.of(context).textTheme;
+    final captionStyle = textTheme.bodySmall?.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w600,
+    );
+
+    final endLabel = plan.recurrenceEndDate != null
+        ? '${plan.status == 'finished' ? 'Ended' : 'Ends'} ${formatLedgerDate(plan.recurrenceEndDate!, state.preferences.locale)}'
+        : hasLimit
+        ? null
+        : 'No end date';
+    final stack = MediaQuery.textScalerOf(context).scale(14) > 20;
+
+    final totals = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: captionStyle),
+        for (final total in summary.totals)
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: PrivacyText(
+              formatMoney(total, state.preferences.locale),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+      ],
+    );
+    final meta = Column(
+      crossAxisAlignment: stack
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          countLabel,
+          textAlign: stack ? TextAlign.start : TextAlign.end,
+          style: captionStyle,
+        ),
+        if (endLabel != null)
+          Text(
+            endLabel,
+            textAlign: stack ? TextAlign.start : TextAlign.end,
+            style: captionStyle,
+          ),
+      ],
+    );
+
+    return AppPanel(
+      key: const ValueKey('recurring-payment-summary'),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (stack) ...[
+            totals,
+            const SizedBox(height: AppSpacing.xxs),
+            meta,
+          ] else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(child: totals),
+                const SizedBox(width: AppSpacing.sm),
+                // Align fills the flexible slot so the count/end date sit
+                // flush against the panel's right edge.
+                Flexible(
+                  child: Align(
+                    alignment: AlignmentDirectional.bottomEnd,
+                    child: meta,
+                  ),
+                ),
+              ],
+            ),
+          if (hasLimit) ...[
+            const SizedBox(height: AppSpacing.xs),
+            AppProgressBar(
+              value: summary.paymentCount / limit,
+              semanticLabel: countLabel,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _RecurringHistoryList extends ConsumerWidget {
   const _RecurringHistoryList({required this.plan});
 
@@ -1897,24 +2000,9 @@ class _RecurringHistoryList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(ledgerProvider);
-    final history = state.transactions.where((t) {
-      if (t.id == plan.id) return false;
-      if (t.status == 'scheduled' || t.status == 'finished') {
-        return false;
-      }
-      if (t.originalTransactionId == plan.id) return true;
-      if (plan.type == 'loan_repayment' &&
-          (t.type == 'loan_repayment' || t.type == 'transfer')) {
-        return plan.counterAccountId != null &&
-            (t.counterAccountId == plan.counterAccountId ||
-                t.accountId == plan.counterAccountId);
-      }
-      return false;
-    }).toList();
+    final history = recurringPlanHistory(state, plan);
 
     if (history.isEmpty) return const SizedBox.shrink();
-
-    history.sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

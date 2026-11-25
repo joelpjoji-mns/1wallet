@@ -588,6 +588,30 @@ class AnimatedBrandScene extends StatelessWidget {
   }
 }
 
+/// Fills an entry-screen viewport and scrolls only when its content cannot fit.
+class BrandPageViewport extends StatelessWidget {
+  const BrandPageViewport({
+    required this.child,
+    this.padding = EdgeInsets.zero,
+    super.key,
+  });
+
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => CustomScrollView(
+    primary: false,
+    physics: const ClampingScrollPhysics(),
+    slivers: [
+      SliverFillRemaining(
+        hasScrollBody: false,
+        child: Padding(padding: padding, child: child),
+      ),
+    ],
+  );
+}
+
 class BrandedLoadingState extends StatelessWidget {
   const BrandedLoadingState({
     required this.stage,
@@ -605,56 +629,60 @@ class BrandedLoadingState extends StatelessWidget {
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(
-          child: Center(
-            child: StaggeredFadeIn(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.wallet_rounded,
-                        size: 40,
-                        color: Theme.of(context).colorScheme.primary,
+          child: BrandPageViewport(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Center(
+              child: StaggeredFadeIn(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xxl),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Text(
-                      message,
-                      key: ValueKey(message),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  if (progress != null) ...[
-                    const SizedBox(height: AppSpacing.xl),
-                    SizedBox(
-                      width: 200,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadii.xs),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.1),
+                      child: Center(
+                        child: Icon(
+                          Icons.wallet_rounded,
+                          size: 40,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Text(
+                        message,
+                        key: ValueKey(message),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    if (progress != null) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      SizedBox(
+                        width: 200,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadii.xs),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.1),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -751,9 +779,9 @@ class RecoveryState extends StatelessWidget {
     return Scaffold(
       body: LaunchBackdrop(
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.xl),
+          child: BrandPageViewport(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Center(
               child: BrandFrostedPanel(
                 borderRadius: AppRadii.xl,
                 child: Column(

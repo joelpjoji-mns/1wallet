@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -10,6 +11,8 @@ import 'package:one_wallet_flutter/src/data/ledger_codec.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/design/tokens.dart';
 import 'package:one_wallet_flutter/src/features/calendar/calendar_screen.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'test_harness.dart';
 
@@ -20,6 +23,13 @@ import 'test_harness.dart';
 /// `Tooltip`, since without one `GlassIconButton` announces an empty label.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    final font = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      font.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await font.load();
+  });
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -163,24 +173,29 @@ void main() {
       ProviderScope(
         overrides: authenticatedSampleOverrides(ledger: _ledger()),
         child: MaterialApp(
+          theme: AppTheme.light(),
           home: Scaffold(body: CalendarScreen(onMenuPressed: () {})),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    for (final label in ['All categories', 'Filter by category']) {
+    for (final label in ['All categories', 'All accounts']) {
       expect(
         tester
-            .renderObject<RenderParagraph>(find.text(label))
+            .renderObject<RenderParagraph>(
+              find.descendant(
+                of: find.text(label),
+                matching: find.byType(RichText),
+              ),
+            )
             .didExceedMaxLines,
         isFalse,
         reason: label,
       );
     }
-    expect(tester.getSize(find.text('All categories')).width, greaterThan(140));
     expect(
       tester.getTopLeft(find.text('All accounts')).dy,
-      greaterThan(tester.getBottomLeft(find.text('All categories')).dy),
+      closeTo(tester.getTopLeft(find.text('All categories')).dy, 0.01),
     );
     final scrollable = tester.state<ScrollableState>(
       find
@@ -196,6 +211,57 @@ void main() {
     expect(scrollable.position.pixels, greaterThan(0));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'calendar filters stay paired at large text and open their pickers',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 780);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: authenticatedSampleOverrides(ledger: _ledger()),
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: Scaffold(body: CalendarScreen(onMenuPressed: () {})),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final category = find.descendant(
+        of: find.byTooltip('Filter by category: All categories'),
+        matching: find.byType(AppPanel),
+      );
+      final account = find.descendant(
+        of: find.byTooltip('Filter by account: All accounts'),
+        matching: find.byType(AppPanel),
+      );
+      final categoryBounds = tester.getRect(category);
+      final accountBounds = tester.getRect(account);
+      expect(categoryBounds.top, closeTo(accountBounds.top, 0.01));
+      expect(categoryBounds.width, closeTo(accountBounds.width, 0.01));
+      expect(categoryBounds.height, closeTo(accountBounds.height, 0.01));
+      expect(categoryBounds.height, greaterThanOrEqualTo(48));
+      expect(accountBounds.left, greaterThan(categoryBounds.right));
+      await tester.ensureVisible(category);
+      await tester.pumpAndSettle();
+      await tester.tap(category);
+      await tester.pumpAndSettle();
+      expect(find.text('Calendar categories'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(account);
+      await tester.pumpAndSettle();
+      expect(find.text('Calendar account'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('large text gives the calendar heading and totals enough width', (
     tester,

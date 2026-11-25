@@ -72,6 +72,7 @@ class _AccountCollectionScreen extends ConsumerWidget {
               label: 'Count',
               value: '${accounts.length}',
               icon: Icons.credit_card_outlined,
+              compact: true,
             ),
           ),
           const Gap(AppSpacing.lg),
@@ -179,6 +180,13 @@ class _CardAccountTile extends ConsumerWidget {
 
     final billNeedsAttention =
         dueStatus != null && (dueStatus.isDueSoon || dueStatus.isOverdue);
+    // At large text the balance moves under the name so the name isn't
+    // squeezed down to a single ellipsised letter.
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 20;
+    final balance = PrivacyText(
+      formatMoney(displayBalance, state.preferences.locale),
+      style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+    );
 
     return DecoratedBox(
       decoration: billNeedsAttention
@@ -237,16 +245,17 @@ class _CardAccountTile extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
+                          if (largeText) ...[
+                            const SizedBox(height: AppSpacing.xxxs),
+                            balance,
+                          ],
                         ],
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
-                    PrivacyText(
-                      formatMoney(displayBalance, state.preferences.locale),
-                      style: textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    if (!largeText) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      balance,
+                    ],
                   ],
                 ),
                 if (dueStatus != null) ...[

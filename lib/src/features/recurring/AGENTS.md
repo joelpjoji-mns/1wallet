@@ -22,6 +22,9 @@ Manages scheduled and recurring financial rules (`FutureGenerationRule`), such a
    - Posting a recurring occurrence creates a concrete `TransactionRecord` with `recurringRuleId` linked, updating the rule's `occurrences` count and next due date.
 3. **Skipped Occurrences**:
    - Skipping an occurrence must store the skipped date in `skippedOccurrences` without altering other future schedule dates.
+4. **Payment Summary**:
+   - Planned details aggregate actual posted/cleared history with `recurringPlanPaymentSummary`, excluding skipped and unpaid records. Original currencies remain separate rather than being added or converted at current rates.
+   - Count-limited plans show occurrence progress, while ongoing/date-ended plans show totals without a guessed monetary ceiling. Loan-backed plans retain their existing principal/payoff progress.
 
 ---
 

@@ -581,11 +581,9 @@ void main() {
           '/login',
         ], destination: StartupDestination.login);
         final offline = find.byKey(LoginScreen.offlineButtonKey);
-        await tester.scrollUntilVisible(
-          offline,
-          100,
-          scrollable: find.byType(Scrollable).first,
-        );
+        await tester.ensureVisible(offline);
+        await _settle(tester);
+        expect(offline.hitTestable(), findsOneWidget);
         await tester.tap(offline);
         await _settle(tester);
         expect(find.text('Use 1Wallet offline'), findsOneWidget);

@@ -564,27 +564,20 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             title: 'Data & Imports',
             subtitle:
                 'Queue SMS drafts, review captures, and import/export CSVs.',
-            child: Row(
+            child: AppMetricRow(
               children: [
-                Expanded(
-                  child: MetricTile(
-                    label: 'Pending review',
-                    value: '$pending',
-                    icon: Icons.fact_check_outlined,
-                    compact: true,
-                    tone: pending > 0
-                        ? MetricTone.warning
-                        : MetricTone.standard,
-                  ),
+                MetricTile(
+                  label: 'Pending review',
+                  value: '$pending',
+                  icon: Icons.fact_check_outlined,
+                  compact: true,
+                  tone: pending > 0 ? MetricTone.warning : MetricTone.standard,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: MetricTile(
-                    label: 'Imports',
-                    value: '${state.importBatches.length}',
-                    icon: Icons.file_upload_outlined,
-                    compact: true,
-                  ),
+                MetricTile(
+                  label: 'Imports',
+                  value: '${state.importBatches.length}',
+                  icon: Icons.file_upload_outlined,
+                  compact: true,
                 ),
               ],
             ),

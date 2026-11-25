@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:g1455/g1455.dart' as g1455;
@@ -129,6 +132,8 @@ class GlassDropdownPill<T> extends ConsumerWidget {
     this.icon,
     this.semanticLabel,
     this.maxLabelWidth = 148,
+    this.compact = false,
+    this.displayLabel,
     this.onPrevious,
     this.onNext,
     super.key,
@@ -140,6 +145,8 @@ class GlassDropdownPill<T> extends ConsumerWidget {
   final IconData? icon;
   final String? semanticLabel;
   final double maxLabelWidth;
+  final bool compact;
+  final String? displayLabel;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
 
@@ -202,6 +209,63 @@ class GlassDropdownPill<T> extends ConsumerWidget {
           ),
       ],
       triggerBuilder: (context, toggleMenu) {
+        if (compact) {
+          final content = Tooltip(
+            message: semanticLabel ?? label,
+            excludeFromSemantics: true,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
+                    : scheme.surfaceContainerHigh.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.4),
+                  width: 0.5,
+                ),
+              ),
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  onTap: toggleMenu,
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.all(AppSpacing.xs),
+                    child:
+                        icon != null &&
+                            MediaQuery.textScalerOf(context).scale(12) > 18
+                        ? Icon(
+                            icon,
+                            size: 24,
+                            color: scheme.onSurface,
+                            semanticLabel: semanticLabel ?? label,
+                          )
+                        : Text(
+                            displayLabel ?? label,
+                            semanticsLabel: semanticLabel ?? label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: scheme.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          return onPrevious != null || onNext != null
+              ? _GlassDropdownPillSwipeHandler(
+                  onPrevious: onPrevious,
+                  onNext: onNext,
+                  child: content,
+                )
+              : content;
+        }
         final content = DecoratedBox(
           decoration: BoxDecoration(
             color: isDark
@@ -1238,6 +1302,39 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final hasAction = actionLabel != null && onAction != null;
+    // At large text a trailing action would squeeze the title into mid-word
+    // breaks, so it moves beneath the heading instead.
+    final stackAction =
+        hasAction && MediaQuery.textScalerOf(context).scale(14) > 20;
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+        ),
+        if (subtitle != null)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xxxs),
+            child: Text(
+              subtitle!,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+      ],
+    );
+    final action = hasAction
+        ? AppActionButton(
+            label: actionLabel!,
+            onPressed: onAction,
+            compact: true,
+          )
+        : null;
 
     final content = Material(
       color: Colors.transparent,
@@ -1246,38 +1343,18 @@ class SectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                      if (subtitle != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xxxs),
-                          child: Text(
-                            subtitle!,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (actionLabel != null && onAction != null)
-                  AppActionButton(
-                    label: actionLabel!,
-                    onPressed: onAction,
-                    compact: true,
-                  ),
-              ],
-            ),
+            if (stackAction) ...[
+              heading,
+              const SizedBox(height: AppSpacing.xs),
+              action!,
+            ] else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: heading),
+                  ?action,
+                ],
+              ),
             if (child is! SizedBox ||
                 ((child as SizedBox).height != null &&
                     (child as SizedBox).height! > 0) ||
@@ -1369,22 +1446,59 @@ class MetricTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconBubble(icon: icon, color: color, compact: true),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
+              if (compact)
+                Row(
+                  children: [
+                    Icon(icon, size: 16, color: color),
+                    const SizedBox(width: AppSpacing.xxs),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                IconBubble(icon: icon, color: color, compact: true),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              Text(
-                value,
-                maxLines: valueMaxLines,
-                overflow: valueMaxLines == null ? null : TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-              ),
+              ],
+              const SizedBox(height: AppSpacing.xxxs),
+              if (valueMaxLines == 1)
+                // Single-line values (amounts, counts) shrink to fit rather
+                // than hiding digits behind an ellipsis.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  value,
+                  maxLines: valueMaxLines,
+                  overflow: valueMaxLines == null
+                      ? null
+                      : TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                ),
             ],
           ),
         ),
@@ -1413,6 +1527,41 @@ class MetricTile extends StatelessWidget {
 }
 
 enum MetricTone { standard, positive, danger, warning }
+
+/// Lays out summary [MetricTile]s side by side with equal heights, and stacks
+/// them full-width at large text sizes so labels and amounts stay readable.
+class AppMetricRow extends StatelessWidget {
+  const AppMetricRow({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.textScalerOf(context).scale(14) > 20) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.sm),
+            children[i],
+          ],
+        ],
+      );
+    }
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(width: AppSpacing.sm),
+            Expanded(child: children[i]),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 /// The single tone -> colour mapping used by every status surface.
 extension MetricToneColors on MetricTone {
@@ -2135,6 +2284,16 @@ class InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = tone.resolve(scheme, standard: scheme.onSurface);
+    final labelText = Text(
+      label,
+      style: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+    );
+    final valueStyle = Theme.of(
+      context,
+    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: color);
+    final stack = MediaQuery.textScalerOf(context).scale(14) > 20;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
@@ -2144,26 +2303,40 @@ class InfoRow extends StatelessWidget {
             Icon(icon, size: 18, color: scheme.onSurfaceVariant),
             const SizedBox(width: AppSpacing.xs),
           ],
-          Expanded(
-            child: Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            flex: 2,
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: color,
+          if (stack)
+            // Large text: value drops beneath its label instead of forcing
+            // both into narrow columns that break words mid-way.
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  labelText,
+                  Text(value, style: valueStyle),
+                ],
+              ),
+            )
+          else
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: labelText),
+                    const SizedBox(width: AppSpacing.sm),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * 0.6,
+                      ),
+                      child: Text(
+                        value,
+                        textAlign: TextAlign.end,
+                        style: valueStyle,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -2560,6 +2733,119 @@ class AppPanel extends StatelessWidget {
   }
 }
 
+/// Compact detail-card header (planned payments, loans):
+/// line 1 the [title]; line 2 the [subtitle] with the [amount] on its right;
+/// line 3 the uppercase [meta] status. The amount only scales down (never
+/// truncates); at large text it moves below the subtitle.
+class AppDetailHeader extends StatelessWidget {
+  const AppDetailHeader({
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    super.key,
+    this.meta,
+  });
+
+  final Widget leading;
+  final String title;
+  final String subtitle;
+  final Widget amount;
+  final String? meta;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final stack = MediaQuery.textScalerOf(context).scale(14) > 20;
+    final fittedAmount = FittedBox(
+      key: const ValueKey('detail-header-amount'),
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerRight,
+      child: amount,
+    );
+    final subtitleText = Text(
+      subtitle,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: textTheme.bodyMedium?.copyWith(
+        color: muted,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    return Row(
+      children: [
+        leading,
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (stack) ...[
+                  subtitleText,
+                  fittedAmount,
+                ] else
+                  Row(
+                    children: [
+                      Expanded(child: subtitleText),
+                      const SizedBox(width: AppSpacing.sm),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: constraints.maxWidth * 0.6,
+                        ),
+                        child: fittedAmount,
+                      ),
+                    ],
+                  ),
+                if (meta != null)
+                  Text(
+                    meta!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: muted,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Determinate progress bar whose track stays visible on light, dark and
+/// glass surfaces (the glass default track is near-white, so 0% progress
+/// rendered as blank space on light panels).
+class AppProgressBar extends StatelessWidget {
+  const AppProgressBar({required this.value, super.key, this.semanticLabel});
+
+  final double value;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GlassProgressIndicator.linear(
+      value: value.clamp(0.0, 1.0),
+      color: scheme.primary,
+      backgroundColor: scheme.onSurface.withValues(alpha: 0.12),
+      semanticLabel: semanticLabel,
+    );
+  }
+}
+
 abstract final class AppButtonStyles {
   /// Full-width primary call to action (onboarding, setup, form submit).
   /// Works with any Material button; keeps the theme's stadium shape.
@@ -2607,31 +2893,170 @@ class AppActionGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = Theme.of(context).textTheme.labelLarge?.fontSize ?? 14;
-    final scale = MediaQuery.textScalerOf(context).scale(fontSize) / fontSize;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final twoColumns =
-            (constraints.maxWidth - AppSpacing.sm) / 2 >= 150 * scale;
-        final columnWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
-        return Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            for (var index = 0; index < children.length; index++)
-              SizedBox(
-                width:
-                    twoColumns &&
-                        !(children.length.isOdd && index == children.length - 1)
-                    ? columnWidth
-                    : constraints.maxWidth,
-                child: children[index],
-              ),
-          ],
-        );
-      },
+    return _ActionGrid(gap: AppSpacing.sm, children: children);
+  }
+}
+
+/// Lays actions out two per row only when every action's natural (one-line)
+/// width fits half the row; otherwise each action gets the full width so
+/// labels never wrap. Paired actions share the row's height. With an odd
+/// count, the last action spans the full row.
+class _ActionGrid extends MultiChildRenderObjectWidget {
+  const _ActionGrid({required this.gap, required super.children});
+
+  final double gap;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderActionGrid(gap);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderActionGrid renderObject,
+  ) {
+    renderObject.gap = gap;
+  }
+}
+
+class _ActionGridParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderActionGrid extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _ActionGridParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _ActionGridParentData> {
+  _RenderActionGrid(this._gap);
+
+  double _gap;
+  set gap(double value) {
+    if (value == _gap) return;
+    _gap = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _ActionGridParentData) {
+      child.parentData = _ActionGridParentData();
+    }
+  }
+
+  List<RenderBox> get _children {
+    final result = <RenderBox>[];
+    var child = firstChild;
+    while (child != null) {
+      result.add(child);
+      child = childAfter(child);
+    }
+    return result;
+  }
+
+  bool _twoColumns(double width) {
+    final children = _children;
+    if (children.length < 2 || !width.isFinite) return false;
+    final column = (width - _gap) / 2;
+    return children.every(
+      (child) => child.getMaxIntrinsicWidth(double.infinity) <= column,
     );
   }
+
+  List<List<RenderBox>> _rows(bool twoColumns) {
+    final children = _children;
+    if (!twoColumns) {
+      return [
+        for (final child in children) [child],
+      ];
+    }
+    final rows = <List<RenderBox>>[];
+    for (var i = 0; i < children.length; i += 2) {
+      final isLastOdd = children.length.isOdd && i == children.length - 1;
+      rows.add(isLastOdd ? [children[i]] : [children[i], children[i + 1]]);
+    }
+    return rows;
+  }
+
+  Size _layout(BoxConstraints constraints, {required bool dry}) {
+    final width = constraints.maxWidth.isFinite
+        ? constraints.maxWidth
+        : _children.fold<double>(
+            0,
+            (max, child) =>
+                math.max(max, child.getMaxIntrinsicWidth(double.infinity)),
+          );
+    final rows = _rows(_twoColumns(width));
+    final column = (width - _gap) / 2;
+    var y = 0.0;
+    for (var r = 0; r < rows.length; r++) {
+      final row = rows[r];
+      final slot = row.length == 2 ? column : width;
+      var height = 0.0;
+      for (final child in row) {
+        final loose = BoxConstraints.tightFor(width: slot);
+        height = math.max(
+          height,
+          dry ? child.getDryLayout(loose).height : _measure(child, loose),
+        );
+      }
+      if (!dry) {
+        for (var c = 0; c < row.length; c++) {
+          final child = row[c];
+          child.layout(
+            BoxConstraints.tightFor(width: slot, height: height),
+            parentUsesSize: true,
+          );
+          (child.parentData! as _ActionGridParentData).offset = Offset(
+            c * (column + _gap),
+            y,
+          );
+        }
+      }
+      y += height;
+      if (r < rows.length - 1) y += _gap;
+    }
+    return constraints.constrain(Size(width, y));
+  }
+
+  double _measure(RenderBox child, BoxConstraints constraints) {
+    child.layout(constraints, parentUsesSize: true);
+    return child.size.height;
+  }
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      _layout(constraints, dry: true);
+
+  @override
+  void performLayout() {
+    size = _layout(constraints, dry: false);
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _children.fold<double>(
+    0,
+    (max, child) => math.max(max, child.getMinIntrinsicWidth(height)),
+  );
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => _children.fold<double>(
+    0,
+    (max, child) => math.max(max, child.getMaxIntrinsicWidth(height)),
+  );
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      _layout(BoxConstraints(maxWidth: width), dry: true).height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      computeMinIntrinsicHeight(width);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
 }
 
 /// Canonical confirmation dialog: title, message, a `TextButton` cancel and a

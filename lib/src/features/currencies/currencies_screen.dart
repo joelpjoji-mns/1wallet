@@ -102,27 +102,22 @@ class _CurrenciesScreenState extends ConsumerState<CurrenciesScreen> {
                 'Totals and approximate secondary values use this currency.',
             actionLabel: 'Change',
             onAction: () => _chooseDisplayCurrency(context, ref, state),
-            child: Row(
+            child: AppMetricRow(
               children: [
-                Expanded(
-                  child: MetricTile(
-                    label: 'Current',
-                    value: state.preferences.displayCurrency,
-                    icon: Icons.currency_exchange_outlined,
-                    compact: true,
-                  ),
+                MetricTile(
+                  label: 'Current',
+                  value: state.preferences.displayCurrency,
+                  icon: Icons.currency_exchange_outlined,
+                  compact: true,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: MetricTile(
-                    label: 'Total',
-                    value: maskMoneyIfPrivate(
-                      state,
-                      formatMoney(total, state.preferences.locale),
-                    ),
-                    icon: Icons.account_balance_wallet_outlined,
-                    compact: true,
+                MetricTile(
+                  label: 'Total',
+                  value: maskMoneyIfPrivate(
+                    state,
+                    formatMoney(total, state.preferences.locale),
                   ),
+                  icon: Icons.account_balance_wallet_outlined,
+                  compact: true,
                 ),
               ],
             ),

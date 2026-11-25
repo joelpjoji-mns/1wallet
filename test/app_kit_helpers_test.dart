@@ -1,6 +1,7 @@
 import 'dart:ui' show SemanticsAction, Tristate;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
@@ -45,6 +46,182 @@ void main() {
     expect(last.right, second.right);
     await tester.tap(buttons.last);
     expect(selected, 2);
+  });
+
+  testWidgets('action groups go single-column instead of wrapping labels', (
+    tester,
+  ) async {
+    Future<List<Rect>> pumpAt(double width) async {
+      await tester.pumpWidget(
+        _host(
+          Center(
+            child: SizedBox(
+              width: width,
+              child: AppActionGroup(
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Custom payment'),
+                  ),
+                  OutlinedButton(onPressed: () {}, child: const Text('Plan')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      return [
+        tester.getRect(find.byType(FilledButton)),
+        tester.getRect(find.byType(OutlinedButton)),
+      ];
+    }
+
+    final narrow = await pumpAt(320);
+    final label = tester.renderObject<RenderParagraph>(
+      find.text('Custom payment'),
+    );
+    expect(narrow[1].top, greaterThan(narrow[0].bottom));
+    expect(narrow[0].width, 320);
+    expect(label.size.height, lessThan(28));
+
+    final wide = await pumpAt(800);
+    expect(wide[0].top, wide[1].top);
+    expect(wide[0].height, wide[1].height);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('detail header: title, then subtitle with amount, then meta', (
+    tester,
+  ) async {
+    Future<void> pumpAt(double scale) => tester.pumpWidget(
+      _host(
+        MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: Center(
+            child: SizedBox(
+              width: 328,
+              child: AppDetailHeader(
+                leading: const Icon(Icons.home, size: 40),
+                title: 'Home Loan',
+                subtitle: 'HDFC Bank',
+                meta: 'ACTIVE · LOAN ACCOUNT',
+                amount: Text(
+                  '₹2,403,500.00',
+                  style: AppTheme.light().textTheme.titleLarge,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await pumpAt(1);
+    final title = tester.getRect(find.text('Home Loan'));
+    final subtitle = tester.getRect(find.text('HDFC Bank'));
+    final meta = tester.getRect(find.text('ACTIVE · LOAN ACCOUNT'));
+    final amount = tester.getRect(
+      find.byKey(const ValueKey('detail-header-amount')),
+    );
+    expect(amount.top, greaterThanOrEqualTo(title.bottom - 0.5));
+    expect(amount.bottom, lessThanOrEqualTo(meta.top + 0.5));
+    expect(amount.left, greaterThan(subtitle.right));
+    expect(
+      amount.right,
+      closeTo(tester.getRect(find.byType(AppDetailHeader)).right, 0.5),
+    );
+
+    await pumpAt(2);
+    final bigSubtitle = tester.getRect(find.text('HDFC Bank'));
+    final bigAmount = tester.getRect(
+      find.byKey(const ValueKey('detail-header-amount')),
+    );
+    expect(bigAmount.top, greaterThanOrEqualTo(bigSubtitle.bottom - 0.5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('metric rows pair tiles at equal height and stack at 2x', (
+    tester,
+  ) async {
+    Future<void> pumpAt(double scale) => tester.pumpWidget(
+      _host(
+        MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: const Center(
+            child: SizedBox(
+              width: 300,
+              child: AppMetricRow(
+                children: [
+                  MetricTile(
+                    label: 'Loans',
+                    value: '1',
+                    icon: Icons.home,
+                    compact: true,
+                  ),
+                  MetricTile(
+                    label: 'EMI',
+                    value: '46,500.00',
+                    icon: Icons.event,
+                    compact: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await pumpAt(1);
+    var tiles = tester.widgetList(find.byType(MetricTile)).toList();
+    var a = tester.getRect(find.byWidget(tiles[0]));
+    var b = tester.getRect(find.byWidget(tiles[1]));
+    expect(a.top, closeTo(b.top, 0.5));
+    expect(a.height, closeTo(b.height, 0.5));
+    expect(b.left, greaterThan(a.right));
+
+    await pumpAt(2);
+    tiles = tester.widgetList(find.byType(MetricTile)).toList();
+    a = tester.getRect(find.byWidget(tiles[0]));
+    b = tester.getRect(find.byWidget(tiles[1]));
+    expect(b.top, greaterThanOrEqualTo(a.bottom));
+    expect(a.width, closeTo(300, 0.5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('section card action moves below the heading at 2x', (
+    tester,
+  ) async {
+    Future<void> pumpAt(double scale) => tester.pumpWidget(
+      _host(
+        MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: Center(
+            child: SizedBox(
+              width: 300,
+              child: SectionCard(
+                title: 'Display',
+                actionLabel: 'Go',
+                onAction: () {},
+                child: const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await pumpAt(1);
+    var title = tester.getRect(find.text('Display'));
+    var action = tester.getRect(find.byType(AppActionButton));
+    expect(action.left, greaterThan(title.right));
+
+    await pumpAt(2);
+    title = tester.getRect(find.text('Display'));
+    action = tester.getRect(find.byType(AppActionButton));
+    expect(action.top, greaterThanOrEqualTo(title.bottom));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('compact actions have one accessible 48dp tap target', (

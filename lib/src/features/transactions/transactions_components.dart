@@ -71,6 +71,7 @@ class TransactionCommandStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final hasTags = tagOptions != null && tagOptions!.length > 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -105,114 +106,145 @@ class TransactionCommandStrip extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    FilterPill(
-                      icon: Icons.filter_alt_outlined,
-                      label: typeLabel,
-                      active: typeActive,
-                      value: typeValue,
-                      options: const [
-                        GlassDropdownOption('all', 'All records'),
-                        GlassDropdownOption(
-                          'income',
-                          'Income',
-                          icon: Icons.trending_up_rounded,
-                        ),
-                        GlassDropdownOption(
-                          'expense',
-                          'Expense',
-                          icon: Icons.trending_down_rounded,
-                        ),
-                        GlassDropdownOption(
-                          'transfer',
-                          'Transfer',
-                          icon: Icons.swap_horiz_rounded,
-                        ),
-                      ],
-                      onSelected: onTypeSelected,
-                    ),
-                    FilterPill(
-                      icon: Icons.date_range_outlined,
-                      label: dateLabel,
-                      active: dateActive,
-                      value: dateValue,
-                      onPrevious: onPreviousDate,
-                      onNext: onNextDate,
-                      options: [
-                        const GlassDropdownOption('today', 'Today'),
-                        const GlassDropdownOption('this_week', 'This week'),
-                        const GlassDropdownOption('this_month', 'This month'),
-                        GlassDropdownOption(
-                          dateValue == 'last_30_days'
-                              ? 'last_30_days'
-                              : '30_days',
-                          '30 days',
-                        ),
-                        const GlassDropdownOption('6_months', '6 months'),
-                        const GlassDropdownOption('this_year', 'This year'),
-                        const GlassDropdownOption('all', 'All time'),
-                        GlassDropdownOption(
-                          dateValue.startsWith('custom:')
-                              ? dateValue
-                              : 'custom',
-                          dateValue.startsWith('custom:')
-                              ? dateLabel
-                              : 'Custom range',
-                          icon: Icons.date_range_rounded,
-                        ),
-                      ],
-                      onSelected: onDateSelected,
-                    ),
-                    FilterPill(
-                      icon: Icons.wallet_outlined,
-                      label: accountLabel,
-                      active: accountActive,
-                      onTap: onAccountTap,
-                    ),
-                    FilterPill(
-                      icon: Icons.category_outlined,
-                      label: categoryLabel,
-                      active: categoryActive,
-                      onTap: onCategoryTap,
-                    ),
-                    if (tagOptions != null && tagOptions!.length > 1)
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width =
+                        (constraints.maxWidth - 2 * AppSpacing.sm) / 3;
+                    final filters = <Widget>[
                       FilterPill(
+                        compact: true,
+                        displayLabel: typeValue == 'all' ? 'Type' : typeLabel,
+                        icon: Icons.filter_alt_outlined,
+                        label: typeLabel,
+                        active: typeActive,
+                        value: typeValue,
+                        options: const [
+                          GlassDropdownOption('all', 'All records'),
+                          GlassDropdownOption(
+                            'income',
+                            'Income',
+                            icon: Icons.trending_up_rounded,
+                          ),
+                          GlassDropdownOption(
+                            'expense',
+                            'Expense',
+                            icon: Icons.trending_down_rounded,
+                          ),
+                          GlassDropdownOption(
+                            'transfer',
+                            'Transfer',
+                            icon: Icons.swap_horiz_rounded,
+                          ),
+                        ],
+                        onSelected: onTypeSelected,
+                      ),
+                      FilterPill(
+                        compact: true,
+                        displayLabel: switch (dateLabel) {
+                          'This week' => 'Week',
+                          'This month' => 'Month',
+                          'This year' => 'Year',
+                          'Custom range' => 'Custom',
+                          _ => dateLabel,
+                        },
+                        icon: Icons.date_range_outlined,
+                        label: dateLabel,
+                        active: dateActive,
+                        value: dateValue,
+                        onPrevious: onPreviousDate,
+                        onNext: onNextDate,
+                        options: [
+                          const GlassDropdownOption('today', 'Today'),
+                          const GlassDropdownOption('this_week', 'This week'),
+                          const GlassDropdownOption('this_month', 'This month'),
+                          GlassDropdownOption(
+                            dateValue == 'last_30_days'
+                                ? 'last_30_days'
+                                : '30_days',
+                            '30 days',
+                          ),
+                          const GlassDropdownOption('6_months', '6 months'),
+                          const GlassDropdownOption('this_year', 'This year'),
+                          const GlassDropdownOption('all', 'All time'),
+                          GlassDropdownOption(
+                            dateValue.startsWith('custom:')
+                                ? dateValue
+                                : 'custom',
+                            dateValue.startsWith('custom:')
+                                ? dateLabel
+                                : 'Custom range',
+                            icon: Icons.date_range_rounded,
+                          ),
+                        ],
+                        onSelected: onDateSelected,
+                      ),
+                      FilterPill(
+                        compact: true,
+                        displayLabel: accountActive ? accountLabel : 'Account',
+                        icon: Icons.wallet_outlined,
+                        label: accountLabel,
+                        active: accountActive,
+                        onTap: onAccountTap,
+                      ),
+                      FilterPill(
+                        compact: true,
+                        displayLabel: categoryActive
+                            ? categoryLabel
+                            : 'Category',
+                        icon: Icons.category_outlined,
+                        label: categoryLabel,
+                        active: categoryActive,
+                        onTap: onCategoryTap,
+                      ),
+                      FilterPill(
+                        compact: true,
+                        displayLabel: tagActive ? tagLabel : 'Tags',
                         icon: Icons.label_outline_rounded,
-                        label: tagLabel,
+                        label: hasTags || tagActive ? tagLabel : 'No tags yet',
                         active: tagActive,
                         value: tagValue,
                         options: tagOptions,
-                        onSelected: onTagSelected,
+                        onSelected: hasTags ? onTagSelected : null,
                       ),
-                    FilterPill(
-                      icon: Icons.info_outline_rounded,
-                      label: statusLabel,
-                      active: statusActive,
-                      value: statusValue,
-                      options: const [
-                        GlassDropdownOption('all', 'All statuses'),
-                        GlassDropdownOption(
-                          'cleared',
-                          'Cleared',
-                          icon: Icons.check_circle_outline_rounded,
-                        ),
-                        GlassDropdownOption(
-                          'pending',
-                          'Pending',
-                          icon: Icons.hourglass_empty_rounded,
-                        ),
-                        GlassDropdownOption(
-                          'void',
-                          'Skipped / Void',
-                          icon: Icons.block_rounded,
-                        ),
+                      FilterPill(
+                        compact: true,
+                        displayLabel: statusValue == 'all'
+                            ? 'Status'
+                            : statusLabel,
+                        icon: Icons.info_outline_rounded,
+                        label: statusLabel,
+                        active: statusActive,
+                        value: statusValue,
+                        options: const [
+                          GlassDropdownOption('all', 'All statuses'),
+                          GlassDropdownOption(
+                            'cleared',
+                            'Cleared',
+                            icon: Icons.check_circle_outline_rounded,
+                          ),
+                          GlassDropdownOption(
+                            'pending',
+                            'Pending',
+                            icon: Icons.hourglass_empty_rounded,
+                          ),
+                          GlassDropdownOption(
+                            'void',
+                            'Skipped / Void',
+                            icon: Icons.block_rounded,
+                          ),
+                        ],
+                        onSelected: onStatusSelected,
+                      ),
+                    ];
+                    return Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        for (final filter in filters)
+                          SizedBox(width: width, child: filter),
                       ],
-                      onSelected: onStatusSelected,
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -272,6 +304,8 @@ class FilterPill extends StatelessWidget {
     this.onSelected,
     this.onPrevious,
     this.onNext,
+    this.compact = false,
+    this.displayLabel,
     super.key,
   });
 
@@ -284,6 +318,8 @@ class FilterPill extends StatelessWidget {
   final ValueChanged<String>? onSelected;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
+  final bool compact;
+  final String? displayLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +335,8 @@ class FilterPill extends StatelessWidget {
         semanticLabel: label,
         onPrevious: onPrevious,
         onNext: onNext,
+        compact: compact,
+        displayLabel: displayLabel,
       );
     }
 
@@ -309,12 +347,17 @@ class FilterPill extends StatelessWidget {
         : (isDark
               ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
               : scheme.surfaceContainerHigh.withValues(alpha: 0.85));
-    final fg = active ? scheme.primary : scheme.onSurface;
+    final enabled = onTap != null;
+    final fg = compact && !enabled
+        ? scheme.onSurface.withValues(alpha: 0.38)
+        : active
+        ? scheme.primary
+        : scheme.onSurface;
     final borderColor = active
         ? scheme.primary.withValues(alpha: isDark ? 0.35 : 0.25)
         : scheme.outlineVariant.withValues(alpha: 0.4);
 
-    return DecoratedBox(
+    final content = DecoratedBox(
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -325,35 +368,59 @@ class FilterPill extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.pill),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
+          child: Container(
+            constraints: compact ? const BoxConstraints(minHeight: 48) : null,
+            alignment: compact ? Alignment.center : null,
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? AppSpacing.xs : AppSpacing.sm,
               vertical: AppSpacing.xs,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 15, color: scheme.primary),
-                const SizedBox(width: AppSpacing.xxs),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w700,
-                    ),
+            child: compact
+                ? MediaQuery.textScalerOf(context).scale(12) > 18
+                      ? Icon(icon, size: 24, color: fg, semanticLabel: label)
+                      : Text(
+                          displayLabel ?? label,
+                          semanticsLabel: label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: fg,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 15, color: scheme.primary),
+                      const SizedBox(width: AppSpacing.xxs),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: fg,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xxxs),
+                      Icon(Icons.expand_more_rounded, size: 17, color: fg),
+                    ],
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xxxs),
-                Icon(Icons.expand_more_rounded, size: 17, color: fg),
-              ],
-            ),
           ),
         ),
       ),
     );
+    return compact
+        ? Tooltip(
+            message: label,
+            excludeFromSemantics: true,
+            child: Semantics(button: true, enabled: enabled, child: content),
+          )
+        : content;
   }
 }
 

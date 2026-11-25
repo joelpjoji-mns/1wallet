@@ -100,7 +100,7 @@ void main() {
           matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
         ),
       );
-      final custom = action('Custom payment');
+      final custom = action('Custom');
       final plan = action('View plan');
       final edit = action('Edit details');
       final forecast = action('Forecast');
@@ -137,11 +137,12 @@ void main() {
             matching: find.byType(PrivacyText),
           )
           .first;
-      expect(tester.widget<Text>(planTitle).maxLines, isNull);
-      expect(
-        tester.getRect(planAmount).top,
-        greaterThanOrEqualTo(tester.getRect(planTitle).bottom),
-      );
+      final planTitleText = tester.widget<Text>(planTitle);
+      expect(planTitleText.maxLines, 2);
+      final titleRect = tester.getRect(planTitle);
+      final amountRect = tester.getRect(planAmount);
+      // Line 1 is the title; the amount sits on line 2 beneath it.
+      expect(amountRect.top, greaterThanOrEqualTo(titleRect.bottom - 0.5));
       final accountName = find
           .descendant(
             of: find.byType(RecurringDetailView),

@@ -249,33 +249,44 @@ class _AppLockGateState extends ConsumerState<AppLockGate>
     if (!lock.locked && !(_obscured && lock.enabled)) return widget.child;
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.lock_outline_rounded, size: 48),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                '1Wallet is locked',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              if (lock.message != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(lock.message!, textAlign: TextAlign.center),
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            primary: false,
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline_rounded, size: 48),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  '1Wallet is locked',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                if (lock.message != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(lock.message!, textAlign: TextAlign.center),
+                ],
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: lock.busy
+                      ? null
+                      : () => ref.read(appLockProvider.notifier).retryUnlock(),
+                  icon: lock.busy
+                      ? const AppInlineSpinner(size: 18)
+                      : const Icon(Icons.fingerprint_rounded),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      lock.busy ? 'Authenticating…' : 'Unlock',
+                      maxLines: 1,
+                    ),
+                  ),
+                ),
               ],
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton.icon(
-                onPressed: lock.busy
-                    ? null
-                    : () => ref.read(appLockProvider.notifier).retryUnlock(),
-                icon: lock.busy
-                    ? const AppInlineSpinner(size: 18)
-                    : const Icon(Icons.fingerprint_rounded),
-                label: Text(lock.busy ? 'Authenticating…' : 'Unlock'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

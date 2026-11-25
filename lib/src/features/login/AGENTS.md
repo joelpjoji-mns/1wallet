@@ -27,6 +27,9 @@ The signed-out entry screen. Users either sign in with Google (cloud backup & sy
    - Never switch to offline mode without the acknowledgement. Never open a stored wallet that belongs to a Google account offline: show the `walletBelongsToAccount` guidance instead.
 3. **Loading & Error Feedback**:
    - Network errors and cancelled Google sign-ins present clean inline feedback without blocking the UI.
+4. **Viewport Fit**:
+   - Use `BrandPageViewport` with compact decorative spacing on shorter screens. Keep the privacy footer visible without scrolling at normal phone sizes; retain overflow scrolling for large text, landscape, or long errors rather than clipping content or disabling text scaling.
+   - Preserve the full welcome branding on standard-height phones. Distribute spare height before the sign-in card and footer instead of concentrating it below the entry actions.
 
 ---
 

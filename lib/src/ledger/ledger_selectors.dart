@@ -87,6 +87,57 @@ List<TransactionRecord> sortedTransactions(
   return items;
 }
 
+List<TransactionRecord> recurringPlanHistory(
+  LedgerState state,
+  TransactionRecord plan,
+) {
+  return sortedTransactions(state).where((transaction) {
+    if (transaction.id == plan.id ||
+        transaction.status == 'scheduled' ||
+        transaction.status == 'finished') {
+      return false;
+    }
+    if (transaction.originalTransactionId == plan.id) return true;
+    if (plan.type == 'loan_repayment' &&
+        (transaction.type == 'loan_repayment' ||
+            transaction.type == 'transfer')) {
+      return plan.counterAccountId != null &&
+          (transaction.counterAccountId == plan.counterAccountId ||
+              transaction.accountId == plan.counterAccountId);
+    }
+    return false;
+  }).toList();
+}
+
+({int paymentCount, List<Money> totals}) recurringPlanPaymentSummary(
+  LedgerState state,
+  TransactionRecord plan,
+) {
+  var paymentCount = 0;
+  final totals = <String, int>{};
+  for (final transaction in recurringPlanHistory(state, plan)) {
+    if (transaction.status != 'posted' && transaction.status != 'cleared') {
+      continue;
+    }
+    paymentCount++;
+    final money = transaction.originalAmount ?? transaction.amount;
+    final currency = money.currency.toUpperCase();
+    totals[currency] = (totals[currency] ?? 0) + money.amountMinor.abs();
+  }
+  if (totals.isEmpty) {
+    final money = plan.originalAmount ?? plan.amount;
+    totals[money.currency.toUpperCase()] = 0;
+  }
+  final currencies = totals.keys.toList()..sort();
+  return (
+    paymentCount: paymentCount,
+    totals: [
+      for (final currency in currencies)
+        Money(amountMinor: totals[currency]!, currency: currency),
+    ],
+  );
+}
+
 final _accountBalanceMapExpando = Expando<Map<String, Money>>();
 
 Map<String, Money> accountBalanceMap(LedgerState state) {

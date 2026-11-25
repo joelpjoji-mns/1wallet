@@ -64,24 +64,19 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 'Parent categories are listed first, with subcategories nested below.',
             child: Column(
               children: [
-                Row(
+                AppMetricRow(
                   children: [
-                    Expanded(
-                      child: MetricTile(
-                        label: 'Categories',
-                        value: '$rootCount',
-                        icon: Icons.folder_outlined,
-                        compact: true,
-                      ),
+                    MetricTile(
+                      label: 'Categories',
+                      value: '$rootCount',
+                      icon: Icons.folder_outlined,
+                      compact: true,
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: MetricTile(
-                        label: 'Subcategories',
-                        value: '$subcategoryCount',
-                        icon: Icons.account_tree_outlined,
-                        compact: true,
-                      ),
+                    MetricTile(
+                      label: 'Subcategories',
+                      value: '$subcategoryCount',
+                      icon: Icons.account_tree_outlined,
+                      compact: true,
                     ),
                   ],
                 ),

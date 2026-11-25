@@ -86,94 +86,109 @@ void main() {
   }
 
   group('Loan, Plan & Transaction Integration', () {
-    test('Loan EMI plan reduces loan liability and advances or finishes plan', () async {
-      final bank = makeBank(balance: 500000);
-      final loan = makeLoan(principal: 100000, balance: -100000, emi: 50000, tenure: 2);
-      final plan = makeEmiPlan(emi: 50000, tenure: 2);
-      final category = makeCategory();
+    test(
+      'Loan EMI plan reduces loan liability and advances or finishes plan',
+      () async {
+        final bank = makeBank(balance: 500000);
+        final loan = makeLoan(
+          principal: 100000,
+          balance: -100000,
+          emi: 50000,
+          tenure: 2,
+        );
+        final plan = makeEmiPlan(emi: 50000, tenure: 2);
+        final category = makeCategory();
 
-      final initialLedger = emptyLedgerState().copyWith(
-        accounts: [bank, loan],
-        transactions: [plan],
-        categories: [category],
-      );
+        final initialLedger = emptyLedgerState().copyWith(
+          accounts: [bank, loan],
+          transactions: [plan],
+          categories: [category],
+        );
 
-      final container = ProviderContainer(
-        overrides: [
-          ledgerProvider.overrideWith(
-            (ref) => LedgerController(
-              StaticLedgerRepository(initialLedger),
-              initialState: initialLedger,
+        final container = ProviderContainer(
+          overrides: [
+            ledgerProvider.overrideWith(
+              (ref) => LedgerController(
+                StaticLedgerRepository(initialLedger),
+                initialState: initialLedger,
+              ),
             ),
-          ),
-        ],
-      );
+          ],
+        );
 
-      // Verify initial state
-      var state = container.read(ledgerProvider);
-      expect(accountBalance(state, bank).amountMinor, 500000);
-      expect(accountBalance(state, loan).amountMinor, -100000);
-      expect(isPastLoan(state, loan), isFalse);
+        // Verify initial state
+        var state = container.read(ledgerProvider);
+        expect(accountBalance(state, bank).amountMinor, 500000);
+        expect(accountBalance(state, loan).amountMinor, -100000);
+        expect(isPastLoan(state, loan), isFalse);
 
-      final scheduledEmi = existingLoanEmi(state, loan.id);
-      expect(scheduledEmi, isNotNull);
-      expect(scheduledEmi!.id, plan.id);
-      expect(scheduledEmi.recurrenceLimit, 2);
+        final scheduledEmi = existingLoanEmi(state, loan.id);
+        expect(scheduledEmi, isNotNull);
+        expect(scheduledEmi!.id, plan.id);
+        expect(scheduledEmi.recurrenceLimit, 2);
 
-      // Post first payment of 50000
-      await container.read(ledgerProvider.notifier).upsertTransaction(
-        type: 'loan_repayment',
-        accountId: bank.id,
-        counterAccountId: loan.id,
-        amountMinor: 50000,
-        categoryId: 'cat-emi',
-        status: 'cleared',
-        originalTransactionId: plan.id,
-        occurredAt: baseDate,
-      );
+        // Post first payment of 50000
+        await container
+            .read(ledgerProvider.notifier)
+            .upsertTransaction(
+              type: 'loan_repayment',
+              accountId: bank.id,
+              counterAccountId: loan.id,
+              amountMinor: 50000,
+              categoryId: 'cat-emi',
+              status: 'cleared',
+              originalTransactionId: plan.id,
+              occurredAt: baseDate,
+            );
 
-      // Advance scheduled transaction
-      await container.read(ledgerProvider.notifier).updateTransactionStatus(
-        plan.id,
-        'scheduled',
-        occurredAt: DateTime(2026, 7, 1),
-      );
+        // Advance scheduled transaction
+        await container
+            .read(ledgerProvider.notifier)
+            .updateTransactionStatus(
+              plan.id,
+              'scheduled',
+              occurredAt: DateTime(2026, 7, 1),
+            );
 
-      state = container.read(ledgerProvider);
-      // Bank balance reduced by 50,000 -> 450,000
-      expect(accountBalance(state, bank).amountMinor, 450000);
-      // Loan liability reduced by 50,000 -> -50,000
-      expect(accountBalance(state, loan).amountMinor, -50000);
-      expect(isPastLoan(state, loan), isFalse);
+        state = container.read(ledgerProvider);
+        // Bank balance reduced by 50,000 -> 450,000
+        expect(accountBalance(state, bank).amountMinor, 450000);
+        // Loan liability reduced by 50,000 -> -50,000
+        expect(accountBalance(state, loan).amountMinor, -50000);
+        expect(isPastLoan(state, loan), isFalse);
 
-      // Post second payment of 50000 (pays off loan)
-      await container.read(ledgerProvider.notifier).upsertTransaction(
-        type: 'loan_repayment',
-        accountId: bank.id,
-        counterAccountId: loan.id,
-        amountMinor: 50000,
-        categoryId: 'cat-emi',
-        status: 'cleared',
-        originalTransactionId: plan.id,
-        occurredAt: DateTime(2026, 7, 1),
-      );
+        // Post second payment of 50000 (pays off loan)
+        await container
+            .read(ledgerProvider.notifier)
+            .upsertTransaction(
+              type: 'loan_repayment',
+              accountId: bank.id,
+              counterAccountId: loan.id,
+              amountMinor: 50000,
+              categoryId: 'cat-emi',
+              status: 'cleared',
+              originalTransactionId: plan.id,
+              occurredAt: DateTime(2026, 7, 1),
+            );
 
-      // Plan should now finish because loan is paid off and limit reached
-      await container.read(ledgerProvider.notifier).updateTransactionStatus(
-        plan.id,
-        'finished',
-      );
+        // Plan should now finish because loan is paid off and limit reached
+        await container
+            .read(ledgerProvider.notifier)
+            .updateTransactionStatus(plan.id, 'finished');
 
-      state = container.read(ledgerProvider);
-      expect(accountBalance(state, bank).amountMinor, 400000);
-      expect(accountBalance(state, loan).amountMinor, 0);
-      expect(isPastLoan(state, loan), isTrue);
+        state = container.read(ledgerProvider);
+        expect(accountBalance(state, bank).amountMinor, 400000);
+        expect(accountBalance(state, loan).amountMinor, 0);
+        expect(isPastLoan(state, loan), isTrue);
 
-      // No scheduled EMI remains
-      expect(existingLoanEmi(state, loan.id), isNull);
-    });
+        // No scheduled EMI remains
+        expect(existingLoanEmi(state, loan.id), isNull);
+      },
+    );
 
-    testWidgets('AddRecordSelectorGrid shows Loan account for loan_repayment', (tester) async {
+    testWidgets('AddRecordSelectorGrid shows Loan account for loan_repayment', (
+      tester,
+    ) async {
       final bank = makeBank();
       final loan = makeLoan();
       final state = emptyLedgerState().copyWith(accounts: [bank, loan]);
@@ -200,25 +215,30 @@ void main() {
       expect(find.text('Category'), findsNothing);
     });
 
-    testWidgets('AddRecordTypeTabs includes Loan tab when value is loan_repayment', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: AddRecordTypeTabs(
-              value: 'loan_repayment',
-              onChanged: (_) {},
+    testWidgets(
+      'AddRecordTypeTabs includes Loan tab when value is loan_repayment',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AddRecordTypeTabs(
+                value: 'loan_repayment',
+                onChanged: (_) {},
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('Expense'), findsOneWidget);
-      expect(find.text('Income'), findsOneWidget);
-      expect(find.text('Transfer'), findsOneWidget);
-      expect(find.text('Loan'), findsOneWidget);
-    });
+        expect(find.text('Expense'), findsOneWidget);
+        expect(find.text('Income'), findsOneWidget);
+        expect(find.text('Transfer'), findsOneWidget);
+        expect(find.text('Loan'), findsOneWidget);
+      },
+    );
 
-    testWidgets('TransactionRow displays source -> loan for loan_repayment', (tester) async {
+    testWidgets('TransactionRow displays source -> loan for loan_repayment', (
+      tester,
+    ) async {
       final bank = makeBank();
       final loan = makeLoan();
       final category = makeCategory();
@@ -271,82 +291,89 @@ void main() {
       expect(find.text('Repayment to Auto Loan'), findsOneWidget);
     });
 
-    testWidgets('LoanDetailView renders Pay EMI and Custom Repayment buttons when EMI scheduled', (tester) async {
-      final bank = makeBank();
-      final loan = makeLoan(principal: 100000, balance: -100000, emi: 50000, tenure: 2);
-      final plan = makeEmiPlan(emi: 50000, tenure: 2);
-      final category = makeCategory();
+    testWidgets(
+      'LoanDetailView renders Pay EMI and Custom Repayment buttons when EMI scheduled',
+      (tester) async {
+        final bank = makeBank();
+        final loan = makeLoan(
+          principal: 100000,
+          balance: -100000,
+          emi: 50000,
+          tenure: 2,
+        );
+        final plan = makeEmiPlan(emi: 50000, tenure: 2);
+        final category = makeCategory();
 
-      final state = emptyLedgerState().copyWith(
-        accounts: [bank, loan],
-        transactions: [plan],
-        categories: [category],
-      );
+        final state = emptyLedgerState().copyWith(
+          accounts: [bank, loan],
+          transactions: [plan],
+          categories: [category],
+        );
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            ledgerProvider.overrideWith(
-              (ref) => LedgerController(
-                StaticLedgerRepository(state),
-                initialState: state,
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              ledgerProvider.overrideWith(
+                (ref) => LedgerController(
+                  StaticLedgerRepository(state),
+                  initialState: state,
+                ),
               ),
-            ),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: SingleChildScrollView(
-                child: LoanDetailView(loan: loan),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.textContaining('Pay EMI'), findsOneWidget);
-      expect(find.text('Custom payment'), findsOneWidget);
-      expect(find.text('View plan'), findsOneWidget);
-    });
-
-    testWidgets('LoanDetailView renders Record repayment when no EMI is scheduled', (tester) async {
-      final bank = makeBank();
-      final loan = Account(
-        id: 'acc-loan-no-emi',
-        name: 'Personal Loan',
-        type: 'loan',
-        currency: 'USD',
-        openingBalance: const Money(amountMinor: -50000, currency: 'USD'),
-      );
-      final category = makeCategory();
-
-      final state = emptyLedgerState().copyWith(
-        accounts: [bank, loan],
-        transactions: const [],
-        categories: [category],
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            ledgerProvider.overrideWith(
-              (ref) => LedgerController(
-                StaticLedgerRepository(state),
-                initialState: state,
-              ),
-            ),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: SingleChildScrollView(
-                child: LoanDetailView(loan: loan),
+            ],
+            child: MaterialApp(
+              home: Scaffold(
+                body: SingleChildScrollView(child: LoanDetailView(loan: loan)),
               ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('Record repayment'), findsOneWidget);
-      expect(find.text('Not scheduled'), findsOneWidget);
-    });
+        expect(find.textContaining('Pay EMI'), findsOneWidget);
+        expect(find.text('Custom'), findsOneWidget);
+        expect(find.text('View plan'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'LoanDetailView renders Record repayment when no EMI is scheduled',
+      (tester) async {
+        final bank = makeBank();
+        final loan = Account(
+          id: 'acc-loan-no-emi',
+          name: 'Personal Loan',
+          type: 'loan',
+          currency: 'USD',
+          openingBalance: const Money(amountMinor: -50000, currency: 'USD'),
+        );
+        final category = makeCategory();
+
+        final state = emptyLedgerState().copyWith(
+          accounts: [bank, loan],
+          transactions: const [],
+          categories: [category],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              ledgerProvider.overrideWith(
+                (ref) => LedgerController(
+                  StaticLedgerRepository(state),
+                  initialState: state,
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              home: Scaffold(
+                body: SingleChildScrollView(child: LoanDetailView(loan: loan)),
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('Record repayment'), findsOneWidget);
+        expect(find.text('Not scheduled'), findsOneWidget);
+      },
+    );
   });
 }

@@ -94,43 +94,38 @@ class LoansScreen extends ConsumerWidget {
               child: SectionCard(
                 title: 'Loan control center',
                 subtitle: 'Loan count and next scheduled EMI.',
-                child: Row(
+                child: AppMetricRow(
                   children: [
-                    Expanded(
-                      child: MetricTile(
-                        label: mode == 'past' ? 'Past loans' : 'Loans',
-                        value: '${listedLoans.length}',
-                        icon: Icons.account_balance_outlined,
-                        compact: true,
-                        tone: mode == 'past'
-                            ? MetricTone.standard
-                            : MetricTone.warning,
-                      ),
+                    MetricTile(
+                      label: mode == 'past' ? 'Past loans' : 'Loans',
+                      value: '${listedLoans.length}',
+                      icon: Icons.account_balance_outlined,
+                      compact: true,
+                      tone: mode == 'past'
+                          ? MetricTone.standard
+                          : MetricTone.warning,
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: MetricTile(
-                        label: mode == 'past' ? 'Archived' : 'Total EMI',
-                        value: mode == 'past'
-                            ? '${pastLoans.length}'
-                            : maskMoneyIfPrivate(
-                                state,
-                                formatMoney(
-                                  Money(
-                                    amountMinor: emi,
-                                    currency: displayCurrency,
-                                  ),
-                                  state.preferences.locale,
+                    MetricTile(
+                      label: mode == 'past' ? 'Archived' : 'Total EMI',
+                      value: mode == 'past'
+                          ? '${pastLoans.length}'
+                          : maskMoneyIfPrivate(
+                              state,
+                              formatMoney(
+                                Money(
+                                  amountMinor: emi,
+                                  currency: displayCurrency,
                                 ),
+                                state.preferences.locale,
                               ),
-                        icon: mode == 'past'
-                            ? Icons.archive_outlined
-                            : Icons.event_repeat_outlined,
-                        compact: true,
-                        tone: mode == 'past'
-                            ? MetricTone.warning
-                            : MetricTone.danger,
-                      ),
+                            ),
+                      icon: mode == 'past'
+                          ? Icons.archive_outlined
+                          : Icons.event_repeat_outlined,
+                      compact: true,
+                      tone: mode == 'past'
+                          ? MetricTone.warning
+                          : MetricTone.danger,
                     ),
                   ],
                 ),
@@ -872,6 +867,7 @@ class LoanDetailView extends ConsumerWidget {
     final projection = loanProjection(state, loan);
     final repaymentHistory = _loanHistoryRepayments(state, loan.id);
     final isAmoled = AppSurfaces.isAmoled(context);
+    final stackLarge = MediaQuery.textScalerOf(context).scale(14) > 20;
     final cardBody = Material(
       color: Colors.transparent,
       child: Padding(
@@ -879,51 +875,31 @@ class LoanDetailView extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                IconBubble(
-                  icon: Icons.account_balance_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                  compact: true,
+            AppDetailHeader(
+              leading: IconBubble(
+                icon: Icons.account_balance_rounded,
+                color: Theme.of(context).colorScheme.primary,
+                compact: true,
+              ),
+              title: loan.name,
+              subtitle: loan.institution?.trim().isNotEmpty == true
+                  ? loan.institution!.trim()
+                  : 'Outstanding',
+              meta:
+                  '${isPastLoan(state, loan) ? 'PAID OFF' : 'ACTIVE'} · ${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
+              amount: PrivacyText(
+                formatMoney(
+                  balance.copyWith(amountMinor: balance.amountMinor.abs()),
+                  state.preferences.locale,
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        loan.name,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: AppSpacing.xxxs),
-                      Text(
-                        '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Flexible(
-                  child: PrivacyText(
-                    formatMoney(
-                      balance.copyWith(amountMinor: balance.amountMinor.abs()),
-                      state.preferences.locale,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
+                maxLines: 1,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
             ),
             if (details.principal != null) ...[
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               Builder(
                 builder: (context) {
                   final principal = details.principal!.amountMinor.abs();
@@ -934,48 +910,51 @@ class LoanDetailView extends ConsumerWidget {
                   final progress = principal > 0
                       ? (paid / principal).clamp(0.0, 1.0)
                       : 0.0;
+                  final paidText = PrivacyText(
+                    'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  );
+                  final leftText = projection.monthsRemaining == null
+                      ? null
+                      : Text(
+                          '${projection.monthsRemaining} mos left',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: stackLarge
+                              ? TextAlign.start
+                              : TextAlign.end,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        );
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: PrivacyText(
-                              'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                          if (projection.monthsRemaining != null) ...[
-                            const SizedBox(width: AppSpacing.sm),
-                            Flexible(
-                              child: Text(
-                                '${projection.monthsRemaining} mos left',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.end,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ),
+                      if (stackLarge) ...[
+                        paidText,
+                        ?leftText,
+                      ] else
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(child: paidText),
+                            if (leftText != null) ...[
+                              const SizedBox(width: AppSpacing.sm),
+                              Flexible(child: leftText),
+                            ],
                           ],
-                        ],
-                      ),
+                        ),
                       const SizedBox(height: AppSpacing.xs),
-                      GlassProgressIndicator.linear(value: progress),
+                      AppProgressBar(value: progress),
                     ],
                   );
                 },
@@ -1011,62 +990,49 @@ class LoanDetailView extends ConsumerWidget {
         const Gap(AppSpacing.lg),
 
         // Metadata Grid
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: MetricTile(
-                  label: 'Next EMI',
-                  value: _nextEmiLabel(
-                    state,
-                    details,
-                    nextEmi,
-                    isPaidOff: isPastLoan(state, loan),
-                  ),
-                  valueMaxLines: null,
-                  icon: Icons.event_repeat_rounded,
-                  tone: projection.monthlyEmi <= 0
-                      ? MetricTone.warning
-                      : MetricTone.danger,
-                  onTap: nextEmi == null
-                      ? null
-                      : () => context.push('/recurring/${nextEmi.id}'),
-                ),
+        _LoanMetricGrid(
+          stack: stackLarge,
+          tiles: [
+            MetricTile(
+              label: 'Next EMI',
+              value: _nextEmiLabel(
+                state,
+                details,
+                nextEmi,
+                isPaidOff: isPastLoan(state, loan),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: MetricTile(
-                  label: 'Est. Payoff',
-                  value: projection.payoffLabel,
-                  valueMaxLines: null,
-                  icon: Icons.timeline_rounded,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: MetricTile(
-                label: 'Interest Rate',
-                value: details.interestRatePercent != null
-                    ? '${_formatOptionalDecimal(details.interestRatePercent)}% p.a.'
-                    : 'N/A',
-                icon: Icons.percent_rounded,
-              ),
+              valueMaxLines: null,
+              icon: Icons.event_repeat_rounded,
+              compact: true,
+              tone: projection.monthlyEmi <= 0
+                  ? MetricTone.warning
+                  : MetricTone.danger,
+              onTap: nextEmi == null
+                  ? null
+                  : () => context.push('/recurring/${nextEmi.id}'),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: MetricTile(
-                label: 'Tenure',
-                value: details.repaymentCount != null
-                    ? '${details.repaymentCount} mo'
-                    : 'N/A',
-                icon: Icons.timelapse_rounded,
-              ),
+            MetricTile(
+              label: 'Est. Payoff',
+              value: projection.payoffLabel,
+              valueMaxLines: null,
+              icon: Icons.timeline_rounded,
+              compact: true,
+            ),
+            MetricTile(
+              label: 'Interest Rate',
+              value: details.interestRatePercent != null
+                  ? '${_formatOptionalDecimal(details.interestRatePercent)}% p.a.'
+                  : 'N/A',
+              icon: Icons.percent_rounded,
+              compact: true,
+            ),
+            MetricTile(
+              label: 'Tenure',
+              value: details.repaymentCount != null
+                  ? '${details.repaymentCount} mo'
+                  : 'N/A',
+              icon: Icons.timelapse_rounded,
+              compact: true,
             ),
           ],
         ),
@@ -1102,7 +1068,7 @@ class LoanDetailView extends ConsumerWidget {
                 ),
                 icon: const Icon(Icons.add_rounded),
                 label: const Text(
-                  'Custom payment',
+                  'Custom',
                   semanticsLabel: 'Custom loan repayment',
                 ),
               ),
@@ -1430,7 +1396,7 @@ class _LoanCompactCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    GlassProgressIndicator.linear(value: progress),
+                    AppProgressBar(value: progress),
                   ],
                 );
               },
@@ -3396,3 +3362,39 @@ int _amountMinorFromInput(String value, String currency) {
 
 void _showRouteMessage(BuildContext context, String message) =>
     showAppSnackBar(context, message);
+
+/// Loan metrics in equal-height pairs; one tile per row at large text so
+/// values wrap at word boundaries instead of mid-word.
+class _LoanMetricGrid extends StatelessWidget {
+  const _LoanMetricGrid({required this.tiles, required this.stack});
+
+  final List<Widget> tiles;
+  final bool stack;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    final step = stack ? 1 : 2;
+    for (var i = 0; i < tiles.length; i += step) {
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: AppSpacing.sm));
+      rows.add(
+        stack || i + 1 >= tiles.length
+            ? tiles[i]
+            : IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: tiles[i]),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(child: tiles[i + 1]),
+                  ],
+                ),
+              ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
+    );
+  }
+}

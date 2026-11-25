@@ -330,18 +330,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       active: _accountFilter != null,
                       onTap: () => _showAccountFilter(state),
                     );
-                    final textScale =
-                        MediaQuery.textScalerOf(context).scale(14) / 14;
-                    if (constraints.maxWidth < 440 * textScale) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          categoryCard,
-                          const SizedBox(height: AppSpacing.sm),
-                          accountCard,
-                        ],
-                      );
-                    }
                     return Row(
                       children: [
                         Expanded(child: categoryCard),
@@ -903,68 +891,84 @@ class _CalendarFilterCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    return AppPanel(
-      glass: false,
-      color: isDark ? scheme.surfaceContainer : Colors.white,
-      padding: EdgeInsets.zero,
-      onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 76),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: active
-              ? scheme.primaryContainer.withValues(alpha: isDark ? 0.25 : 0.40)
-              : (isDark ? scheme.surfaceContainer : scheme.surface),
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: active
-                ? scheme.primary
-                : (isDark
-                      ? scheme.outlineVariant.withValues(alpha: 0.5)
-                      : scheme.outlineVariant),
-            width: active ? 1.5 : 1.0,
+    final largeText = MediaQuery.textScalerOf(context).scale(12) > 18;
+    return Tooltip(
+      message: '$subtitle: $value',
+      excludeFromSemantics: true,
+      child: AppPanel(
+        glass: false,
+        color: isDark ? scheme.surfaceContainer : Colors.white,
+        padding: EdgeInsets.zero,
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
           ),
-        ),
-        child: Row(
-          children: [
-            IconBubble(
-              icon: icon,
-              compact: true,
-              color: active ? scheme.primary : scheme.onSurfaceVariant,
+          decoration: BoxDecoration(
+            color: active
+                ? scheme.primaryContainer.withValues(
+                    alpha: isDark ? 0.25 : 0.40,
+                  )
+                : (isDark ? scheme.surfaceContainer : scheme.surface),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(
+              color: active
+                  ? scheme.primary
+                  : (isDark
+                        ? scheme.outlineVariant.withValues(alpha: 0.5)
+                        : scheme.outlineVariant),
+              width: active ? 1.5 : 1.0,
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                  Icon(
+                    icon,
+                    size: 18,
+                    color: active ? scheme.primary : scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
+                  Expanded(
+                    child: Text(
+                      largeText
+                          ? (title == 'Category' ? 'Cat.' : 'Acct.')
+                          : title,
+                      semanticsLabel: title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                  Text(
-                    value,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ],
               ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-          ],
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                largeText &&
+                        (value == 'All categories' || value == 'All accounts')
+                    ? 'All'
+                    : value,
+                semanticsLabel: value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

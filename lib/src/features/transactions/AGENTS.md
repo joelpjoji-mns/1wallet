@@ -26,6 +26,8 @@ Core transaction flow: adding income, expenses, and account transfers; viewing t
    - Transfers require both `accountId` (source) and `counterAccountId` (destination). If different currencies are involved, the destination amount is stored in the record's transfer fields.
 3. **Optimized Scrolling**:
    - `TransactionRow` widgets must avoid expensive repaints during rapid list scrolling.
+4. **History Filter Layout**:
+   - Keep six filter positions in three equal columns. Tags remains visibly disabled when no tags are available. Large-text compact triggers use icons with full names/tooltips; date stepping stays beside search and date-pill swipe navigation remains available.
 
 ---
 

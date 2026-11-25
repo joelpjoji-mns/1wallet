@@ -1,6 +1,6 @@
-- Google Play in-app updates: check and update inline directly inside the app
-- Loan management: dedicated Pay EMI and custom repayment actions in Loan details
-- Fixed loan repayment account selector to display loan accounts and balances
-- Resolved double-counting of finished scheduled plan templates in ledger
-- Fixed EMI plan recurrence limit loop and repayment history tracking
-- Reinforced double-entry ledger integrity for all loan operations
+- Planned payments show how much was spent or paid so far
+- Offline wallets can sign out from Settings
+- Compact planned and loan detail headers and summaries
+- History filters in three columns; cleaner search bar
+- Fixed login, onboarding and layouts at large text sizes
+- Clear glass is now the default finish

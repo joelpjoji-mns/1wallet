@@ -144,24 +144,19 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             title: 'Ledger snapshot',
             subtitle:
                 'Export a checksum-protected local archive or restore one from a file.',
-            child: Row(
+            child: AppMetricRow(
               children: [
-                Expanded(
-                  child: MetricTile(
-                    label: 'Accounts',
-                    value: '${state.accounts.length}',
-                    icon: Icons.account_balance_wallet_outlined,
-                    compact: true,
-                  ),
+                MetricTile(
+                  label: 'Accounts',
+                  value: '${state.accounts.length}',
+                  icon: Icons.account_balance_wallet_outlined,
+                  compact: true,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: MetricTile(
-                    label: 'Records',
-                    value: '${state.transactions.length}',
-                    icon: Icons.receipt_long_outlined,
-                    compact: true,
-                  ),
+                MetricTile(
+                  label: 'Records',
+                  value: '${state.transactions.length}',
+                  icon: Icons.receipt_long_outlined,
+                  compact: true,
                 ),
               ],
             ),
@@ -257,10 +252,7 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             child: FilledButton.tonalIcon(
               onPressed: _busy ? null : _pickAndRestoreArchive,
               icon: const Icon(Icons.restore_outlined),
-              label: const Text(
-                'Restore',
-                semanticsLabel: 'Restore from file',
-              ),
+              label: const Text('Restore', semanticsLabel: 'Restore from file'),
             ),
           ),
           if (_status != null) ...[

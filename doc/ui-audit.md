@@ -8,6 +8,61 @@ platform, and backend failure has been manually verified. The historical normali
 inventory below is retained separately and must not be interpreted as current native
 device coverage.
 
+### Login and filter layout correction
+
+The first fixed-login layout compacted standard phones too aggressively and left
+too much empty space below the actions. Standard phones now retain full welcome
+branding, with spare height distributed before the action card and footer.
+Short screens retain compact branding and genuine overflow keeps its scroll fallback.
+
+History uses six equal filter positions in three columns. Tags is disabled when
+there are no tags; date previous/next actions remain beside search and the date
+pill retains swipe navigation. At enlarged text sizes, compact triggers use
+icons with full accessible names/tooltips instead of heavily truncated labels.
+Calendar's category/account cards stay side by side, with concise enlarged-text
+captions and full semantic selection labels.
+
+Verification: 27 focused login/date-filter/calendar/picker tests passed, including
+three-column geometry at 320, 360, and 430 dp, 200% text, disabled Tags semantics,
+filter selection, and both Calendar pickers. Nine selected route-matrix tests
+passed across normal light/dark, compact normal/200%, and phone 200% presentations.
+Fixture screenshots and the populated emulator's History/Calendar screenshots
+were inspected. Android debug and web builds passed. Refreshed browser checks
+at 360 x 780 and 320 x 568 measured no heading movement after a 400 px wheel
+gesture and kept the complete footer visible. The Android ledger-file hash
+matched immediately across replacement installation; no sign-out, data clearing,
+or wallet edits were performed. Current app logs showed no matching framework
+overflow/unhandled-exception entries. The full suite and iOS build were not rerun
+for this correction; the existing analyzer informational finding remains.
+
+### Entry-screen viewport follow-up
+
+The welcome page previously used a scrolling list with large decorative gaps.
+It now fills the safe viewport, uses compact branding/spacing on shorter screens,
+and anchors the full "Secure / Private / Local First" footer at the bottom.
+Real-font regressions verify zero scroll extent and fully visible controls/footer
+at 320 x 568, 360 x 780, 430 x 932, and 1024 x 800 with simulated safe-area insets.
+Long errors, landscape, and 200% text retain overflow scrolling rather than
+clipping content or disabling text scaling.
+
+The same audit covered startup loading/recovery, cloud-wallet recovery, all four
+onboarding steps, permission setup, account-deletion status, and the lock gate.
+Startup progress could be pushed off-screen by a long message, and the lock gate
+reproduced a 32 dp bottom overflow in large-text landscape. Both now keep their
+content/actions reachable. Onboarding, permissions, and deletion pages do not
+overscroll when their content fits; long forms and keyboard states remain scrollable.
+
+Verification: 25 focused tests passed, followed by 73 entry-route, onboarding,
+cloud-recovery, and overlay matrix tests across the selected 13 presentation
+variants. Phone light/dark, compact normal/200% text, and startup fixture screenshots
+were inspected. This is fixture coverage, not an iOS/physical-device sign-off.
+Android debug and web builds passed. In the refreshed browser preview, a 400 px
+wheel gesture moved the welcome heading by 0 px at both 360 x 780 and 320 x 568,
+and the full privacy footer remained inside each viewport. Android replacement
+installation preserved the ledger-file hash; no sign-out or data clearing was
+performed. The full test suite was not rerun for this follow-up, and the existing
+analyzer informational finding remains.
+
 ### Button-placement follow-up
 
 The populated loan detail used uneven, left-aligned action rows. Related actions
@@ -156,6 +211,9 @@ uninstalls by default unless `--keep-app-running` is supplied.
 | Loan forecast | Currency and date labels overlapped or repeated when zoomed or enlarged; zoom controls covered the date axis | P1 | Fixed axis dimensions and tick spacing, compact rounding, endpoint ticks, and controls overlaid the chart | Measure labels, adapt precision and tick spacing to the visible range, and place 48 dp zoom controls below the chart |
 | Loan and plan actions | Forecast and other action labels wrapped on narrow phones | P1 | Equal-width action rows squeezed labels beside their icons | Allow action groups to reflow and use concise labels while retaining the related amount and accessible descriptions |
 | Review Queue | Compact actions could be crowded or wrap within uneven rows | P2 | A local `Wrap` assigned widths without considering button labels | Reuse `AppActionGroup`; it aligns the actions when possible and stacks them when needed |
+| Planned/loan detail headers | Summary boxes left empty space, the 0% progress bar was invisible, and the loan balance and "Custom payment" label truncated or wrapped | P2 | Glass progress track was 15% white; header and action rows used fixed width heuristics | `AppProgressBar` with a themed track; shared three-line `AppDetailHeader` (name · subtitle + amount · status meta); `AppActionGroup` pairs actions only when every label's intrinsic width fits; compact metric tiles in loan detail |
+| Summary metric tiles | Amounts ellipsised ("$46,500…") and labels clipped to "Lo…" at 200% text | P2 | Fixed side-by-side `Row`s of compact tiles | `AppMetricRow` pairs tiles at equal height and stacks them at large text; single-line values scale down instead of ellipsising |
+| Section headers, info rows, card tiles | Titles/labels broke mid-word at 200% ("currenc·y", "Statu·s"); card names collapsed to "A…"; "Pending upload" wrapped at 100% | P2 | Trailing actions/values took fixed shares of the row | `SectionCard` moves its action beneath the heading and `InfoRow` stacks label/value at large text; `InfoRow` values take natural width (≤60%); card balances move under the name at large text |
 | Transaction detail | A large currency amount wrapped its last digit to another line | P2 | The hero amount had no single-line fit behavior | Scale the amount down only when the available width requires it; a narrow-phone regression verifies one line |
 | History filters | A horizontally scrolling strip left filter chips clipped at the screen edge without a strong cue | P2 | All filters competed for a single horizontal row | Wrap the filters into visible rows and constrain long account labels |
 | Loan repayment history | Transaction cards were narrower than History and unnecessarily truncated the same details | P2 | Default route padding, extra section padding, and individually surfaced rows compounded the inset | Reduce row inset from 52 dp to History's 16 dp, reuse grouped rows, and retain trailing amount alignment; regression compares actual screens at 360 dp/100% and 320 dp/200% text |

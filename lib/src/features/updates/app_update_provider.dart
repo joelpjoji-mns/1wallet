@@ -180,6 +180,39 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.15',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.15',
+    versionCode: 15,
+    runtimeVersion: '1.0.15',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-25T20:30:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Planned payments show how much was spent or paid so far',
+        'Offline wallets can sign out from Settings',
+      ],
+      bugFixes: const [
+        'Compact planned and loan detail headers and summaries',
+        'History filters in three columns; cleaner search bar',
+        'Fixed login, onboarding and layouts at large text sizes',
+      ],
+      notes: const ['Clear glass is now the default finish'],
+    ),
+    apk: ApkMetadata(
+      downloadUrl: '',
+      fileName: 'app-release.apk',
+      sizeBytes: 52 * 1024 * 1024,
+      sha256: '',
+      architecture: 'universal',
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.14',
     platform: 'android',
     channel: 'stable',
@@ -442,9 +475,7 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
         'Biometric authentication and AES-256 local encryption',
       ],
       bugFixes: const [],
-      notes: const [
-        'Welcome to 1Wallet!',
-      ],
+      notes: const ['Welcome to 1Wallet!'],
     ),
     apk: ApkMetadata(
       downloadUrl: '',
@@ -1839,8 +1870,7 @@ class AppUpdateProvider extends StateNotifier<AppUpdateState> {
   }
 
   Future<void> openStoreListing() async {
-    final marketUri =
-        Uri.parse('market://details?id=com.joelpjoji.one.wallet');
+    final marketUri = Uri.parse('market://details?id=com.joelpjoji.one.wallet');
     final webUri = Uri.parse(
       'https://play.google.com/store/apps/details?id=com.joelpjoji.one.wallet',
     );

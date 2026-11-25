@@ -1,0 +1,6 @@
+- Planned payments show how much was spent or paid so far
+- Offline wallets can sign out from Settings
+- Compact planned and loan detail headers and summaries
+- History filters in three columns; cleaner search bar
+- Fixed login, onboarding and layouts at large text sizes
+- Clear glass is now the default finish

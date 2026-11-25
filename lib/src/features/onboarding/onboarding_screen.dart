@@ -278,9 +278,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       return Scaffold(
         body: LaunchBackdrop(
           child: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.xl),
+            child: BrandPageViewport(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Center(
                 child: BrandFrostedPanel(
                   borderRadius: AppRadii.xl,
                   child: Column(
@@ -434,6 +434,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildProfileStep() {
     return ListView(
+      primary: false,
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         StaggeredFadeIn(
@@ -700,6 +702,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildAccountStep() {
     return ListView(
+      primary: false,
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         StaggeredFadeIn(
@@ -833,6 +837,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildReviewAccountsStep() {
     return ListView(
+      primary: false,
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         StaggeredFadeIn(
@@ -944,6 +950,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _buildPermissionsStep() {
     return ListView(
+      primary: false,
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.xl),
       children: [
         StaggeredFadeIn(

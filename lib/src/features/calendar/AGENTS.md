@@ -18,6 +18,8 @@ Provides a calendar-based perspective on finances, visualizing past spending per
    - Date calculations must normalize to calendar days (midnight local time) to prevent timezone drift across DST transitions or cross-day shifts.
 2. **Forecast Projection Isolation**:
    - Simulated forecast transactions are ephemeral projections; they must never be saved into permanent `LedgerState.records`.
+3. **Filter Pair**:
+   - Category/account filters stay side by side in equal-width cards. Compact large-text captions retain full semantic labels and selection tooltips; do not shrink text or stack the pair just because the phone is narrow.
 
 ---
 

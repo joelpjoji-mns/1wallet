@@ -1,9 +1,13 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_codec.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/security/app_lock.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'fixtures/sample_ledger.dart';
 
 class _FakeAuthenticator implements AppAuthenticator {
@@ -25,6 +29,53 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('locked screen keeps Unlock reachable at large landscape text', (
+    tester,
+  ) async {
+    final font = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      font.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await font.load();
+    tester.view.physicalSize = const Size(568, 320);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({
+      'one_wallet.device.app_lock.enabled.v1': true,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final auth = _FakeAuthenticator()..answers.add(false);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appLockProvider.overrideWith((ref) => AppLockController(prefs, auth)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: const TextScaler.linear(2),
+              padding: const EdgeInsets.only(top: 24, bottom: 24),
+            ),
+            child: child!,
+          ),
+          home: const AppLockGate(child: Text('Private wallet contents')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Private wallet contents'), findsNothing);
+    expect(tester.takeException(), isNull);
+    final unlock = find.ancestor(
+      of: find.text('Unlock'),
+      matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+    );
+    await tester.ensureVisible(unlock);
+    await tester.pump();
+    expect(tester.getBottomLeft(unlock).dy, lessThanOrEqualTo(296));
+    expect(unlock.hitTestable(), findsOneWidget);
+  });
 
   test(
     'account visibility preferences default and sync through wallet codec',
