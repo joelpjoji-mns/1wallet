@@ -129,16 +129,27 @@ class _TransactionDetailScreenState
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  PrivacyText(
-                    formatMoney(
-                      transaction.amount.copyWith(amountMinor: signedAmount),
-                      state.preferences.locale,
-                    ),
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: amountColor(
-                        context,
-                        transaction.type == 'transfer' ? 0 : signedAmount,
+                  SizedBox(
+                    width: double.infinity,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: PrivacyText(
+                        formatMoney(
+                          transaction.amount.copyWith(
+                            amountMinor: signedAmount,
+                          ),
+                          state.preferences.locale,
+                        ),
+                        style: Theme.of(context).textTheme.displayMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: amountColor(
+                                context,
+                                transaction.type == 'transfer'
+                                    ? 0
+                                    : signedAmount,
+                              ),
+                            ),
                       ),
                     ),
                   ),

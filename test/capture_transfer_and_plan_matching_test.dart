@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/capture/review_queue_screen.dart';
 import 'package:one_wallet_flutter/src/features/transactions/add_record_screen.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'test_harness.dart';
 
@@ -420,6 +422,27 @@ A/c no. XX0655
         expect(find.text('Pay Plan'), findsOneWidget);
         expect(find.text('Confirm'), findsOneWidget);
         expect(find.byIcon(Icons.block_rounded), findsOneWidget);
+
+        final actionGroup = find.byType(AppActionGroup);
+        expect(actionGroup, findsOneWidget);
+        for (final label in ['Block', 'Pay Plan', 'Dismiss', 'Confirm']) {
+          final labelFinder = find.descendant(
+            of: actionGroup,
+            matching: find.text(label),
+          );
+          final paragraph = tester.renderObject<RenderParagraph>(labelFinder);
+          final painter = TextPainter(
+            text: paragraph.text,
+            textDirection: paragraph.textDirection,
+            textScaler: paragraph.textScaler,
+          )..layout(maxWidth: paragraph.size.width);
+          expect(
+            painter.computeLineMetrics(),
+            hasLength(1),
+            reason: '$label must remain on one line in the review actions',
+          );
+          painter.dispose();
+        }
 
         // Verify no Flutter exceptions / overflows occurred
         expect(tester.takeException(), isNull);

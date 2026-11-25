@@ -128,9 +128,7 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                         tone: _smsPermissionTone(_smsState),
                       ),
                       const Gap(AppSpacing.xs),
-                      Wrap(
-                        spacing: AppSpacing.xs,
-                        runSpacing: AppSpacing.xs,
+                      AppActionGroup(
                         children: [
                           FilledButton.icon(
                             onPressed: (!_smsAvailable || _requestingSms)
@@ -172,9 +170,7 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                   value: 'Requested on first use',
                 ),
                 const Gap(AppSpacing.xs),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
+                AppActionGroup(
                   children: [
                     FilledButton.icon(
                       onPressed: _requestingMedia ? null : _requestMedia,

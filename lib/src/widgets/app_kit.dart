@@ -267,10 +267,11 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                             label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: scheme.onSurface,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: scheme.onSurface,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                         ),
                         const SizedBox(width: AppSpacing.xxxs),
@@ -1167,8 +1168,7 @@ class AppActionButton extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal:
-                    compact ||
-                        MediaQuery.textScalerOf(context).scale(14) > 20
+                    compact || MediaQuery.textScalerOf(context).scale(14) > 20
                     ? AppSpacing.sm
                     : AppSpacing.lg,
                 vertical: compact ? 6 : 10,
@@ -2012,7 +2012,8 @@ class PremiumRow extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
-                child: iconWidget ?? Icon(icon, color: scheme.onSurface, size: 20),
+                child:
+                    iconWidget ?? Icon(icon, color: scheme.onSurface, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -2598,6 +2599,41 @@ abstract final class AppButtonStyles {
   }
 }
 
+/// Arranges related actions in equal columns, stacking them when text is large.
+class AppActionGroup extends StatelessWidget {
+  const AppActionGroup({required this.children, super.key});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final fontSize = Theme.of(context).textTheme.labelLarge?.fontSize ?? 14;
+    final scale = MediaQuery.textScalerOf(context).scale(fontSize) / fontSize;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns =
+            (constraints.maxWidth - AppSpacing.sm) / 2 >= 150 * scale;
+        final columnWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
+        return Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            for (var index = 0; index < children.length; index++)
+              SizedBox(
+                width:
+                    twoColumns &&
+                        !(children.length.isOdd && index == children.length - 1)
+                    ? columnWidth
+                    : constraints.maxWidth,
+                child: children[index],
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// Canonical confirmation dialog: title, message, a `TextButton` cancel and a
 /// `FilledButton` confirm (error-coloured when [destructive]).
 class AppConfirmDialog extends StatelessWidget {
@@ -2906,10 +2942,7 @@ class AppGroupedSection extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: children,
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: children),
         ),
       );
     }

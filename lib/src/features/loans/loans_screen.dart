@@ -884,116 +884,107 @@ class LoanDetailView extends ConsumerWidget {
                 IconBubble(
                   icon: Icons.account_balance_rounded,
                   color: Theme.of(context).colorScheme.primary,
-                        compact: true,
+                  compact: true,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        loan.name,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
                       ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              loan.name,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: AppSpacing.xxxs),
-                            Text(
-                              '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Flexible(
-                        child: PrivacyText(
-                          formatMoney(
-                            balance.copyWith(
-                              amountMinor: balance.amountMinor.abs(),
-                            ),
-                            state.preferences.locale,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w900),
+                      const SizedBox(height: AppSpacing.xxxs),
+                      Text(
+                        '${accountTypeLabel(loan.type).toUpperCase()} ACCOUNT',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
-                  if (details.principal != null) ...[
-                    const SizedBox(height: AppSpacing.lg),
-                    Builder(
-                      builder: (context) {
-                        final principal = details.principal!.amountMinor.abs();
-                        final remaining = balance.amountMinor < 0
-                            ? -balance.amountMinor
-                            : 0;
-                        final paid = (principal - remaining).clamp(
-                          0,
-                          principal,
-                        );
-                        final progress = principal > 0
-                            ? (paid / principal).clamp(0.0, 1.0)
-                            : 0.0;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: PrivacyText(
-                                    'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
-                                ),
-                                if (projection.monthsRemaining != null) ...[
-                                  const SizedBox(width: AppSpacing.sm),
-                                  Flexible(
-                                    child: Text(
-                                      '${projection.monthsRemaining} mos left',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.end,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            GlassProgressIndicator.linear(value: progress),
-                          ],
-                        );
-                      },
+                ),
+                Flexible(
+                  child: PrivacyText(
+                    formatMoney(
+                      balance.copyWith(amountMinor: balance.amountMinor.abs()),
+                      state.preferences.locale,
                     ),
-                  ],
-                ],
-              ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          );
+            if (details.principal != null) ...[
+              const SizedBox(height: AppSpacing.lg),
+              Builder(
+                builder: (context) {
+                  final principal = details.principal!.amountMinor.abs();
+                  final remaining = balance.amountMinor < 0
+                      ? -balance.amountMinor
+                      : 0;
+                  final paid = (principal - remaining).clamp(0, principal);
+                  final progress = principal > 0
+                      ? (paid / principal).clamp(0.0, 1.0)
+                      : 0.0;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: PrivacyText(
+                              'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ),
+                          if (projection.monthsRemaining != null) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            Flexible(
+                              child: Text(
+                                '${projection.monthsRemaining} mos left',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      GlassProgressIndicator.linear(value: progress),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
 
     final headerCard = !isAmoled
         ? GlassCard(
@@ -1040,7 +1031,7 @@ class LoanDetailView extends ConsumerWidget {
                       : MetricTone.danger,
                   onTap: nextEmi == null
                       ? null
-                      : () => context.push('/recurring/detail/${nextEmi.id}'),
+                      : () => context.push('/recurring/${nextEmi.id}'),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -1090,29 +1081,6 @@ class LoanDetailView extends ConsumerWidget {
               label: const Text('Pay EMI'),
               style: AppButtonStyles.cta,
             ),
-            const Gap(AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: () => context.push(
-                    '/add?type=loan_repayment&counterAccountId=${loan.id}',
-                  ),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text(
-                    'Custom payment',
-                    semanticsLabel: 'Custom loan repayment',
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      context.push('/recurring/detail/${nextEmi.id}'),
-                  icon: const Icon(Icons.event_repeat_rounded),
-                  label: const Text('View plan'),
-                ),
-              ],
-            ),
           ] else ...[
             FilledButton.icon(
               onPressed: () => context.push(
@@ -1125,10 +1093,25 @@ class LoanDetailView extends ConsumerWidget {
           ],
           const Gap(AppSpacing.sm),
         ],
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
+        AppActionGroup(
           children: [
+            if (!isPastLoan(state, loan) && nextEmi != null) ...[
+              FilledButton.tonalIcon(
+                onPressed: () => context.push(
+                  '/add?type=loan_repayment&counterAccountId=${loan.id}',
+                ),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text(
+                  'Custom payment',
+                  semanticsLabel: 'Custom loan repayment',
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/recurring/${nextEmi.id}'),
+                icon: const Icon(Icons.event_repeat_rounded),
+                label: const Text('View plan'),
+              ),
+            ],
             FilledButton.tonalIcon(
               onPressed: () => context.push('/loans/${loan.id}/edit'),
               icon: const Icon(Icons.edit_rounded),

@@ -25,8 +25,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/design/tokens.dart';
 import 'package:one_wallet_flutter/src/features/loans/loans_screen.dart';
+import 'package:one_wallet_flutter/src/features/recurring/recurring_screen.dart';
 import 'package:one_wallet_flutter/src/features/transactions/transaction_row.dart';
 import 'package:one_wallet_flutter/src/features/transactions/transactions_screen.dart';
+import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
@@ -39,6 +41,148 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('loan actions align in columns and stack at large text', (
+    tester,
+  ) async {
+    final font = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      font.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await font.load();
+    final sample = sampleLedgerState();
+    final state = sample.copyWith(
+      transactions: [
+        for (final transaction in sample.transactions)
+          transaction.id == 'tx-emi-planned'
+              ? transaction.copyWith(
+                  name: 'A long home mortgage repayment plan name',
+                )
+              : transaction,
+      ],
+    );
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: state, prefs: prefs),
+    );
+    addTearDown(container.dispose);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+    final router = container.read(appRouterProvider);
+    addTearDown(tester.view.reset);
+    tester.view.devicePixelRatio = 1;
+
+    for (final (size, scale) in [
+      (const Size(360, 800), 1.0),
+      (const Size(320, 568), 2.0),
+    ]) {
+      tester.view.physicalSize = size;
+      router.go('/loans/acc-loan');
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.amoled(),
+            routerConfig: router,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Rect action(String label) => tester.getRect(
+        find.ancestor(
+          of: find.text(label),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        ),
+      );
+      final custom = action('Custom payment');
+      final plan = action('View plan');
+      final edit = action('Edit details');
+      final forecast = action('Forecast');
+      final archive = action('Archive');
+      if (scale == 1) {
+        expect(custom.top, closeTo(plan.top, 0.01));
+        expect(edit.top, closeTo(forecast.top, 0.01));
+        expect(custom.left, closeTo(edit.left, 0.01));
+        expect(plan.right, closeTo(forecast.right, 0.01));
+        expect(custom.width, closeTo(plan.width, 0.01));
+        expect(archive.width, closeTo(plan.right - custom.left, 0.01));
+      } else {
+        expect(plan.top, greaterThan(custom.bottom));
+        expect(edit.top, greaterThan(plan.bottom));
+        expect(forecast.top, greaterThan(edit.bottom));
+        expect(archive.top, greaterThan(forecast.bottom));
+        expect(custom.width, closeTo(archive.width, 0.01));
+      }
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('View plan'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View plan'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecurringScreen), findsOneWidget);
+      expect(find.text('Planned detail'), findsOneWidget);
+      expect(
+        tester.widget<RecurringScreen>(find.byType(RecurringScreen)).recordId,
+        'tx-emi-planned',
+      );
+      final planTitle = find.text('A long home mortgage repayment plan name');
+      final planAmount = find
+          .descendant(
+            of: find.byType(RecurringDetailView),
+            matching: find.byType(PrivacyText),
+          )
+          .first;
+      expect(tester.widget<Text>(planTitle).maxLines, isNull);
+      expect(
+        tester.getRect(planAmount).top,
+        greaterThanOrEqualTo(tester.getRect(planTitle).bottom),
+      );
+      final accountName = find
+          .descendant(
+            of: find.byType(RecurringDetailView),
+            matching: find.text('HDFC Main'),
+          )
+          .first;
+      expect(tester.widget<Text>(accountName).maxLines, isNull);
+      final counterName = find
+          .descendant(
+            of: find.byType(RecurringDetailView),
+            matching: find.text('Home Loan'),
+          )
+          .first;
+      expect(tester.widget<Text>(counterName).maxLines, isNull);
+      final paid = find.byWidgetPredicate(
+        (widget) => widget is PrivacyText && widget.text.startsWith('Paid: '),
+      );
+      final remaining = find.byWidgetPredicate(
+        (widget) => widget is PrivacyText && widget.text.endsWith(' left'),
+      );
+      expect(tester.widget<PrivacyText>(paid).maxLines, isNull);
+      expect(tester.widget<PrivacyText>(remaining).maxLines, isNull);
+      if (scale == 2) {
+        expect(
+          tester.getRect(remaining).top,
+          greaterThan(tester.getRect(paid).bottom),
+        );
+      }
+
+      router.go('/loans/acc-loan');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Next EMI'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Next EMI'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecurringScreen), findsOneWidget);
+      expect(
+        tester.widget<RecurringScreen>(find.byType(RecurringScreen)).recordId,
+        'tx-emi-planned',
+      );
+    }
   });
 
   testWidgets('loan repayments match History row width and alignment', (

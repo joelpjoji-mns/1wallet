@@ -266,9 +266,7 @@ class RecurringScreen extends ConsumerWidget {
               body: mode == 'past'
                   ? 'Posted recurring records will appear here once a scheduled item is completed.'
                   : 'Create a scheduled record to keep bills, transfers, and repayments on track.',
-              actionLabel: mode == 'past'
-                  ? 'Back to plans'
-                  : 'Add plan',
+              actionLabel: mode == 'past' ? 'Back to plans' : 'Add plan',
               onAction: () => context.push(
                 mode == 'past' ? '/recurring' : '/recurring/new',
               ),
@@ -1530,14 +1528,10 @@ class RecurringDetailView extends ConsumerWidget {
                                         transactionTypeLabel(transaction.type)),
                               style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w800),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: AppSpacing.xxxs),
                             Text(
                               '${transaction.status.toUpperCase()} · ${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' (AUTO)' : ''}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.labelMedium
                                   ?.copyWith(
                                     fontWeight: FontWeight.w700,
@@ -1547,16 +1541,15 @@ class RecurringDetailView extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      Flexible(
-                        child: PrivacyText(
-                          _recurringAmountLabel(state, transaction),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                      ),
                     ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  PrivacyText(
+                    _recurringAmountLabel(state, transaction),
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppPanel(
@@ -1578,8 +1571,6 @@ class RecurringDetailView extends ConsumerWidget {
                                   transaction.occurredAt,
                                   state.preferences.locale,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.end,
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(fontWeight: FontWeight.bold),
@@ -1600,8 +1591,6 @@ class RecurringDetailView extends ConsumerWidget {
                             Flexible(
                               child: Text(
                                 account?.name ?? 'Unknown',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.end,
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(fontWeight: FontWeight.bold),
@@ -1623,8 +1612,6 @@ class RecurringDetailView extends ConsumerWidget {
                               Flexible(
                                 child: Text(
                                   counter.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.end,
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(fontWeight: FontWeight.bold),
@@ -1667,41 +1654,49 @@ class RecurringDetailView extends ConsumerWidget {
 
                         final remaining = remainingMinor;
 
+                        final paidText = PrivacyText(
+                          'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount.currency), state.preferences.locale))}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        );
+                        final remainingText = PrivacyText(
+                          '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
+                          textAlign: TextAlign.end,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        );
+                        final stackProgress =
+                            MediaQuery.textScalerOf(context).scale(14) > 20;
+
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const SizedBox(height: AppSpacing.md),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: PrivacyText(
-                                    'Paid: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: paid, currency: loanAccount.currency), state.preferences.locale))}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Flexible(
-                                  child: PrivacyText(
-                                    '${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: remaining > 0 ? remaining : 0, currency: loanAccount.currency), state.preferences.locale))} left',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.end,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            if (stackProgress)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  paidText,
+                                  const SizedBox(height: AppSpacing.xxxs),
+                                  remainingText,
+                                ],
+                              )
+                            else
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Flexible(child: paidText),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Flexible(child: remainingText),
+                                ],
+                              ),
                             const SizedBox(height: AppSpacing.xs),
                             GlassProgressIndicator.linear(value: progress),
                           ],
@@ -1724,9 +1719,7 @@ class RecurringDetailView extends ConsumerWidget {
             style: AppButtonStyles.cta,
           ),
         const Gap(AppSpacing.sm),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
+        AppActionGroup(
           children: [
             OutlinedButton(
               onPressed: transaction.status == 'scheduled'

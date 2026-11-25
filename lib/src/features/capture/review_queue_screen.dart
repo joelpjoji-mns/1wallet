@@ -393,9 +393,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
+            AppActionGroup(
               children: [
                 TextButton.icon(
                   onPressed: () => _showBlockDialog(context, ref, candidate),

@@ -8,6 +8,34 @@ platform, and backend failure has been manually verified. The historical normali
 inventory below is retained separately and must not be interpreted as current native
 device coverage.
 
+### Button-placement follow-up
+
+The populated loan detail used uneven, left-aligned action rows. Related actions
+now use equal columns, with a full-width final action and a single column when
+space or text size requires it. The same layout is used for planned-payment,
+capture-detail, and device-permission actions. The loan's View plan button and
+Next EMI tile also now navigate to the actual planned-payment route; the prior
+path opened the not-found page. Planned-payment names and amounts no longer
+compete for the same narrow row.
+
+The route-matrix and design-system tests passed (101 tests, including
+845 fixture presentations), as did 40 focused layout, loan, recurring, and route
+tests. After the final account-name adjustment, normal and 200% route variants
+were rerun successfully. The populated Android loan and plan were checked without
+saving changes, including 200% text. The matrix tests rendered labels and
+scrolling; they do not establish that every button placement, overlay, or
+interaction has been manually reviewed.
+
+A follow-up review of the remaining phone fixture screenshots reproduced three
+layout issues. Review Queue actions could be squeezed into uneven rows, a large
+transaction amount wrapped its final digit, and History's horizontal filter strip
+left controls clipped at the viewport edge. The queue now uses the shared action
+group and stacks when its two-column layout cannot preserve one-line labels.
+Transaction amounts scale down only as needed to remain on one line. History
+filters wrap into visible rows. Targeted screenshots were regenerated for these
+routes at normal and compact 200% text scales; these are fixture renders, not
+populated-wallet screenshots or a substitute for native manual testing.
+
 ### Application overview and inventory
 
 - **34 public `*Screen` classes** in the feature tree, including the four shell tabs.
@@ -88,6 +116,15 @@ a repayment still opens transaction details. The populated forecast was also
 revisited: date ticks are distinct and zoom controls sit below the axis.
 This controlled check does not establish complete recovery from the earlier loss.
 
+For the latest layout follow-up, the debug APK was again installed with
+`adb install -r`; the emulator still showed its populated History screen and all
+filter chips were visible. The `1wallet_ledger_state.json` hash matched
+immediately after the first replacement install, then changed after normal
+launch/navigation; this follow-up does not claim byte-identical state after
+runtime activity. No user-initiated transaction edit, restore, sign-out, or clear
+was performed. The final replacement install also preserved the ledger-file
+hash across installation. The system font scale remained at 1.0.
+
 ### Integration-test safety
 
 An earlier integration-test command automatically selected the Android emulator
@@ -118,6 +155,9 @@ uninstalls by default unless `--keep-app-running` is supplied.
 | Planned payments | Long names were reduced to a few characters; narrow rows could overflow | P1 | Name, urgency badge, amount, and due status competed in one row | Give the name and badge their own row; stack amount/status when measured space is insufficient |
 | Loan forecast | Currency and date labels overlapped or repeated when zoomed or enlarged; zoom controls covered the date axis | P1 | Fixed axis dimensions and tick spacing, compact rounding, endpoint ticks, and controls overlaid the chart | Measure labels, adapt precision and tick spacing to the visible range, and place 48 dp zoom controls below the chart |
 | Loan and plan actions | Forecast and other action labels wrapped on narrow phones | P1 | Equal-width action rows squeezed labels beside their icons | Allow action groups to reflow and use concise labels while retaining the related amount and accessible descriptions |
+| Review Queue | Compact actions could be crowded or wrap within uneven rows | P2 | A local `Wrap` assigned widths without considering button labels | Reuse `AppActionGroup`; it aligns the actions when possible and stacks them when needed |
+| Transaction detail | A large currency amount wrapped its last digit to another line | P2 | The hero amount had no single-line fit behavior | Scale the amount down only when the available width requires it; a narrow-phone regression verifies one line |
+| History filters | A horizontally scrolling strip left filter chips clipped at the screen edge without a strong cue | P2 | All filters competed for a single horizontal row | Wrap the filters into visible rows and constrain long account labels |
 | Loan repayment history | Transaction cards were narrower than History and unnecessarily truncated the same details | P2 | Default route padding, extra section padding, and individually surfaced rows compounded the inset | Reduce row inset from 52 dp to History's 16 dp, reuse grouped rows, and retain trailing amount alignment; regression compares actual screens at 360 dp/100% and 320 dp/200% text |
 | Cards | Dark or light custom account colors made icons nearly invisible on matching surfaces | P2 | Icon color was reused without checking its contrast against the tinted panel | Preserve legible custom colors and use the themed foreground when contrast is insufficient |
 | Drawer privacy switch | The label truncated even at normal text size | P2 | Redundant on/off text competed with the switch for width | Show the complete label and retain the switch's accessible state |
@@ -167,16 +207,17 @@ fonts, a local Flutter web session, and Android API 37 emulator `emulator-5554`
 
 | Test | Result | Details |
 |---|---|---|
-| `flutter test --no-pub --reporter expanded --concurrency=1` | **Passed** | Final uninterrupted serial run: 774 passed, 2 skipped; includes unit/widget regressions and the 845-case route matrix |
+| `flutter test --no-pub --reporter compact --concurrency=1` | **Passed** | Latest full serial run: 777 passed, 2 skipped; includes unit/widget regressions and the route matrix. The final formatting-only pass was followed by 46 focused passes |
+| Focused layout, route, filter, and shared-widget tests | **Passed** | 46 passed after formatting the final changed Dart files |
 | `flutter test --no-pub --reporter expanded test\loans_screen_form_bugfix_test.dart test\transaction_row_recurring_row_opaque_surface_test.dart` | **Passed** | 14 passed, including cross-screen repayment geometry, trailing amount alignment, forecast labels, and loan-form guards |
 | Startup/ownership regression subset | **Passed** | `flutter test --no-pub --reporter expanded test/offline_mode_startup_test.dart test/offline_upgrade_migration_test.dart test/notification_capture_flow_test.dart`: 22 passed |
 | Dashboard regression subset | **Passed** | `flutter test --no-pub --reporter expanded test/home_account_tile_large_text_overflow_test.dart`: 3 passed |
 | `flutter analyze --no-pub` | **Not clean** | One existing `prefer_const_constructors` info in `test/loan_plan_transaction_integration_test.dart:313`; no analyzer errors/warnings in the last completed run |
 | `dart format --output=none --set-exit-if-changed lib test integration_test` | **Not clean, earlier baseline** | 24 files had formatting differences; broad pre-existing formatter churn deliberately avoided |
-| Changed startup source/tests and dashboard regression test formatting | **Passed** | Formatted directly with `dart format` |
+| Changed Dart files formatting | **Passed** | Final modified Dart files formatted directly with `dart format` |
 | `git -c core.whitespace=cr-at-eol --no-pager diff --check` | **Passed** | Accommodates existing CRLF files |
-| `flutter build apk --debug --no-pub --target lib\main.dart` | **Passed** | Final APK built, installed with replacement-only cleanup, and hash-verified; Kotlin plugin migration warnings remain |
-| Android native interaction | **Passed, limited scope** | Original repayment rows and transaction-detail navigation rechecked; restored populated forecast inspected after its date-label fix |
+| `flutter build apk --debug --no-pub --target lib\main.dart` | **Passed** | Final APK built and installed with `adb install -r`; ledger-file hash matched across install. Kotlin plugin migration warnings remain |
+| Android native interaction | **Passed, limited scope** | Repayment rows and forecast rechecked earlier; latest replacement install and populated History filter layout inspected read-only |
 | Android 200% text | **Passed, limited scope** | Repayment descriptions/amounts reflow without overlap; earlier Home/Calendar checks passed; system scale restored to 1.0 |
 | Android native-widget rendering | **Passed, limited scope** | All 18 nonempty bitmap outputs generated; latest app-PID log sample has no renderer errors. Launcher placement, appearance, and interactions remain unverified |
 | Manual web interaction | **Passed, limited scope** | Offline onboarding, Home/History/Calendar, calendar day sheet, disposable transaction; not every web screen |

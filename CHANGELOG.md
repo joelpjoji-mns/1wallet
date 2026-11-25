@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Clear glass finish is now the default for every component, including the island bar, menus, and toolbars. Menus keep a denser tint for legibility.
 
 ### Fixed
+- Loan, planned-payment, capture, and permission actions use aligned, responsive button groups instead of uneven rows.
+- Review-queue actions use the same responsive grouping and stack when narrow widths would wrap their labels.
+- History filters wrap into visible rows instead of clipping the horizontally scrolling filter strip; large transaction-detail amounts stay on one line.
+- Loan detail's scheduled-payment button and next-EMI tile open the correct planned-payment screen.
+- Planned-payment details give the name, status, and amounts room to wrap instead of squeezing or truncating them at enlarged text sizes.
 - Loan repayment history uses the same full-width grouped rows and page gutters as History, rather than nesting smaller transaction cards inside another panel.
 - Native home-widget previews receive explicit render dimensions so Android can generate their bitmaps without infinite-height layout errors.
 - Loan, planned-payment, review, capture, feedback, import, and settings actions reflow or use clearer short labels so their text stays on one line in the tested compact layouts.

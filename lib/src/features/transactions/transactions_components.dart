@@ -105,134 +105,112 @@ class TransactionCommandStrip extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
                   children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            FilterPill(
-                              icon: Icons.filter_alt_outlined,
-                              label: typeLabel,
-                              active: typeActive,
-                              value: typeValue,
-                              options: const [
-                                GlassDropdownOption('all', 'All records'),
-                                GlassDropdownOption(
-                                  'income',
-                                  'Income',
-                                  icon: Icons.trending_up_rounded,
-                                ),
-                                GlassDropdownOption(
-                                  'expense',
-                                  'Expense',
-                                  icon: Icons.trending_down_rounded,
-                                ),
-                                GlassDropdownOption(
-                                  'transfer',
-                                  'Transfer',
-                                  icon: Icons.swap_horiz_rounded,
-                                ),
-                              ],
-                              onSelected: onTypeSelected,
-                            ),
-                            FilterPill(
-                              icon: Icons.date_range_outlined,
-                              label: dateLabel,
-                              active: dateActive,
-                              value: dateValue,
-                              onPrevious: onPreviousDate,
-                              onNext: onNextDate,
-                              options: [
-                                const GlassDropdownOption(
-                                  'today',
-                                  'Today',
-                                ),
-                                const GlassDropdownOption(
-                                  'this_week',
-                                  'This week',
-                                ),
-                                const GlassDropdownOption(
-                                  'this_month',
-                                  'This month',
-                                ),
-                                GlassDropdownOption(
-                                  dateValue == 'last_30_days'
-                                      ? 'last_30_days'
-                                      : '30_days',
-                                  '30 days',
-                                ),
-                                const GlassDropdownOption(
-                                  '6_months',
-                                  '6 months',
-                                ),
-                                const GlassDropdownOption(
-                                  'this_year',
-                                  'This year',
-                                ),
-                                const GlassDropdownOption('all', 'All time'),
-                                GlassDropdownOption(
-                                  dateValue.startsWith('custom:')
-                                      ? dateValue
-                                      : 'custom',
-                                  dateValue.startsWith('custom:')
-                                      ? dateLabel
-                                      : 'Custom range',
-                                  icon: Icons.date_range_rounded,
-                                ),
-                              ],
-                              onSelected: onDateSelected,
-                            ),
-                            FilterPill(
-                              icon: Icons.wallet_outlined,
-                              label: accountLabel,
-                              active: accountActive,
-                              onTap: onAccountTap,
-                            ),
-                            FilterPill(
-                              icon: Icons.category_outlined,
-                              label: categoryLabel,
-                              active: categoryActive,
-                              onTap: onCategoryTap,
-                            ),
-                            if (tagOptions != null && tagOptions!.length > 1)
-                              FilterPill(
-                                icon: Icons.label_outline_rounded,
-                                label: tagLabel,
-                                active: tagActive,
-                                value: tagValue,
-                                options: tagOptions,
-                                onSelected: onTagSelected,
-                              ),
-                            FilterPill(
-                              icon: Icons.info_outline_rounded,
-                              label: statusLabel,
-                              active: statusActive,
-                              value: statusValue,
-                              options: const [
-                                GlassDropdownOption('all', 'All statuses'),
-                                GlassDropdownOption(
-                                  'cleared',
-                                  'Cleared',
-                                  icon: Icons.check_circle_outline_rounded,
-                                ),
-                                GlassDropdownOption(
-                                  'pending',
-                                  'Pending',
-                                  icon: Icons.hourglass_empty_rounded,
-                                ),
-                                GlassDropdownOption(
-                                  'void',
-                                  'Skipped / Void',
-                                  icon: Icons.block_rounded,
-                                ),
-                              ],
-                              onSelected: onStatusSelected,
-                            ),
-                          ],
+                    FilterPill(
+                      icon: Icons.filter_alt_outlined,
+                      label: typeLabel,
+                      active: typeActive,
+                      value: typeValue,
+                      options: const [
+                        GlassDropdownOption('all', 'All records'),
+                        GlassDropdownOption(
+                          'income',
+                          'Income',
+                          icon: Icons.trending_up_rounded,
                         ),
+                        GlassDropdownOption(
+                          'expense',
+                          'Expense',
+                          icon: Icons.trending_down_rounded,
+                        ),
+                        GlassDropdownOption(
+                          'transfer',
+                          'Transfer',
+                          icon: Icons.swap_horiz_rounded,
+                        ),
+                      ],
+                      onSelected: onTypeSelected,
+                    ),
+                    FilterPill(
+                      icon: Icons.date_range_outlined,
+                      label: dateLabel,
+                      active: dateActive,
+                      value: dateValue,
+                      onPrevious: onPreviousDate,
+                      onNext: onNextDate,
+                      options: [
+                        const GlassDropdownOption('today', 'Today'),
+                        const GlassDropdownOption('this_week', 'This week'),
+                        const GlassDropdownOption('this_month', 'This month'),
+                        GlassDropdownOption(
+                          dateValue == 'last_30_days'
+                              ? 'last_30_days'
+                              : '30_days',
+                          '30 days',
+                        ),
+                        const GlassDropdownOption('6_months', '6 months'),
+                        const GlassDropdownOption('this_year', 'This year'),
+                        const GlassDropdownOption('all', 'All time'),
+                        GlassDropdownOption(
+                          dateValue.startsWith('custom:')
+                              ? dateValue
+                              : 'custom',
+                          dateValue.startsWith('custom:')
+                              ? dateLabel
+                              : 'Custom range',
+                          icon: Icons.date_range_rounded,
+                        ),
+                      ],
+                      onSelected: onDateSelected,
+                    ),
+                    FilterPill(
+                      icon: Icons.wallet_outlined,
+                      label: accountLabel,
+                      active: accountActive,
+                      onTap: onAccountTap,
+                    ),
+                    FilterPill(
+                      icon: Icons.category_outlined,
+                      label: categoryLabel,
+                      active: categoryActive,
+                      onTap: onCategoryTap,
+                    ),
+                    if (tagOptions != null && tagOptions!.length > 1)
+                      FilterPill(
+                        icon: Icons.label_outline_rounded,
+                        label: tagLabel,
+                        active: tagActive,
+                        value: tagValue,
+                        options: tagOptions,
+                        onSelected: onTagSelected,
                       ),
+                    FilterPill(
+                      icon: Icons.info_outline_rounded,
+                      label: statusLabel,
+                      active: statusActive,
+                      value: statusValue,
+                      options: const [
+                        GlassDropdownOption('all', 'All statuses'),
+                        GlassDropdownOption(
+                          'cleared',
+                          'Cleared',
+                          icon: Icons.check_circle_outline_rounded,
+                        ),
+                        GlassDropdownOption(
+                          'pending',
+                          'Pending',
+                          icon: Icons.hourglass_empty_rounded,
+                        ),
+                        GlassDropdownOption(
+                          'void',
+                          'Skipped / Void',
+                          icon: Icons.block_rounded,
+                        ),
+                      ],
+                      onSelected: onStatusSelected,
                     ),
                   ],
                 ),
@@ -313,17 +291,14 @@ class FilterPill extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (options != null && value != null && onSelected != null) {
-      return Padding(
-        padding: const EdgeInsets.only(right: AppSpacing.xs),
-        child: GlassDropdownPill<String>(
-          value: value!,
-          options: options!,
-          onChanged: onSelected!,
-          icon: icon,
-          semanticLabel: label,
-          onPrevious: onPrevious,
-          onNext: onNext,
-        ),
+      return GlassDropdownPill<String>(
+        value: value!,
+        options: options!,
+        onChanged: onSelected!,
+        icon: icon,
+        semanticLabel: label,
+        onPrevious: onPrevious,
+        onNext: onNext,
       );
     }
 
@@ -339,30 +314,29 @@ class FilterPill extends StatelessWidget {
         ? scheme.primary.withValues(alpha: isDark ? 0.35 : 0.25)
         : scheme.outlineVariant.withValues(alpha: 0.4);
 
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.xs),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: bg,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: borderColor, width: 0.5),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.pill),
-          border: Border.all(color: borderColor, width: 0.5),
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 15, color: scheme.primary),
-                  const SizedBox(width: AppSpacing.xxs),
-                  Text(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 15, color: scheme.primary),
+                const SizedBox(width: AppSpacing.xxs),
+                Flexible(
+                  child: Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -371,10 +345,10 @@ class FilterPill extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xxxs),
-                  Icon(Icons.expand_more_rounded, size: 17, color: fg),
-                ],
-              ),
+                ),
+                const SizedBox(width: AppSpacing.xxxs),
+                Icon(Icons.expand_more_rounded, size: 17, color: fg),
+              ],
             ),
           ),
         ),

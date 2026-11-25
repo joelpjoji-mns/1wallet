@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
@@ -6,6 +7,7 @@ import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/transactions/add_record_screen.dart';
 import 'package:one_wallet_flutter/src/features/transactions/attachment_thumbnail.dart';
 import 'package:one_wallet_flutter/src/features/transactions/transaction_detail_screen.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
 import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
@@ -123,4 +125,53 @@ void main() {
       expect(find.byType(AttachmentThumbnail), findsOneWidget);
     },
   );
+
+  testWidgets('large transaction amounts stay on one line on a narrow phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final base = sampleLedgerState();
+    const amount = Money(amountMinor: 18500000, currency: 'INR');
+    final transaction = base.transactions.first.copyWith(
+      id: 'tx-large-amount',
+      amount: amount,
+      baseAmount: amount,
+    );
+    final ledger = base.copyWith(
+      transactions: [transaction],
+      preferences: base.preferences.copyWith(
+        displayCurrency: 'INR',
+        locale: 'en_US',
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: authenticatedSampleOverrides(ledger: ledger),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(
+            body: TransactionDetailScreen(transactionId: 'tx-large-amount'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final amountText = find.textContaining('185,000.00');
+    expect(amountText, findsOneWidget);
+    final paragraph = tester.renderObject<RenderParagraph>(amountText);
+    final painter = TextPainter(
+      text: paragraph.text,
+      textDirection: paragraph.textDirection,
+      textScaler: paragraph.textScaler,
+    )..layout(maxWidth: paragraph.size.width);
+    expect(painter.computeLineMetrics(), hasLength(1));
+    expect(paragraph.didExceedMaxLines, isFalse);
+    painter.dispose();
+    expect(tester.takeException(), isNull);
+  });
 }

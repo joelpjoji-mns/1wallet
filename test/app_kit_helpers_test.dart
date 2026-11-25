@@ -13,6 +13,40 @@ Widget _host(Widget child, {ThemeData? theme}) => MaterialApp(
 );
 
 void main() {
+  testWidgets('action groups align odd rows and retain their actions', (
+    tester,
+  ) async {
+    var selected = -1;
+    await tester.pumpWidget(
+      _host(
+        Center(
+          child: SizedBox(
+            width: 400,
+            child: AppActionGroup(
+              children: [
+                for (var index = 0; index < 3; index++)
+                  OutlinedButton(
+                    onPressed: () => selected = index,
+                    child: Text('Action $index'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final buttons = find.byType(OutlinedButton);
+    final first = tester.getRect(buttons.at(0));
+    final second = tester.getRect(buttons.at(1));
+    final last = tester.getRect(buttons.at(2));
+    expect(first.top, second.top);
+    expect(first.width, second.width);
+    expect(last.left, first.left);
+    expect(last.right, second.right);
+    await tester.tap(buttons.last);
+    expect(selected, 2);
+  });
+
   testWidgets('compact actions have one accessible 48dp tap target', (
     tester,
   ) async {

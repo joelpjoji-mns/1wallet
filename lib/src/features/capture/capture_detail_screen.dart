@@ -165,9 +165,7 @@ class _CaptureDetailScreenState extends ConsumerState<CaptureDetailScreen> {
             child: Text(candidate.rawText ?? 'No raw payload stored.'),
           ),
           const Gap(AppSpacing.lg),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
+          AppActionGroup(
             children: [
               FilledButton.icon(
                 onPressed: candidate.status == 'pending'
