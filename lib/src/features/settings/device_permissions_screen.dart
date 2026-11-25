@@ -144,7 +144,10 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                           FilledButton.tonalIcon(
                             onPressed: () => context.push('/auto-capture'),
                             icon: const Icon(Icons.auto_awesome_outlined),
-                            label: const Text('Open Auto Capture'),
+                            label: const Text(
+                              'Auto Capture',
+                              semanticsLabel: 'Open Auto Capture',
+                            ),
                           ),
                         ],
                       ),
@@ -183,7 +186,10 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
                     FilledButton.tonalIcon(
                       onPressed: () => context.push('/add'),
                       icon: const Icon(Icons.receipt_long_outlined),
-                      label: const Text('Open Add record'),
+                      label: const Text(
+                        'Add record',
+                        semanticsLabel: 'Open Add record',
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => context.push('/imports'),
@@ -205,7 +211,10 @@ class _DevicePermissionsScreenState extends State<DevicePermissionsScreen> {
               child: FilledButton.tonalIcon(
                 onPressed: () => context.push('/permissions-setup'),
                 icon: const Icon(Icons.checklist_rtl_outlined),
-                label: const Text('Open permissions setup'),
+                label: const Text(
+                  'Open setup',
+                  semanticsLabel: 'Open permissions setup',
+                ),
               ),
             ),
           ),

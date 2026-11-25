@@ -2205,35 +2205,38 @@ class UpcomingDueHomeWidget extends ConsumerWidget {
           ),
           child: Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: HomeMetricTile(
-                      label: 'Due soon',
-                      value: '${scheduled.length}',
-                      icon: Icons.event_busy_outlined,
-                      tone: overdueCount > 0
-                          ? MetricTone.danger
-                          : scheduled.isEmpty
-                          ? MetricTone.standard
-                          : MetricTone.positive,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: HomeMetricTile(
-                      label: 'Amount',
-                      value: maskMoneyIfPrivate(
-                        state,
-                        _formatDisplayBaseMoney(state, dueAmount),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: HomeMetricTile(
+                        label: 'Due soon',
+                        value: '${scheduled.length}',
+                        icon: Icons.event_busy_outlined,
+                        tone: overdueCount > 0
+                            ? MetricTone.danger
+                            : scheduled.isEmpty
+                            ? MetricTone.standard
+                            : MetricTone.positive,
                       ),
-                      icon: Icons.payments_outlined,
-                      tone: overdueCount > 0
-                          ? MetricTone.danger
-                          : MetricTone.standard,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: HomeMetricTile(
+                        label: 'Amount',
+                        value: maskMoneyIfPrivate(
+                          state,
+                          _formatDisplayBaseMoney(state, dueAmount),
+                        ),
+                        icon: Icons.payments_outlined,
+                        tone: overdueCount > 0
+                            ? MetricTone.danger
+                            : MetricTone.standard,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               if (next.isEmpty) ...[
                 const SizedBox(height: AppSpacing.sm),
@@ -2312,6 +2315,24 @@ class _UpcomingTransactionRow extends StatelessWidget {
       transaction.amount,
       state.preferences.locale,
     );
+    final titleStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700);
+    final badgeStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      fontSize: 10, // ui-guard: allow compact badge font
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.5,
+      color: badgeTextColor,
+    );
+    final accountStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
+    final amountStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.w800,
+      color: expenseTypes.contains(transaction.type)
+          ? scheme.error
+          : scheme.primary,
+    );
 
     return InkWell(
       onTap: onTap,
@@ -2332,91 +2353,109 @@ class _UpcomingTransactionRow extends StatelessWidget {
                 : scheme.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: categoryColor(category, context).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-              ),
-              child: Icon(
-                category != null
-                    ? categoryIcon(category)
-                    : transactionIcon(transaction),
-                size: 20,
-                color: categoryColor(category, context),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeColor,
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                        ),
-                        child: Text(
-                          badgeText,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                fontSize:
-                                    10, // ui-guard: allow compact badge font
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                                color: badgeTextColor,
-                              ),
-                        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final painter = TextPainter(
+              textDirection: Directionality.of(context),
+              textScaler: MediaQuery.textScalerOf(context),
+              locale: Localizations.maybeLocaleOf(context),
+            );
+            double widthOf(String text, TextStyle? style) {
+              painter.text = TextSpan(
+                text: text,
+                style: DefaultTextStyle.of(context).style.merge(style),
+              );
+              painter.layout();
+              return painter.width;
+            }
+
+            final badgeWidth = widthOf(badgeText, badgeStyle) + 12;
+            final detailsWidth = math.max(
+              widthOf(title, titleStyle),
+              badgeWidth +
+                  (account == null
+                      ? 0
+                      : AppSpacing.xs + widthOf(account.name, accountStyle)),
+            );
+            final amountWidth = widthOf(
+              maskMoneyIfPrivate(state, amountText),
+              amountStyle,
+            );
+            painter.dispose();
+            final stacked =
+                36 + AppSpacing.sm * 2 + detailsWidth + amountWidth >
+                constraints.maxWidth;
+
+            final details = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title, style: titleStyle),
+                const SizedBox(height: 2),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xxxs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
                       ),
-                      if (account != null) ...[
-                        const SizedBox(width: AppSpacing.xs),
-                        Expanded(
-                          child: Text(
-                            account.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ],
-                    ],
+                      decoration: BoxDecoration(
+                        color: badgeColor,
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                      ),
+                      child: Text(badgeText, style: badgeStyle),
+                    ),
+                    if (account != null)
+                      Text(account.name, style: accountStyle),
+                  ],
+                ),
+              ],
+            );
+            final amount = PrivacyText(amountText, style: amountStyle);
+
+            return Row(
+              crossAxisAlignment: stacked
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: categoryColor(
+                      category,
+                      context,
+                    ).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            PrivacyText(
-              amountText,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: expenseTypes.contains(transaction.type)
-                    ? scheme.error
-                    : scheme.primary,
-              ),
-            ),
-          ],
+                  child: Icon(
+                    category != null
+                        ? categoryIcon(category)
+                        : transactionIcon(transaction),
+                    size: 20,
+                    color: categoryColor(category, context),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: stacked
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            details,
+                            const SizedBox(height: AppSpacing.xxs),
+                            amount,
+                          ],
+                        )
+                      : details,
+                ),
+                if (!stacked) ...[const SizedBox(width: AppSpacing.sm), amount],
+              ],
+            );
+          },
         ),
       ),
     );

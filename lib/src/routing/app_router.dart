@@ -113,7 +113,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 FilledButton.icon(
                   onPressed: () => context.go('/'),
                   icon: const Icon(Icons.home_rounded),
-                  label: const Text('Return to Home'),
+                  label: const Text(
+                    'Go home',
+                    semanticsLabel: 'Return to Home',
+                  ),
                 ),
               ],
             ),

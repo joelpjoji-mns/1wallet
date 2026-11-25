@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/transactions/add_record_screen.dart';
+import 'package:one_wallet_flutter/src/features/transactions/add_record_widgets.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
@@ -29,6 +30,30 @@ void main() {
   });
 
   Finder amountDisplay() => find.byKey(const Key('addRecordAmountDisplay'));
+
+  Future<void> tapKey(WidgetTester tester, String label) async {
+    final target = find.byWidgetPredicate(
+      (widget) => widget is AddRecordCalcKey && widget.label == label,
+    );
+    final scrollable = tester.state<ScrollableState>(
+      find.byType(Scrollable).first,
+    );
+    final viewport = tester.getRect(find.byType(CustomScrollView).first);
+    final key = tester.getRect(target);
+    final offset = key.bottom > viewport.bottom
+        ? key.bottom - viewport.bottom
+        : key.top < viewport.top
+        ? key.top - viewport.top
+        : 0.0;
+    scrollable.position.jumpTo(
+      (scrollable.position.pixels + offset).clamp(
+        scrollable.position.minScrollExtent,
+        scrollable.position.maxScrollExtent,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(target);
+  }
 
   Future<ProviderContainer> pumpAddRecord(
     WidgetTester tester, {
@@ -81,17 +106,17 @@ void main() {
     await tester.tap(find.text('Income'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('5').last);
-    await tester.tap(find.text('0').last);
+    await tapKey(tester, '5');
+    await tapKey(tester, '0');
     await tester.pumpAndSettle();
     expect(tester.widget<Text>(amountDisplay()).data, '50');
 
-    await tester.tap(find.text('+/-').last);
+    await tapKey(tester, '+/-');
     await tester.pumpAndSettle();
     expect(tester.widget<Text>(amountDisplay()).data, '-50');
 
     // Toggling back returns to the original magnitude.
-    await tester.tap(find.text('+/-').last);
+    await tapKey(tester, '+/-');
     await tester.pumpAndSettle();
     expect(tester.widget<Text>(amountDisplay()).data, '50');
   });
@@ -102,12 +127,12 @@ void main() {
     await pumpAddRecord(tester, initialAccountId: 'acc-cash');
 
     // Expense is the default type, which already auto-prefixes "-".
-    await tester.tap(find.text('5').last);
-    await tester.tap(find.text('0').last);
+    await tapKey(tester, '5');
+    await tapKey(tester, '0');
     await tester.pumpAndSettle();
     expect(tester.widget<Text>(amountDisplay()).data, '-50');
 
-    await tester.tap(find.text('+/-').last);
+    await tapKey(tester, '+/-');
     await tester.pumpAndSettle();
     final displayed = tester.widget<Text>(amountDisplay()).data!;
     expect(displayed, '-50');
@@ -117,12 +142,12 @@ void main() {
   testWidgets('% divides the current entry by 100', (tester) async {
     await pumpAddRecord(tester, initialAccountId: 'acc-cash');
 
-    await tester.tap(find.text('5').last);
-    await tester.tap(find.text('0').last);
+    await tapKey(tester, '5');
+    await tapKey(tester, '0');
     await tester.pumpAndSettle();
     expect(tester.widget<Text>(amountDisplay()).data, '-50');
 
-    await tester.tap(find.text('%').last);
+    await tapKey(tester, '%');
     await tester.pumpAndSettle();
     expect(tester.widget<Text>(amountDisplay()).data, '-0.5');
   });
@@ -139,10 +164,12 @@ void main() {
       // acc-cash is INR (2 decimals). "1.239" should round to 124 minor
       // units (1.24), not truncate to 123 (1.23).
       for (final key in ['1', '.', '2', '3', '9']) {
-        await tester.tap(find.text(key).last);
+        await tapKey(tester, key);
       }
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.text('Choose'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Choose'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Food').last);
@@ -243,9 +270,11 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('5').last);
+      await tapKey(tester, '5');
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.text('Choose'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Choose'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Food').last);

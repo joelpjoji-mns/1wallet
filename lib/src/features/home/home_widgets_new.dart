@@ -289,44 +289,47 @@ class SavingsRateHomeWidget extends ConsumerWidget {
             height: 10,
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Income',
-                  value: maskMoneyIfPrivate(
-                    state,
-                    formatMoney(
-                      Money(
-                        amountMinor: totalIncomeMinor,
-                        currency: displayCurrency,
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: HomeMetricTile(
+                    label: 'Income',
+                    value: maskMoneyIfPrivate(
+                      state,
+                      formatMoney(
+                        Money(
+                          amountMinor: totalIncomeMinor,
+                          currency: displayCurrency,
+                        ),
+                        state.preferences.locale,
                       ),
-                      state.preferences.locale,
                     ),
+                    icon: Icons.arrow_downward_rounded,
+                    tone: MetricTone.positive,
                   ),
-                  icon: Icons.arrow_downward_rounded,
-                  tone: MetricTone.positive,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Expense',
-                  value: maskMoneyIfPrivate(
-                    state,
-                    formatMoney(
-                      Money(
-                        amountMinor: totalExpenseMinor,
-                        currency: displayCurrency,
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: HomeMetricTile(
+                    label: 'Expense',
+                    value: maskMoneyIfPrivate(
+                      state,
+                      formatMoney(
+                        Money(
+                          amountMinor: totalExpenseMinor,
+                          currency: displayCurrency,
+                        ),
+                        state.preferences.locale,
                       ),
-                      state.preferences.locale,
                     ),
+                    icon: Icons.arrow_upward_rounded,
+                    tone: MetricTone.danger,
                   ),
-                  icon: Icons.arrow_upward_rounded,
-                  tone: MetricTone.danger,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -585,8 +588,11 @@ class SafeToSpendHomeWidget extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xxs,
             children: [
               Text(
                 'Spent today: ${maskMoneyIfPrivate(state, formatMoney(Money(amountMinor: todayExpensesMinor, currency: displayCurrency), state.preferences.locale))}',
@@ -770,8 +776,11 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xxs,
                 children: [
                   Text(
                     statusText,
@@ -798,48 +807,54 @@ class CashBurnRunwayHomeWidget extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Daily burn rate',
-                  value: maskMoneyIfPrivate(
-                    state,
-                    formatMoney(
-                      Money(
-                        amountMinor: dailyBurnMinor,
-                        currency: displayCurrency,
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: HomeMetricTile(
+                    label: 'Daily burn rate',
+                    value: maskMoneyIfPrivate(
+                      state,
+                      formatMoney(
+                        Money(
+                          amountMinor: dailyBurnMinor,
+                          currency: displayCurrency,
+                        ),
+                        state.preferences.locale,
                       ),
-                      state.preferences.locale,
                     ),
+                    icon: Icons.local_fire_department_outlined,
+                    tone: MetricTone.danger,
                   ),
-                  icon: Icons.local_fire_department_outlined,
-                  tone: MetricTone.danger,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: HomeMetricTile(
-                  label: 'Liquid cash',
-                  value: maskMoneyIfPrivate(
-                    state,
-                    formatMoney(
-                      Money(
-                        amountMinor: totalLiquidMinor,
-                        currency: displayCurrency,
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: HomeMetricTile(
+                    label: 'Liquid cash',
+                    value: maskMoneyIfPrivate(
+                      state,
+                      formatMoney(
+                        Money(
+                          amountMinor: totalLiquidMinor,
+                          currency: displayCurrency,
+                        ),
+                        state.preferences.locale,
                       ),
-                      state.preferences.locale,
                     ),
+                    icon: Icons.account_balance_wallet_outlined,
+                    tone: MetricTone.positive,
                   ),
-                  icon: Icons.account_balance_wallet_outlined,
-                  tone: MetricTone.positive,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xxs,
             children: [
               Text(
                 'Est. monthly burn',
@@ -1160,44 +1175,47 @@ class WeekendWeekdayRatioHomeWidget extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: HomeMetricTile(
-                        label: 'Weekdays ($weekdayPct%)',
-                        value: maskMoneyIfPrivate(
-                          state,
-                          formatMoney(
-                            Money(
-                              amountMinor: weekdayTotalMinor,
-                              currency: displayCurrency,
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: HomeMetricTile(
+                          label: 'Weekdays ($weekdayPct%)',
+                          value: maskMoneyIfPrivate(
+                            state,
+                            formatMoney(
+                              Money(
+                                amountMinor: weekdayTotalMinor,
+                                currency: displayCurrency,
+                              ),
+                              state.preferences.locale,
                             ),
-                            state.preferences.locale,
                           ),
+                          icon: Icons.business_center_outlined,
+                          tone: MetricTone.standard,
                         ),
-                        icon: Icons.business_center_outlined,
-                        tone: MetricTone.standard,
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: HomeMetricTile(
-                        label: 'Weekends ($weekendPct%)',
-                        value: maskMoneyIfPrivate(
-                          state,
-                          formatMoney(
-                            Money(
-                              amountMinor: weekendTotalMinor,
-                              currency: displayCurrency,
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: HomeMetricTile(
+                          label: 'Weekends ($weekendPct%)',
+                          value: maskMoneyIfPrivate(
+                            state,
+                            formatMoney(
+                              Money(
+                                amountMinor: weekendTotalMinor,
+                                currency: displayCurrency,
+                              ),
+                              state.preferences.locale,
                             ),
-                            state.preferences.locale,
                           ),
+                          icon: Icons.local_activity_outlined,
+                          tone: MetricTone.warning,
                         ),
-                        icon: Icons.local_activity_outlined,
-                        tone: MetricTone.warning,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),

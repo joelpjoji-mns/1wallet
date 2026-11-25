@@ -54,6 +54,88 @@ class TransactionRow extends StatelessWidget {
               ? '$merchantName · $rawNotes'
               : merchantName)
         : rawNotes;
+    final stackAmount = MediaQuery.textScalerOf(context).scale(14) > 20;
+    final description = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: stackAmount ? null : 1,
+          overflow: stackAmount ? null : TextOverflow.ellipsis,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            color: inactive
+                ? Theme.of(context).colorScheme.outline
+                : Theme.of(context).colorScheme.onSurface,
+            decoration: transaction.status == 'void'
+                ? TextDecoration.lineThrough
+                : null,
+          ),
+        ),
+        Text(
+          _accountLine(account, counter),
+          maxLines: stackAmount ? null : 1,
+          overflow: stackAmount ? null : TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        if (details.isNotEmpty)
+          Text(
+            details,
+            maxLines: stackAmount ? null : 1,
+            overflow: stackAmount ? null : TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        if (transaction.tags.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xxxs),
+            child: Text(
+              transaction.tags
+                  .map((t) => t.replaceAll('#', '').trim())
+                  .where((t) => t.isNotEmpty)
+                  .join(' · '),
+              maxLines: stackAmount ? null : 1,
+              overflow: stackAmount ? null : TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    );
+    final amounts = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        PrivacyText(
+          _formatSignedMoney(amount),
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            decoration: transaction.status == 'void'
+                ? TextDecoration.lineThrough
+                : null,
+          ),
+        ),
+        for (final text in secondaryTexts)
+          PrivacyText(
+            text,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        Text(
+          _dateLabel(transaction.occurredAt),
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ],
+    );
 
     Widget content = Material(
       color: Colors.transparent,
@@ -76,6 +158,9 @@ class TransactionRow extends StatelessWidget {
               vertical: AppSpacing.xs,
             ),
             child: Row(
+              crossAxisAlignment: stackAmount
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.center,
               children: [
                 IconBubble(
                   icon: category == null || transaction.type == 'transfer'
@@ -86,92 +171,24 @@ class TransactionRow extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: inactive
-                              ? Theme.of(context).colorScheme.outline
-                              : Theme.of(context).colorScheme.onSurface,
-                          decoration: transaction.status == 'void'
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                      ),
-                      Text(
-                        _accountLine(account, counter),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      if (details.isNotEmpty)
-                        Text(
-                          details,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
-                        ),
-                      if (transaction.tags.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xxxs),
-                          child: Text(
-                            transaction.tags
-                                .map((t) => t.replaceAll('#', '').trim())
-                                .where((t) => t.isNotEmpty)
-                                .join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ),
-                    ],
-                  ),
+                  child: stackAmount
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            description,
+                            const SizedBox(height: AppSpacing.xxs),
+                            Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: amounts,
+                            ),
+                          ],
+                        )
+                      : description,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    PrivacyText(
-                      _formatSignedMoney(amount),
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w900,
-                        decoration: transaction.status == 'void'
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-                    for (final text in secondaryTexts)
-                      PrivacyText(
-                        text,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    Text(
-                      _dateLabel(transaction.occurredAt),
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ],
-                ),
+                if (!stackAmount) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  amounts,
+                ],
               ],
             ),
           ),

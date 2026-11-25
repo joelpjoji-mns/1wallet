@@ -27,8 +27,8 @@ Manages application configuration, user preferences, security lock toggles, loca
    - When restoring a backup file, the schema version must be checked against `kLedgerSchemaVersion`. Restoring backups from newer versions than the installed app must be rejected with an upgrade warning.
 2. **Account Deletion Finality**:
    - Account deletion must purge both local persistent stores (`SharedPreferences`, files) and remote Firestore documents, logging the user out.
-3. **Offline Mode Never Signs Out**:
-   - Signing out clears the device wallet, which is an offline user's only copy. Offline mode offers the Google upgrade and encrypted export/import instead.
+3. **Offline Sign-Out Requires Confirmation**:
+   - Signing out clears the device-only wallet and returns to sign-in. Require the existing explicit confirmation and warn users to keep an encrypted backup first.
 4. **Canonical settings UI**:
    - Preference groups are `AppGroupedSection` + `AppGroupedTile` / `AppGroupedTile.toggle` (danger zone: `destructive: true`); never raw `GlassGroupedSection`/`GlassListTile` (they drop the app font) or bare `GlassSwitch` rows.
    - Confirmations use `showAppConfirmDialog` (destructive when data is removed or overwritten); feedback uses `showAppSnackBar`; sheets use `showAppSheet`. The offline-upgrade sheet uses the standard panel, not the login-only `BrandFrostedPanel`.

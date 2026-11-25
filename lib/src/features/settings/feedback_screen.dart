@@ -592,34 +592,40 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
               const SizedBox(height: AppSpacing.lg),
 
               // ── Action Buttons ──
-              Row(
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _copyToClipboard,
-                      icon: const Icon(Icons.copy_rounded, size: 18),
-                      label: const Text('Copy to clipboard'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.lg),
-                        ),
+                  OutlinedButton.icon(
+                    onPressed: _copyToClipboard,
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    label: const Text(
+                      'Copy',
+                      semanticsLabel: 'Copy feedback to clipboard',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _sendEmail,
-                      icon: const Icon(Icons.send_rounded, size: 18),
-                      label: const Text('Send Email'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: scheme.primary,
-                        foregroundColor: scheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.lg),
-                        ),
+                  FilledButton.icon(
+                    onPressed: _sendEmail,
+                    icon: const Icon(Icons.send_rounded, size: 18),
+                    label: const Text('Send email'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
                       ),
                     ),
                   ),

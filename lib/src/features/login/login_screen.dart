@@ -330,7 +330,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 icon: const Icon(Icons.phonelink_lock_outlined),
                                 label: const Text(
-                                  'Use without an account (Offline)',
+                                  'Use offline',
+                                  semanticsLabel:
+                                      'Use without an account (Offline)',
                                   style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
                               ),

@@ -1166,7 +1166,11 @@ class AppActionButton extends StatelessWidget {
             onTap: isInteractive ? onPressed : null,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: compact ? AppSpacing.sm : AppSpacing.lg,
+                horizontal:
+                    compact ||
+                        MediaQuery.textScalerOf(context).scale(14) > 20
+                    ? AppSpacing.sm
+                    : AppSpacing.lg,
                 vertical: compact ? 6 : 10,
               ),
               child: Row(
@@ -1324,6 +1328,7 @@ class MetricTile extends StatelessWidget {
     this.compact = false,
     this.onTap,
     this.glass = false,
+    this.valueMaxLines = 1,
   });
 
   final String label;
@@ -1332,6 +1337,7 @@ class MetricTile extends StatelessWidget {
   final MetricTone tone;
   final bool compact;
   final VoidCallback? onTap;
+  final int? valueMaxLines;
 
   /// Opts this tile into a refractive `GlassCard` surface instead of the
   /// default opaque background.
@@ -1373,8 +1379,8 @@ class MetricTile extends StatelessWidget {
               ),
               Text(
                 value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: valueMaxLines,
+                overflow: valueMaxLines == null ? null : TextOverflow.ellipsis,
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
@@ -2307,7 +2313,12 @@ class EmptyState extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.textScalerOf(context).scale(14) > 20
+                ? AppSpacing.xs
+                : AppSpacing.xl,
+            vertical: AppSpacing.xl,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,

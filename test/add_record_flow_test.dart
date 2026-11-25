@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -9,6 +11,7 @@ import 'package:one_wallet_flutter/src/features/transactions/add_record_screen.d
 import 'package:one_wallet_flutter/src/features/transactions/add_record_widgets.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
@@ -67,6 +70,125 @@ void main() {
     await tester.tap(backspace);
     expect(pressed, '⌫');
     semantics.dispose();
+  });
+
+  testWidgets('compact large-text entry scrolls to the keypad and notes', (
+    tester,
+  ) async {
+    final font = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      font.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await font.load();
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(),
+    );
+    addTearDown(container.dispose);
+    await container
+        .read(ledgerProvider.notifier)
+        .restoreLedgerState(sampleLedgerState());
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const AddRecordScreen(initialAccountId: 'acc-cash'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Finder key(String label) => find.byWidgetPredicate(
+      (widget) => widget is AddRecordCalcKey && widget.label == label,
+    );
+
+    await tester.scrollUntilVisible(
+      key('1'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getSize(key('1')).height, greaterThanOrEqualTo(48));
+    await tester.tap(key('1'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Text>(find.byKey(const Key('addRecordAmountDisplay'))).data,
+      '-1',
+    );
+
+    await tester.scrollUntilVisible(
+      key('+/-'),
+      -120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final signLabel = find.descendant(
+      of: key('+/-'),
+      matching: find.text('+/-'),
+    );
+    final paragraph = tester.renderObject<RenderParagraph>(signLabel);
+    expect(
+      paragraph.getTransformTo(null).getMaxScaleOnAxis(),
+      greaterThanOrEqualTo(0.5),
+    );
+
+    await tester.ensureVisible(find.text('Details'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Details'));
+    await tester.pumpAndSettle();
+
+    final notes = find.byWidgetPredicate(
+      (widget) =>
+          widget is AppGlassTextField && widget.decoration.labelText == 'Notes',
+    );
+    await tester.scrollUntilVisible(
+      notes,
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    final editable = find.descendant(
+      of: notes,
+      matching: find.byType(EditableText),
+    );
+    await tester.showKeyboard(editable);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(notes);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(notes).bottom, lessThanOrEqualTo(328));
+
+    final paymentMethod = find.byWidgetPredicate(
+      (widget) =>
+          widget is AppGlassTextField &&
+          widget.decoration.labelText == 'Payment method',
+    );
+    final detailsScroll = find.descendant(
+      of: find.byType(TabBarView),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable &&
+            axisDirectionToAxis(widget.axisDirection) == Axis.vertical,
+      ),
+    );
+    await tester.scrollUntilVisible(
+      paymentMethod,
+      120,
+      scrollable: detailsScroll.first,
+    );
+    await tester.showKeyboard(
+      find.descendant(of: paymentMethod, matching: find.byType(EditableText)),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(paymentMethod);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(paymentMethod).bottom, lessThanOrEqualTo(328));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Add Record UI saves a transaction to the ledger', (

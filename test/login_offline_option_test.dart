@@ -132,6 +132,23 @@ void main() {
     expect(button.right - label.right, greaterThanOrEqualTo(16));
   });
 
+  testWidgets('offline action retains its full accessible name', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await _pumpLogin(tester, size: const Size(360, 2000), textScale: 2);
+    final button = find.byKey(LoginScreen.offlineButtonKey);
+    await tester.scrollUntilVisible(
+      button,
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await _settleFrames(tester);
+    final data = tester.getSemantics(button).getSemanticsData();
+    expect(data.label, 'Use without an account (Offline)');
+    semantics.dispose();
+  });
+
   testWidgets('cancel keeps the device on the sign-in screen', (tester) async {
     final (container, prefs) = await _pumpLogin(tester);
     await _openOfflineSheet(tester);

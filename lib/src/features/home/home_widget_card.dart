@@ -44,77 +44,99 @@ class HomeWidgetCard extends StatelessWidget {
     final resolvedIconColor = iconColor ?? scheme.primary;
     final reorderScope = HomeWidgetCardReorderScope.maybeOf(context);
 
+    final headerActions = <Widget>[
+      if (reorderScope?.reorderMode ?? false) ...[
+        GlassIconButton(
+          semanticLabel: 'Move up ${reorderScope!.label}',
+          icon: const Icon(Icons.keyboard_arrow_up_rounded),
+          onPressed: reorderScope.canMoveUp ? reorderScope.onMoveUp : null,
+          quality: GlassQuality.minimal,
+        ),
+        GlassIconButton(
+          semanticLabel: 'Move down ${reorderScope.label}',
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          onPressed: reorderScope.canMoveDown ? reorderScope.onMoveDown : null,
+          quality: GlassQuality.minimal,
+        ),
+      ] else if (dateFilter != null && onDateFilterChanged != null)
+        _buildDateDropdown(context)
+      else if (actionLabel != null &&
+          onAction != null &&
+          headerTrailing == null)
+        AppActionButton(
+          label: actionLabel!,
+          onPressed: onAction,
+          compact: true,
+        ),
+      ?headerTrailing,
+    ];
+
+    Widget headerRow({required bool includeActions}) {
+      return Row(
+        children: [
+          HomeWidgetReorderableIcon(
+            icon: icon,
+            iconColor: resolvedIconColor,
+            onTap: onIconTap ?? onAction,
+            tooltip: actionLabel != null ? '$title: $actionLabel' : title,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (includeActions)
+            for (final action in headerActions) ...[
+              const SizedBox(width: AppSpacing.xs),
+              action,
+            ],
+        ],
+      );
+    }
+
     Widget cardContent = Material(
       color: Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              HomeWidgetReorderableIcon(
-                icon: icon,
-                iconColor: resolvedIconColor,
-                onTap: onIconTap ?? onAction,
-                tooltip: actionLabel != null ? '$title: $actionLabel' : title,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    if (subtitle != null)
-                      Text(
-                        subtitle!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (reorderScope?.reorderMode ?? false) ...[
-                const SizedBox(width: AppSpacing.xs),
-                GlassIconButton(
-                  semanticLabel: 'Move up ${reorderScope!.label}',
-                  icon: const Icon(Icons.keyboard_arrow_up_rounded),
-                  onPressed: reorderScope.canMoveUp
-                      ? reorderScope.onMoveUp
-                      : null,
-                  quality: GlassQuality.minimal,
-                ),
-                GlassIconButton(
-                  semanticLabel: 'Move down ${reorderScope.label}',
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                  onPressed: reorderScope.canMoveDown
-                      ? reorderScope.onMoveDown
-                      : null,
-                  quality: GlassQuality.minimal,
-                ),
-              ] else if (dateFilter != null && onDateFilterChanged != null) ...[
-                const SizedBox(width: AppSpacing.xs),
-                _buildDateDropdown(context),
-              ] else if (actionLabel != null &&
-                  onAction != null &&
-                  headerTrailing == null) ...[
-                const SizedBox(width: AppSpacing.xs),
-                AppActionButton(
-                  label: actionLabel!,
-                  onPressed: onAction,
-                  compact: true,
-                ),
-              ],
-              if (headerTrailing != null) ...[
-                const SizedBox(width: AppSpacing.xs),
-                headerTrailing!,
-              ],
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stackActions =
+                  headerActions.isNotEmpty &&
+                  constraints.maxWidth < 360 &&
+                  MediaQuery.textScalerOf(context).scale(14) > 20;
+              if (!stackActions) return headerRow(includeActions: true);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  headerRow(includeActions: false),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: headerActions,
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
           child,
@@ -433,8 +455,6 @@ class HomeMetricTile extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: scheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
@@ -443,8 +463,6 @@ class HomeMetricTile extends StatelessWidget {
           const SizedBox(height: AppSpacing.xxxs),
           Text(
             value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w900,
               letterSpacing: -0.2,

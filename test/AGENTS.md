@@ -48,7 +48,7 @@ uninstall the app and delete its local data. Always specify the device explicitl
 
 | Test | Covers |
 | :--- | :--- |
-| `ui_route_matrix_test.dart` | Renders every route (plus login/onboarding/permissions) in light and AMOLED dark, at 1.0× and 1.3× text, on a 360 dp phone and a tablet, with sample data and with an empty wallet. Fails on any overflow or framework error. |
+| `ui_route_matrix_test.dart` | Renders inventoried populated, empty-wallet, and gated routes across selected phone, landscape, tablet, theme, and text-scale variants. Scrolls available vertical viewports and checks rendered button labels; also samples dialogs, a keyboard, and offline consent. It filters the known `semantics.parentDataDirty` harness error and is not exhaustive interaction coverage. |
 | `ui_design_system_guard_test.dart` | Lint-style guard: feature screens may not use raw radii, font sizes or families, hex/named colours, inline `SnackBar`s, raw bottom sheets, Material `Card`/`ListTile`/`Switch`/`AppBar`, or extra `Scaffold`s. |
 | `app_kit_helpers_test.dart` | Canonical helpers: `showAppSnackBar`, `showAppConfirmDialog`, `showAppSheet`, `AppLoadingState`, `EmptyState`, `AppGroupedSection`/`AppGroupedTile`. |
 | `accessibility/a11y_guidelines_test.dart` | Automated WCAG contrast (`textContrastGuideline`) and tap target (`androidTapTargetGuideline`) audits. |

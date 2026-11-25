@@ -143,7 +143,10 @@ class _NotificationCaptureScreenState
                     child: FilledButton.tonalIcon(
                       onPressed: () => context.push('/review'),
                       icon: const Icon(Icons.inbox_outlined),
-                      label: Text('Review $pending pending'),
+                      label: Text(
+                        'Review ($pending)',
+                        semanticsLabel: 'Review $pending pending',
+                      ),
                     ),
                   ),
                 ],
@@ -186,7 +189,10 @@ class _NotificationCaptureScreenState
                           );
                         },
                         icon: const Icon(Icons.settings_suggest_outlined),
-                        label: const Text('Open Settings to Grant'),
+                        label: const Text(
+                          'Open settings',
+                          semanticsLabel: 'Open settings to grant access',
+                        ),
                       ),
                     ),
                   ],
@@ -298,7 +304,10 @@ class _NotificationCaptureScreenState
                 FilledButton.tonalIcon(
                   onPressed: preview.queued ? _queueTestMessage : null,
                   icon: const Icon(Icons.playlist_add_check_outlined),
-                  label: const Text('Add to review queue'),
+                  label: const Text(
+                    'Add to review',
+                    semanticsLabel: 'Add to review queue',
+                  ),
                 ),
               ],
             ),
@@ -352,7 +361,10 @@ class _NotificationCaptureScreenState
                 ? AppInlineSpinner(size: 16, color: scheme.onPrimary)
                 : const Icon(Icons.manage_search_rounded),
             label: Text(
-              _isScanning ? 'Scanning…' : 'Scan active notifications',
+              _isScanning ? 'Scanning…' : 'Scan now',
+              semanticsLabel: _isScanning
+                  ? 'Scanning notifications'
+                  : 'Scan active notifications',
             ),
           ),
         ],
@@ -906,7 +918,10 @@ class _WordEditorState extends State<_WordEditor> {
             child: TextButton.icon(
               onPressed: widget.onReset,
               icon: const Icon(Icons.restart_alt_rounded, size: 18),
-              label: const Text('Reset to defaults'),
+              label: const Text(
+                'Reset',
+                semanticsLabel: 'Reset to defaults',
+              ),
             ),
           ),
         ],

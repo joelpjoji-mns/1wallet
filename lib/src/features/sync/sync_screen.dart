@@ -747,7 +747,8 @@ class ImportBatchDetailScreen extends ConsumerWidget {
           icon: Icons.file_upload_outlined,
           title: 'Import not found',
           body: 'This import batch is not available in the local ledger.',
-          actionLabel: 'Back to imports',
+          actionLabel: 'Imports',
+          actionIcon: Icons.arrow_back_rounded,
           onAction: () => context.pop(),
         ),
       );

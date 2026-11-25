@@ -74,7 +74,10 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
               FilledButton.icon(
                 onPressed: _busy ? null : _pickPdf,
                 icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('Select PDF statement'),
+                label: const Text(
+                  'Select PDF',
+                  semanticsLabel: 'Select PDF statement',
+                ),
               ),
               if (_busy)
                 const AppLoadingState(

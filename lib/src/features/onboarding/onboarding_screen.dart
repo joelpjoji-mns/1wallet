@@ -325,7 +325,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         },
                         style: AppButtonStyles.cta,
                         icon: const Icon(Icons.restore_rounded),
-                        label: const Text('Restore My Wallet'),
+                        label: const Text(
+                          'Restore',
+                          semanticsLabel: 'Restore my wallet',
+                        ),
                       ),
                     ],
                   ),
@@ -355,48 +358,56 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       )
                     else
                       const SizedBox(width: 48),
-                    const Spacer(),
-                    AppPanel(
-                      glass: true,
-                      radius: AppRadii.pill,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.xs,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (int i = 0; i < 4; i++) ...[
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              width: i == _currentPage ? 16 : 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: i == _currentPage
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.onSurface
-                                          .withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.pill,
+                    Expanded(
+                      child: Align(
+                        child: AppPanel(
+                          glass: true,
+                          radius: AppRadii.pill,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.xs,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (int i = 0; i < 4; i++) ...[
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  width: i == _currentPage ? 16 : 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: i == _currentPage
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadii.pill,
+                                    ),
+                                  ),
+                                ),
+                                if (i < 3) const SizedBox(width: 4),
+                              ],
+                              const SizedBox(width: AppSpacing.xs),
+                              Flexible(
+                                child: Text(
+                                  'Step ${_currentPage + 1} of 4',
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.7),
+                                      ),
                                 ),
                               ),
-                            ),
-                            if (i < 3) const SizedBox(width: 4),
-                          ],
-                          const SizedBox(width: AppSpacing.xs),
-                          Text(
-                            'Step ${_currentPage + 1} of 4',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.7),
-                                ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     const SizedBox(width: 48),
                   ],
                 ),

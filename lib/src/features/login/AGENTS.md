@@ -1,7 +1,7 @@
 # `lib/src/features/login/` — Entry Screen: Google Sign-In or Offline Mode
 
 ## 🎯 Role & Overview
-The signed-out entry screen. Users either sign in with Google (cloud backup & sync) or choose **"Use without an account (Offline)"**. Offline mode keeps the whole wallet on this device with no Google account, no Firebase user and no cloud sync.
+The signed-out entry screen. Users either sign in with Google (cloud backup & sync) or choose **"Use offline"**. Offline mode keeps the whole wallet on this device with no Google account, no Firebase user and no cloud sync.
 
 ---
 

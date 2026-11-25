@@ -77,7 +77,13 @@ class LoansScreen extends ConsumerWidget {
           onPressed: () => context.push('/loans/new'),
         ),
       ],
-      child: Column(
+      scrollView: ListView(
+        padding: EdgeInsets.fromLTRB(
+          mode == 'detail' ? AppSpacing.md : AppSpacing.lg,
+          AppSpacing.md,
+          mode == 'detail' ? AppSpacing.md : AppSpacing.lg,
+          AppSpacing.xxl,
+        ),
         children: [
           if (mode != 'detail' &&
               mode != 'edit' &&
@@ -1014,35 +1020,40 @@ class LoanDetailView extends ConsumerWidget {
         const Gap(AppSpacing.lg),
 
         // Metadata Grid
-        Row(
-          children: [
-            Expanded(
-              child: MetricTile(
-                label: 'Next EMI',
-                value: _nextEmiLabel(
-                  state,
-                  details,
-                  nextEmi,
-                  isPaidOff: isPastLoan(state, loan),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: MetricTile(
+                  label: 'Next EMI',
+                  value: _nextEmiLabel(
+                    state,
+                    details,
+                    nextEmi,
+                    isPaidOff: isPastLoan(state, loan),
+                  ),
+                  valueMaxLines: null,
+                  icon: Icons.event_repeat_rounded,
+                  tone: projection.monthlyEmi <= 0
+                      ? MetricTone.warning
+                      : MetricTone.danger,
+                  onTap: nextEmi == null
+                      ? null
+                      : () => context.push('/recurring/detail/${nextEmi.id}'),
                 ),
-                icon: Icons.event_repeat_rounded,
-                tone: projection.monthlyEmi <= 0
-                    ? MetricTone.warning
-                    : MetricTone.danger,
-                onTap: nextEmi == null
-                    ? null
-                    : () => context.push('/recurring/detail/${nextEmi.id}'),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: MetricTile(
-                label: 'Est. Payoff',
-                value: projection.payoffLabel,
-                icon: Icons.timeline_rounded,
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: MetricTile(
+                  label: 'Est. Payoff',
+                  value: projection.payoffLabel,
+                  valueMaxLines: null,
+                  icon: Icons.timeline_rounded,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.sm),
         Row(
@@ -1076,31 +1087,29 @@ class LoanDetailView extends ConsumerWidget {
             FilledButton.icon(
               onPressed: () => context.push('/add?plannedId=${nextEmi.id}'),
               icon: const Icon(Icons.check_circle_rounded),
-              label: Text(
-                'Pay EMI (${formatMoney(nextEmi.amount, state.preferences.locale)})',
-              ),
+              label: const Text('Pay EMI'),
               style: AppButtonStyles.cta,
             ),
             const Gap(AppSpacing.sm),
-            Row(
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
               children: [
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: () => context.push(
-                      '/add?type=loan_repayment&counterAccountId=${loan.id}',
-                    ),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Custom repayment'),
+                FilledButton.tonalIcon(
+                  onPressed: () => context.push(
+                    '/add?type=loan_repayment&counterAccountId=${loan.id}',
+                  ),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text(
+                    'Custom payment',
+                    semanticsLabel: 'Custom loan repayment',
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () =>
-                        context.push('/recurring/detail/${nextEmi.id}'),
-                    icon: const Icon(Icons.event_repeat_rounded),
-                    label: const Text('View plan'),
-                  ),
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      context.push('/recurring/detail/${nextEmi.id}'),
+                  icon: const Icon(Icons.event_repeat_rounded),
+                  label: const Text('View plan'),
                 ),
               ],
             ),
@@ -1116,71 +1125,84 @@ class LoanDetailView extends ConsumerWidget {
           ],
           const Gap(AppSpacing.sm),
         ],
-        Row(
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
-            Expanded(
-              child: FilledButton.tonalIcon(
-                onPressed: () => context.push('/loans/${loan.id}/edit'),
-                icon: const Icon(Icons.edit_rounded),
-                label: const Text('Edit details'),
-              ),
+            FilledButton.tonalIcon(
+              onPressed: () => context.push('/loans/${loan.id}/edit'),
+              icon: const Icon(Icons.edit_rounded),
+              label: const Text('Edit details'),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: FilledButton.tonalIcon(
-                onPressed: () => context.push('/loans/forecast'),
-                icon: const Icon(Icons.show_chart_rounded),
-                label: const Text('Forecast'),
-              ),
+            FilledButton.tonalIcon(
+              onPressed: () => context.push('/loans/forecast'),
+              icon: const Icon(Icons.show_chart_rounded),
+              label: const Text('Forecast'),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _confirmArchiveLoan(context, ref, loan),
-                icon: const Icon(Icons.archive_outlined),
-                label: const Text('Archive'),
-              ),
+            OutlinedButton.icon(
+              onPressed: () => _confirmArchiveLoan(context, ref, loan),
+              icon: const Icon(Icons.archive_outlined),
+              label: const Text('Archive'),
             ),
           ],
         ),
         const Gap(AppSpacing.xxl),
 
         // Repayment History
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: SectionCard(
-            title: 'Repayment history',
-            subtitle: repaymentHistory.isEmpty
-                ? 'Posted EMI and repayment entries will appear here.'
-                : '${repaymentHistory.length} posted repayment${repaymentHistory.length == 1 ? '' : 's'}',
-            child: repaymentHistory.isEmpty
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Repayment history',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxxs),
+                  Text(
+                    repaymentHistory.isEmpty
+                        ? 'Posted EMI and repayment entries will appear here.'
+                        : '${repaymentHistory.length} posted repayment${repaymentHistory.length == 1 ? '' : 's'}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            repaymentHistory.isEmpty
                 ? const EmptyState(
                     icon: Icons.receipt_long_outlined,
                     title: 'No repayment history yet',
                     body:
                         'Once repayments are posted, this loan will show the real timeline here.',
                   )
-                : Column(
+                : AppGroupedSection(
                     children: [
                       for (
                         var index = 0;
                         index < repaymentHistory.length;
                         index++
                       ) ...[
+                        if (index > 0) const GlassDivider(),
                         TransactionRow(
                           state: state,
                           transaction: repaymentHistory[index],
-                          glass: false,
+                          showSurface: false,
                           onTap: () => context.push(
                             '/transaction/${repaymentHistory[index].id}',
                           ),
                         ),
-                        if (index != repaymentHistory.length - 1)
-                          const SizedBox(height: AppSpacing.xxs),
                       ],
                     ],
                   ),
-          ),
+          ],
         ),
       ],
     );
@@ -1463,6 +1485,7 @@ class NumberedDotPainter extends FlDotPainter {
   final Color color;
   final Color textColor;
   final TextStyle? labelStyle;
+  final TextScaler textScaler;
   final double radius;
 
   NumberedDotPainter(
@@ -1470,14 +1493,11 @@ class NumberedDotPainter extends FlDotPainter {
     required this.color,
     required this.textColor,
     this.labelStyle,
+    this.textScaler = TextScaler.noScaling,
     this.radius = 10,
   });
 
-  @override
-  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
-    final paint = Paint()..color = color;
-    canvas.drawCircle(offsetInCanvas, radius, paint);
-
+  TextPainter _labelPainter() {
     final textSpan = TextSpan(
       text: label,
       style: (labelStyle ?? const TextStyle()).copyWith(
@@ -1485,16 +1505,60 @@ class NumberedDotPainter extends FlDotPainter {
         fontWeight: FontWeight.bold,
       ),
     );
-    final textPainter = TextPainter(
+    return TextPainter(
       text: textSpan,
       textDirection: TextDirection.ltr,
+      textScaler: textScaler,
+    )..layout();
+  }
+
+  Size _markerSize(TextPainter textPainter) {
+    final height = math.max(
+      radius * 2,
+      textPainter.height + AppSpacing.xxs * 2,
     );
-    textPainter.layout();
+    return Size(
+      math.max(height, textPainter.width + AppSpacing.xxs * 2),
+      height,
+    );
+  }
+
+  @override
+  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
+    final clip = canvas.getLocalClipBounds();
+    if (offsetInCanvas.dx < clip.left ||
+        offsetInCanvas.dx > clip.right ||
+        offsetInCanvas.dy < clip.top ||
+        offsetInCanvas.dy > clip.bottom) {
+      return;
+    }
+
+    final textPainter = _labelPainter();
+    final size = _markerSize(textPainter);
+    double fitCenter(double value, double extent, double start, double end) {
+      final min = start + extent / 2 + AppSpacing.xxxs;
+      final max = end - extent / 2 - AppSpacing.xxxs;
+      return min <= max ? value.clamp(min, max) : (start + end) / 2;
+    }
+
+    final center = Offset(
+      fitCenter(offsetInCanvas.dx, size.width, clip.left, clip.right),
+      fitCenter(offsetInCanvas.dy, size.height, clip.top, clip.bottom),
+    );
+    final rect = Rect.fromCenter(
+      center: center,
+      width: size.width,
+      height: size.height,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(size.height / 2)),
+      Paint()..color = color,
+    );
     textPainter.paint(
       canvas,
       Offset(
-        offsetInCanvas.dx - textPainter.width / 2,
-        offsetInCanvas.dy - textPainter.height / 2,
+        center.dx - textPainter.width / 2,
+        center.dy - textPainter.height / 2,
       ),
     );
     textPainter.dispose();
@@ -1502,7 +1566,10 @@ class NumberedDotPainter extends FlDotPainter {
 
   @override
   Size getSize(FlSpot spot) {
-    return Size(radius * 2, radius * 2);
+    final textPainter = _labelPainter();
+    final size = _markerSize(textPainter);
+    textPainter.dispose();
+    return size;
   }
 
   @override
@@ -1514,7 +1581,14 @@ class NumberedDotPainter extends FlDotPainter {
   }
 
   @override
-  List<Object?> get props => [label, color, textColor, labelStyle, radius];
+  List<Object?> get props => [
+    label,
+    color,
+    textColor,
+    labelStyle,
+    textScaler,
+    radius,
+  ];
 }
 
 String _forecastAxisLabel(NumberFormat format, double value, bool isPrivate) {
@@ -1617,8 +1691,13 @@ Size _forecastDateLabelSize(BuildContext context, String pattern) {
   return size;
 }
 
+const _maxForecastDateLabels = 4;
+
 int _forecastDateLabelCount(double plotWidth, double labelWidth) {
-  return (plotWidth / (labelWidth + AppSpacing.xs)).floor().clamp(1, 4);
+  return (plotWidth / (labelWidth + AppSpacing.xs)).floor().clamp(
+    1,
+    _maxForecastDateLabels,
+  );
 }
 
 class DynamicForecastLineChart extends StatefulWidget {
@@ -1835,9 +1914,11 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
     final payoffColor = scheme.tertiary;
     final onPayoffColor = scheme.onTertiary;
     final xRange = _currentMaxX - _currentMinX;
-    final datePattern = xRange <= 60
+    // Choose enough detail even when the maximum number of ticks fits.
+    final minimumTickSpacing = xRange / _maxForecastDateLabels;
+    final datePattern = minimumTickSpacing <= 31
         ? 'dd MMM'
-        : xRange <= 365
+        : minimumTickSpacing <= 366
         ? 'MMM yy'
         : 'yyyy';
     final dateLabelSize = _forecastDateLabelSize(context, datePattern);
@@ -2033,6 +2114,9 @@ class _DynamicForecastLineChartState extends State<DynamicForecastLineChart> {
                                       labelStyle: Theme.of(
                                         context,
                                       ).textTheme.labelMedium,
+                                      textScaler: MediaQuery.textScalerOf(
+                                        context,
+                                      ),
                                     );
                                   }
                                   return FlDotCirclePainter(

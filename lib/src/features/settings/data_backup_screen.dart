@@ -257,7 +257,10 @@ class _DataBackupScreenState extends ConsumerState<DataBackupScreen> {
             child: FilledButton.tonalIcon(
               onPressed: _busy ? null : _pickAndRestoreArchive,
               icon: const Icon(Icons.restore_outlined),
-              label: const Text('Restore from file'),
+              label: const Text(
+                'Restore',
+                semanticsLabel: 'Restore from file',
+              ),
             ),
           ),
           if (_status != null) ...[

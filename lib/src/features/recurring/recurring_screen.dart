@@ -251,7 +251,7 @@ class RecurringScreen extends ConsumerWidget {
                     title: 'Planned record not found',
                     body:
                         'This scheduled record is not available in the local ledger.',
-                    actionLabel: 'Back to planned payments',
+                    actionLabel: 'Back to plans',
                     onAction: () => context.push('/recurring'),
                   )
                 : RecurringDetailView(transaction: selected)
@@ -267,8 +267,8 @@ class RecurringScreen extends ConsumerWidget {
                   ? 'Posted recurring records will appear here once a scheduled item is completed.'
                   : 'Create a scheduled record to keep bills, transfers, and repayments on track.',
               actionLabel: mode == 'past'
-                  ? 'Back to planned payments'
-                  : 'Create recurring',
+                  ? 'Back to plans'
+                  : 'Add plan',
               onAction: () => context.push(
                 mode == 'past' ? '/recurring' : '/recurring/new',
               ),
@@ -1724,42 +1724,35 @@ class RecurringDetailView extends ConsumerWidget {
             style: AppButtonStyles.cta,
           ),
         const Gap(AppSpacing.sm),
-        Row(
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: transaction.status == 'scheduled'
-                    ? () => _postpone(context, ref)
-                    : null,
-                style: AppButtonStyles.compact(context),
-                child: const Text('Postpone'),
-              ),
+            OutlinedButton(
+              onPressed: transaction.status == 'scheduled'
+                  ? () => _postpone(context, ref)
+                  : null,
+              style: AppButtonStyles.compact(context),
+              child: const Text('Postpone'),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: transaction.status == 'scheduled'
-                    ? () => _skip(context, ref)
-                    : null,
-                style: AppButtonStyles.compact(context),
-                child: const Text('Skip next'),
-              ),
+            OutlinedButton(
+              onPressed: transaction.status == 'scheduled'
+                  ? () => _skip(context, ref)
+                  : null,
+              style: AppButtonStyles.compact(context),
+              child: const Text('Skip next'),
             ),
             if (transaction.status == 'scheduled' ||
-                transaction.status == 'paused') ...[
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => transaction.status == 'paused'
-                      ? _resume(context, ref)
-                      : _pause(context, ref),
-                  style: AppButtonStyles.compact(context),
-                  child: Text(
-                    transaction.status == 'paused' ? 'Resume' : 'Pause',
-                  ),
+                transaction.status == 'paused')
+              OutlinedButton(
+                onPressed: () => transaction.status == 'paused'
+                    ? _resume(context, ref)
+                    : _pause(context, ref),
+                style: AppButtonStyles.compact(context),
+                child: Text(
+                  transaction.status == 'paused' ? 'Resume' : 'Pause',
                 ),
               ),
-            ],
           ],
         ),
         const Gap(AppSpacing.xxl),

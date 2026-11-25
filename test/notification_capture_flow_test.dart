@@ -94,11 +94,8 @@ void main() {
       findsOneWidget,
     );
 
-    // Tap "Scan active notifications" button
-    final scanButton = find.widgetWithText(
-      FilledButton,
-      'Scan active notifications',
-    );
+    // Tap the scan action in the active-notifications section.
+    final scanButton = find.widgetWithText(FilledButton, 'Scan now');
     expect(scanButton, findsOneWidget);
     await tester.tap(scanButton);
     await tester.pumpAndSettle();

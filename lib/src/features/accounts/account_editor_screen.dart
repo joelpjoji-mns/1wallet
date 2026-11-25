@@ -167,7 +167,10 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             OutlinedButton.icon(
               onPressed: () => _handleSecureNavigation(context, account.id),
               icon: const Icon(Icons.edit_note_rounded),
-              label: const Text('Manage secure details'),
+              label: const Text(
+                'Secure details',
+                semanticsLabel: 'Manage secure details',
+              ),
             ),
           ],
 

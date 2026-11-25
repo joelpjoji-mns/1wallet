@@ -54,7 +54,7 @@ void main() {
     expect(find.text('Expense'), findsWidgets);
 
     final before = container.read(ledgerProvider).captureCandidates.length;
-    await tester.tap(find.text('Add to review queue'));
+    await tester.tap(find.text('Add to review'));
     await tester.pumpAndSettle();
 
     final candidates = container.read(ledgerProvider).captureCandidates;

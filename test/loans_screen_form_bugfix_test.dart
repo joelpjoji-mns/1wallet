@@ -8,11 +8,13 @@
 //      accounts. `_saveLoan` now disables the button / ignores re-entrant
 //      calls via an `_isSaving` flag.
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -21,9 +23,15 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/design/tokens.dart';
 import 'package:one_wallet_flutter/src/features/loans/loans_screen.dart';
+import 'package:one_wallet_flutter/src/features/transactions/transaction_row.dart';
+import 'package:one_wallet_flutter/src/features/transactions/transactions_screen.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
+import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
 
+import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
 
 void main() {
@@ -31,6 +39,109 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('loan repayments match History row width and alignment', (
+    tester,
+  ) async {
+    final font = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      font.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await font.load();
+    final state = sampleLedgerState();
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: state, prefs: prefs),
+    );
+    addTearDown(container.dispose);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+    final router = GoRouter(
+      initialLocation: '/history',
+      routes: [
+        GoRoute(
+          path: '/history',
+          builder: (context, state) => TransactionsScreen(onMenuPressed: () {}),
+        ),
+        GoRoute(
+          path: '/loan',
+          builder: (context, state) =>
+              const LoansScreen(mode: 'detail', accountId: 'acc-loan'),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    addTearDown(tester.view.reset);
+    tester.view.devicePixelRatio = 1;
+
+    for (final (size, scale) in [
+      (const Size(360, 800), 1.0),
+      (const Size(320, 568), 2.0),
+    ]) {
+      tester.view.physicalSize = size;
+      router.go('/history');
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.amoled(),
+            routerConfig: router,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final repayment = find.byWidgetPredicate(
+        (widget) =>
+            widget is TransactionRow && widget.transaction.id == 'tx-emi',
+      );
+      await tester.scrollUntilVisible(
+        repayment,
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      final historyRect = tester.getRect(repayment);
+
+      router.go('/loan');
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        repayment,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      final loanRect = tester.getRect(repayment);
+      final amount = find
+          .descendant(of: repayment, matching: find.byType(PrivacyText))
+          .first;
+      expect(
+        loanRect.left,
+        closeTo(historyRect.left, 0.01),
+        reason: '$size at $scale',
+      );
+      expect(
+        loanRect.width,
+        closeTo(historyRect.width, 0.01),
+        reason: '$size at $scale',
+      );
+      expect(
+        loanRect.height,
+        closeTo(historyRect.height, 0.01),
+        reason: '$size at $scale',
+      );
+      expect(tester.widget<TransactionRow>(repayment).showSurface, isFalse);
+      expect(
+        tester.getRect(amount).right,
+        closeTo(loanRect.right - AppSpacing.sm, 0.01),
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('forecast axes fit compact currency labels at large text sizes', (
@@ -273,6 +384,145 @@ void main() {
         expect(restored.maxX - restored.minX, before.maxX - before.minX);
       }
       expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('forecast date ticks remain distinct across years', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(520, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    for (final scale in [1.0, 2.0]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: const Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 480,
+                height: 380,
+                child: DynamicForecastLineChart(
+                  spots: [
+                    FlSpot(-90, 100000),
+                    FlSpot(0, 200000),
+                    FlSpot(455, 300000),
+                  ],
+                  chartWidth: 480,
+                  lineColor: Colors.blue,
+                  balanceCurve: [],
+                  locale: 'en_US',
+                  payoffDots: {},
+                  currencySymbol: r'$',
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final dates = find.descendant(
+        of: find.byType(LineChart),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              widget.data != null &&
+              RegExp(
+                r'^(\d{2} [A-Za-z]{3}|[A-Za-z]{3} \d{2}|\d{4})$',
+              ).hasMatch(widget.data!),
+        ),
+      );
+      final labels = tester.widgetList<Text>(dates).map((text) => text.data);
+      expect(labels.length, greaterThan(1), reason: 'scale=$scale');
+      expect(labels.toSet(), hasLength(labels.length), reason: 'scale=$scale');
+      for (var i = 0; i < labels.length; i++) {
+        final rect = tester.getRect(dates.at(i));
+        for (var j = i + 1; j < labels.length; j++) {
+          expect(rect.overlaps(tester.getRect(dates.at(j))), isFalse);
+        }
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  test('grouped payoff marker contains its entire label', () {
+    const label = '1,2,3,4';
+    const style = TextStyle(fontSize: 14);
+    for (final scale in [1.0, 2.0]) {
+      final scaler = TextScaler.linear(scale);
+      final text = TextPainter(
+        text: const TextSpan(
+          text: label,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout();
+      addTearDown(text.dispose);
+      final marker = NumberedDotPainter(
+        label,
+        color: Colors.blue,
+        textColor: Colors.white,
+        labelStyle: style,
+        textScaler: scaler,
+      );
+      final size = marker.getSize(const FlSpot(0, 0));
+      expect(size.width, greaterThan(text.width));
+      expect(size.height, greaterThan(text.height));
+    }
+  });
+
+  test('payoff markers stay inside chart edges', () async {
+    const width = 400;
+    const height = 120;
+    final marker = NumberedDotPainter(
+      '1,2,3,4',
+      color: Colors.blue,
+      textColor: Colors.white,
+      labelStyle: const TextStyle(fontSize: 14),
+      textScaler: const TextScaler.linear(2),
+    );
+    for (final (offset, visible) in [
+      (const Offset(0, 60), true),
+      (const Offset(400, 60), true),
+      (const Offset(200, 0), true),
+      (const Offset(200, 120), true),
+      (const Offset(-20, 60), false),
+      (const Offset(420, 60), false),
+      (const Offset(200, -20), false),
+      (const Offset(200, 140), false),
+    ]) {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder)
+        ..clipRect(const Rect.fromLTWH(0, 0, 400, 120));
+      marker.draw(canvas, const FlSpot(0, 0), offset);
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(width, height);
+      final bytes = (await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!.buffer.asUint8List();
+      int alphaAt(int x, int y) => bytes[(y * width + x) * 4 + 3];
+      for (var x = 0; x < width; x++) {
+        expect(alphaAt(x, 0), 0);
+        expect(alphaAt(x, height - 1), 0);
+      }
+      for (var y = 0; y < height; y++) {
+        expect(alphaAt(0, y), 0);
+        expect(alphaAt(width - 1, y), 0);
+      }
+      var painted = false;
+      for (var i = 3; i < bytes.length; i += 4) {
+        painted = painted || bytes[i] != 0;
+      }
+      expect(painted, visible, reason: 'marker at $offset');
+      image.dispose();
+      picture.dispose();
     }
   });
 

@@ -79,7 +79,11 @@ class _OfflineModeSheetState extends ConsumerState<OfflineModeSheet> {
           ),
           clipBehavior: Clip.antiAlias,
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
+            padding: EdgeInsets.all(
+              MediaQuery.textScalerOf(context).scale(14) > 20
+                  ? AppSpacing.sm
+                  : AppSpacing.xl,
+            ),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

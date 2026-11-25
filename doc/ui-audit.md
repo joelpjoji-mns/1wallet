@@ -38,12 +38,17 @@ device coverage.
 | Settings | Settings, DataBackup, DevicePermissions, GlassEffect, ThemeMode, Feedback |
 | Cloud management | Sync |
 
-The route list in `test/ui_route_matrix_test.dart` explicitly records **43 populated
-route/tab variants, 12 empty-wallet variants, and 5 startup routes**. Across 12
-presentation variants this gives **720 fixture render cases**. Some routes are aliases
-or reuse the same screen. The matrix includes light/AMOLED dark, selected phone,
-landscape and tablet sizes, and 100%, 115%, 130%, 150%, and 200% text scaling.
-It is not the full Cartesian product of every size, theme, scale, and state.
+The route list in `test/ui_route_matrix_test.dart` explicitly records **48 populated
+route/tab variants, 12 empty-wallet variants, and 5 startup routes**. Across 13
+presentation variants this gives **845 fixture render cases**, plus representative
+onboarding, cloud-recovery, dialog, keyboard, and offline-consent checks. Some
+routes are aliases or reuse the same screen. The matrix includes light/AMOLED dark,
+selected phone, landscape and tablet sizes, and 100%, 115%, 130%, 150%, and 200%
+text scaling. It is not the full Cartesian product of every size, theme, scale, and
+state.
+The button audit examines rendered Material/shared actions and calculator keys
+while scrolling reachable vertical viewports, including nested viewports discovered
+during scrolling. It does not cover every custom control or horizontal page.
 
 Shared interactions inventoried include drawer navigation, full-screen/category
 pickers, confirmation/form dialogs, calendar day sheets, capture result sheets,
@@ -65,9 +70,23 @@ However, the later integration-test attempt uninstalled the app and erased its
 private data, as documented below. Screenshots and accessibility dumps contain
 private account information and remain local to the session, not in this report.
 This pass did not exercise every dialog, status, backend failure, live integration,
-or platform. A sampled Android app log showed no RenderFlex overflow or
-fatal/unhandled exception matches, but the previously documented native
-home-widget `!debugNeedsPaint` errors were still present.
+or platform. Earlier Android logs showed native home-widget rendering errors;
+the bounded-render fix and latest device verification are documented below.
+
+After the accidental uninstall, Google sign-in loaded a populated cloud wallet.
+Displayed account and transaction names matched earlier screenshots, but complete
+recovery and the decryptability of the surviving encrypted backups remain
+unverified. Camera, notification, and SMS permissions were declined.
+
+The final debug APK was installed with `adb install -r`, without uninstalling or
+clearing the app. In-memory comparisons confirmed that account and transaction
+content was unchanged immediately after replacement and after relaunch. The
+installed APK hash matched the build. The original loan's repayment list was
+revisited at 100% and 200% system text size, with the setting restored to 1.0.
+Repayments now share History's gutters and trailing amount alignment, and tapping
+a repayment still opens transaction details. The populated forecast was also
+revisited: date ticks are distinct and zoom controls sit below the axis.
+This controlled check does not establish complete recovery from the earlier loss.
 
 ### Integration-test safety
 
@@ -87,6 +106,7 @@ uninstalls by default unless `--keep-app-running` is supplied.
 |---|---|---|---|---|
 | Startup | Intermittent deferred-setup assertion; Android showed an error fallback | P1 | Microtask used a provider `Ref` after a dependency changed | Flush current startup state through the container and cancel superseded/disposed actions; regression reproduces the old assertion |
 | Web startup | Native-widget synchronization threw a platform exception | P1 | Native platform checks executed on web | Explicit web guard |
+| Native home widgets | Offscreen previews failed with infinite-height constraints | P1 | The plugin renders previews inside a Column while preview roots expand without a bounded height | Give each preview its declared logical size before rendering; renderer-shaped regression passes and all 18 nonempty bitmap files were generated on Android |
 | Main navigation | Invalid indexes and changed/repeated tab links selected the wrong tab | P1 | Unsanitized indexes and retained route/page state | Validate indexes, synchronize link intent, preserve local tabs on router refresh |
 | Global feedback | Success/error snackbars were invisible | P1 | Transparent theme styling | Restore readable theme colors and shell clearance |
 | Calendar | Short/landscape layouts overflowed or hid content | P1 | Non-scrollable column and constrained header/summary rows | Sliver scrolling and responsive headers, totals, and filters |
@@ -97,11 +117,17 @@ uninstalls by default unless `--keep-app-running` is supplied.
 | Home account accessibility | Full account name and selection action were separate screen-reader stops | P2 | An explicit semantics container prevented the painted name from joining the tappable tile | Merge the complete name into the selectable tile; regression invokes its accessibility tap action |
 | Planned payments | Long names were reduced to a few characters; narrow rows could overflow | P1 | Name, urgency badge, amount, and due status competed in one row | Give the name and badge their own row; stack amount/status when measured space is insufficient |
 | Loan forecast | Currency and date labels overlapped or repeated when zoomed or enlarged; zoom controls covered the date axis | P1 | Fixed axis dimensions and tick spacing, compact rounding, endpoint ticks, and controls overlaid the chart | Measure labels, adapt precision and tick spacing to the visible range, and place 48 dp zoom controls below the chart |
+| Loan and plan actions | Forecast and other action labels wrapped on narrow phones | P1 | Equal-width action rows squeezed labels beside their icons | Allow action groups to reflow and use concise labels while retaining the related amount and accessible descriptions |
+| Loan repayment history | Transaction cards were narrower than History and unnecessarily truncated the same details | P2 | Default route padding, extra section padding, and individually surfaced rows compounded the inset | Reduce row inset from 52 dp to History's 16 dp, reuse grouped rows, and retain trailing amount alignment; regression compares actual screens at 360 dp/100% and 320 dp/200% text |
 | Cards | Dark or light custom account colors made icons nearly invisible on matching surfaces | P2 | Icon color was reused without checking its contrast against the tinted panel | Preserve legible custom colors and use the themed foreground when contrast is insufficient |
 | Drawer privacy switch | The label truncated even at normal text size | P2 | Redundant on/off text competed with the switch for width | Show the complete label and retain the switch's accessible state |
 | Home headers | Titles truncated beside actions | P2 | Single-line text constraint | Wrap headings within available space |
 | Loan/recurring editors | Amount/currency fields and labels became unusably narrow | P1 | Side-by-side controls retained at small widths/large text | Responsive stacking/reflow |
-| Transaction editor | Transaction types and selectors crowded narrow layouts | P2 | Inflexible control layout and long prompts | Responsive controls and shorter prompts |
+| Dashboard summaries and transaction rows | Amounts, payment details, and card actions crowded or overflowed at enlarged text | P1 | Fixed side-by-side arrangements and single-line constraints | Stack the affected content and allow labels and values to wrap while preserving row actions |
+| Transaction editor | Transaction types, keypad, and details crowded short screens and enlarged text | P1 | Inflexible controls and a non-scrollable column containing a fixed viewport | Responsive selectors and a scrollable sliver layout with minimum keypad touch targets; keep detail fields reachable with the keyboard open |
+| Onboarding and glass previews | Progress and preview labels overflowed on compact phones at 200% text | P1 | Unconstrained rows and fixed icon spacing | Constrain and wrap labels and reduce decorative preview spacing |
+| Cloud recovery and unknown route | Recovery and return-home buttons wrapped at 200% text | P2 | Long labels competed with icons and panel padding | Use concise visible labels and retain full accessible descriptions |
+| Offline consent | The confirmation label wrapped at 200% text on a compact phone | P2 | Large sheet padding left insufficient button width | Use compact inner padding at enlarged text while retaining the complete label |
 | Backup/recurring controls | Button/chip labels wrapped at large text | P2 | Wording exceeded available control width | Shorter action copy with explanatory text retained |
 | Appearance settings | Controls overflowed; unselected finish badges lacked contrast | P2 | Fixed horizontal arrangements and unsuitable text color | Reflow and theme-appropriate badge foregrounds |
 | Account editor | Opening-balance guidance truncated | P2 | Constrained explanatory text | Allow complete wrapping |
@@ -141,16 +167,18 @@ fonts, a local Flutter web session, and Android API 37 emulator `emulator-5554`
 
 | Test | Result | Details |
 |---|---|---|
-| `flutter test --no-pub --reporter expanded` | **Passed** | Final isolated run: 749 passed, 2 skipped; includes unit/widget regressions and route matrix |
+| `flutter test --no-pub --reporter expanded --concurrency=1` | **Passed** | Final uninterrupted serial run: 774 passed, 2 skipped; includes unit/widget regressions and the 845-case route matrix |
+| `flutter test --no-pub --reporter expanded test\loans_screen_form_bugfix_test.dart test\transaction_row_recurring_row_opaque_surface_test.dart` | **Passed** | 14 passed, including cross-screen repayment geometry, trailing amount alignment, forecast labels, and loan-form guards |
 | Startup/ownership regression subset | **Passed** | `flutter test --no-pub --reporter expanded test/offline_mode_startup_test.dart test/offline_upgrade_migration_test.dart test/notification_capture_flow_test.dart`: 22 passed |
 | Dashboard regression subset | **Passed** | `flutter test --no-pub --reporter expanded test/home_account_tile_large_text_overflow_test.dart`: 3 passed |
 | `flutter analyze --no-pub` | **Not clean** | One existing `prefer_const_constructors` info in `test/loan_plan_transaction_integration_test.dart:313`; no analyzer errors/warnings in the last completed run |
-| `dart format --output=none --set-exit-if-changed lib test integration_test` | **Not clean** | 24 files have formatting differences; broad pre-existing formatter churn deliberately avoided |
+| `dart format --output=none --set-exit-if-changed lib test integration_test` | **Not clean, earlier baseline** | 24 files had formatting differences; broad pre-existing formatter churn deliberately avoided |
 | Changed startup source/tests and dashboard regression test formatting | **Passed** | Formatted directly with `dart format` |
 | `git -c core.whitespace=cr-at-eol --no-pager diff --check` | **Passed** | Accommodates existing CRLF files |
-| `flutter build apk --debug --no-pub --target lib/main.dart` | **Passed** | Normal debug APK rebuilt after the incident but not installed; Kotlin plugin migration warnings remain |
-| Android native interaction | **Limited; interrupted** | Populated screens and earlier fixes were inspected before the incident. The final forecast changes could not be rechecked on the device |
-| Android 200% text | **Passed, limited scope** | Full Home currency pill/account name; readable selected Calendar label; grid scrolls above the undocked FAB and its last day opens the correct day sheet |
+| `flutter build apk --debug --no-pub --target lib\main.dart` | **Passed** | Final APK built, installed with replacement-only cleanup, and hash-verified; Kotlin plugin migration warnings remain |
+| Android native interaction | **Passed, limited scope** | Original repayment rows and transaction-detail navigation rechecked; restored populated forecast inspected after its date-label fix |
+| Android 200% text | **Passed, limited scope** | Repayment descriptions/amounts reflow without overlap; earlier Home/Calendar checks passed; system scale restored to 1.0 |
+| Android native-widget rendering | **Passed, limited scope** | All 18 nonempty bitmap outputs generated; latest app-PID log sample has no renderer errors. Launcher placement, appearance, and interactions remain unverified |
 | Manual web interaction | **Passed, limited scope** | Offline onboarding, Home/History/Calendar, calendar day sheet, disposable transaction; not every web screen |
 | Overflow/responsiveness | **Passed within fixtures** | Selected sizes/scales and focused geometry assertions; not all clipping or native states |
 | `flutter test --no-pub --reporter expanded integration_test/perf_timeline_test.dart` | **Failed; destructive cleanup** | VM-service connection refused; the runner selected the populated Android emulator and uninstalled the app afterward. The benchmark is a synthetic list, not an app performance test |
@@ -158,37 +186,40 @@ fonts, a local Flutter web session, and Android API 37 emulator `emulator-5554`
 | iOS build/device, physical Android devices, other Android API levels | **Unavailable/not run** | No cross-platform release certification |
 | Release build, full backend-failure matrix, production performance profile | **Not run** | Debug build and mocked tests are not substitutes |
 
-An intermediate parallel test/build/analyzer run had a test-load connection failure
-and a 30-second crypto-test timeout. The affected tests passed on retry; the final
-complete suite above ran without concurrent Flutter build/analysis and passed.
+Earlier runs had intermittent runner-load connection failures and a crypto-test
+timeout. A later concurrency-2 run ended with 772 passed, 2 skipped, and one
+credit-utilization test-file load failure; that file's 2 tests passed on retry.
+The final serial suite above completed successfully without concurrent Flutter
+build/analysis.
 
 Sixty fixture screenshots plus selected subsequent captures were generated during
-the audit; not every one of the 720 renders was manually reviewed. Final native
-Home/Calendar screenshots and accessibility XML are retained with the session
+the audit; not every one of the 845 fixture renders was manually reviewed. Native
+Home/Calendar/loan screenshots and accessibility XML are retained with the session
 artifacts, not committed as golden baselines. Android system font scale was restored
 to its original 1.0 after each enlarged-text check. The disposable wallet from the
 earlier audit was removed after its verification; the later populated app was
 uninstalled by the failed integration-test attempt described above.
 
-The final app-PID log sample contained zero unhandled exceptions, outdated-`Ref`
-assertions, or RenderFlex overflow messages, but still contained two native-widget
-render failures and one secure-storage key-decryption error. It is not a clean
-native-console sign-off.
+The latest app-PID log sample contained zero RenderFlex overflow, infinite-height,
+native-widget rendering, unhandled-exception, or secure-storage decryption matches.
+Earlier logs did contain native-widget and secure-storage errors. A clean sampled
+log is not an exhaustive native-console or persistence sign-off.
 
 ### Remaining issues and release blockers
 
 1. **Integration tests can remove app data.** Use a disposable device and the
-   explicit cleanup safeguards described above. The final populated-device
-   forecast recheck was interrupted and remains unverified.
-2. **Native home-widget bitmap generation still fails** on the emulator with
-   `HomeWidget.renderFlutterWidget` / `!debugNeedsPaint`. This is a separate
-   native rendering path; the web guard does not fix it. A dependency-compatible
-   rendering fix needs its own native-widget verification.
+   explicit cleanup safeguards described above. No further integration tests
+   were run against the restored populated wallet.
+2. **Native launcher presentation remains unverified.** The infinite-height
+   rendering failure was reproduced and fixed, and all 18 bitmap files now
+   generate. Placement, sizing, refresh, and actions on actual launcher widgets
+   still need verification.
 3. **Secure-storage/persistence anomaly needs investigation.** Key-decryption
-   errors appeared in earlier and final native logs. The earlier disposable account
+   errors appeared in earlier native logs, but not the latest sample. The earlier disposable account
    was absent after a reinstall; subsequent controlled save/reinstall/relaunch
    checks retained a new account. The cause and recovery behavior are not isolated;
-   this is not evidence that real-wallet upgrade persistence is safe. Resetting
+   the final controlled populated-wallet replacement retained accounts and transactions,
+   but this is not general proof of upgrade persistence or complete recovery. Resetting
    keys or suppressing the error would not be a safe audit fix.
 4. **Accessibility is incomplete.** Core tab/menu/action duplication was fixed.
    Calendar day semantics still identify days only by number, which is ambiguous
@@ -228,8 +259,8 @@ scores carry especially low confidence because of the verification gaps.
 | Production readiness | 5 |
 | **Overall** | **7.3** |
 
-Release sign-off remains blocked by the native-widget failure, unresolved
-secure-storage anomaly, and missing platform/device/accessibility coverage.
+Release sign-off remains blocked by the unresolved secure-storage/recovery anomaly
+and missing launcher/platform/device/accessibility coverage.
 
 ## Historical UI consistency audit and normalization
 

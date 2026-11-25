@@ -304,7 +304,7 @@ void main() {
       );
 
       expect(find.textContaining('Pay EMI'), findsOneWidget);
-      expect(find.text('Custom repayment'), findsOneWidget);
+      expect(find.text('Custom payment'), findsOneWidget);
       expect(find.text('View plan'), findsOneWidget);
     });
 

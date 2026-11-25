@@ -767,13 +767,17 @@ class _LiveGlassPreview extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              '${target.shortLabel.toUpperCase()} PREVIEW',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
-                                color: isDark ? Colors.white70 : Colors.black87,
+                            Flexible(
+                              child: Text(
+                                '${target.shortLabel.toUpperCase()} PREVIEW',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black87,
+                                ),
                               ),
                             ),
                           ],
@@ -1082,7 +1086,7 @@ class _LiveGlassPreview extends StatelessWidget {
 
   Widget _navPreviewItem(IconData icon, String label, bool active) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: active ? 8 : 4, vertical: 6),
       decoration: active
           ? BoxDecoration(
               color: scheme.primary.withAlphaFactor(0.20),

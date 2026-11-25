@@ -10,6 +10,7 @@ import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/recurring/recurring_screen.dart';
 import 'package:one_wallet_flutter/src/features/transactions/transaction_row.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
 
 import 'test_harness.dart';
 
@@ -92,6 +93,81 @@ void main() {
       expect(tapped, isTrue);
     },
   );
+
+  testWidgets('large-text transaction details and amount do not overlap', (
+    tester,
+  ) async {
+    const accountName = 'A long account name for monthly household expenses';
+    const notes = 'A long note that should remain readable on a narrow phone';
+    final state = emptyLedgerState().copyWith(
+      accounts: [
+        const Account(
+          id: 'acc-cash',
+          name: accountName,
+          type: 'cash',
+          currency: 'USD',
+          openingBalance: Money(amountMinor: 0, currency: 'USD'),
+        ),
+      ],
+    );
+    final transaction = TransactionRecord(
+      id: 'tx-1',
+      type: 'expense',
+      status: 'cleared',
+      source: 'manual',
+      accountId: 'acc-cash',
+      amount: const Money(amountMinor: 123456789, currency: 'USD'),
+      baseAmount: const Money(amountMinor: 123456789, currency: 'USD'),
+      occurredAt: DateTime(2026, 1, 5),
+      notes: notes,
+    );
+    var tapped = false;
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: state),
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox(
+                    width: 320,
+                    child: TransactionRow(
+                      state: state,
+                      transaction: transaction,
+                      showSurface: false,
+                      onTap: () => tapped = true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final account = tester.widget<Text>(find.text(accountName));
+    final note = tester.widget<Text>(find.text(notes));
+    expect(account.maxLines, isNull);
+    expect(note.maxLines, isNull);
+    expect(
+      tester.getRect(find.byType(PrivacyText).first).top,
+      greaterThanOrEqualTo(tester.getRect(find.text(notes)).bottom),
+    );
+    await tester.tap(find.byType(TransactionRow));
+    expect(tapped, isTrue);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Recurring planned-list rows use Liquid Glass surfaces', (
     tester,

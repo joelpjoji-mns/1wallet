@@ -149,7 +149,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                     child: FilledButton.tonalIcon(
                       onPressed: () => context.push('/review'),
                       icon: const Icon(Icons.inbox_outlined),
-                      label: Text('Review $pending pending'),
+                      label: Text(
+                        'Review ($pending)',
+                        semanticsLabel: 'Review $pending pending',
+                      ),
                     ),
                   ),
                 ],
@@ -188,7 +191,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                           await _refreshPermission();
                         },
                         icon: const Icon(Icons.lock_open_outlined),
-                        label: const Text('Grant SMS permission'),
+                        label: const Text(
+                          'Allow SMS',
+                          semanticsLabel: 'Grant SMS permission',
+                        ),
                       ),
                     ),
                   ],
@@ -443,7 +449,10 @@ class _SmsCaptureScreenState extends ConsumerState<SmsCaptureScreen> {
                 FilledButton.tonalIcon(
                   onPressed: preview.queued ? _queueTestMessage : null,
                   icon: const Icon(Icons.playlist_add_check_outlined),
-                  label: const Text('Add to review queue'),
+                  label: const Text(
+                    'Add to review',
+                    semanticsLabel: 'Add to review queue',
+                  ),
                 ),
               ],
             ),
@@ -1095,7 +1104,10 @@ class _WordEditorState extends State<_WordEditor> {
             child: TextButton.icon(
               onPressed: widget.onReset,
               icon: const Icon(Icons.restart_alt_rounded, size: 18),
-              label: const Text('Reset to defaults'),
+              label: const Text(
+                'Reset',
+                semanticsLabel: 'Reset to defaults',
+              ),
             ),
           ),
         ],

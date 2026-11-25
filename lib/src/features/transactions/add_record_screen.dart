@@ -285,839 +285,934 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
             ),
             HeaderSaveAction(isSaving: _isSaving, onPressed: _saveRecord),
           ],
-          scrollView: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: AppSpacing.xs),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: AddRecordTypeTabs(
-                  value: _type,
-                  onChanged: (value) => setState(() {
-                    _type = value;
-                    if (value == 'transfer') {
-                      _categoryId = null;
-                    }
-                    if (value != 'transfer' &&
-                        value != 'loan_repayment' &&
-                        value != 'card_payment') {
-                      _counterAccountId = null;
-                    }
-                  }),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: GlassTabSegmentedControl(
-                  height: 40,
-                  segments: [
-                    GlassSegment(
-                      label: 'Keypad',
-                      icon: Icon(Icons.dialpad_rounded),
+          scrollView: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: AppSpacing.xs),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                      child: AddRecordTypeTabs(
+                        value: _type,
+                        onChanged: (value) => setState(() {
+                          _type = value;
+                          if (value == 'transfer') {
+                            _categoryId = null;
+                          }
+                          if (value != 'transfer' &&
+                              value != 'loan_repayment' &&
+                              value != 'card_payment') {
+                            _counterAccountId = null;
+                          }
+                        }),
+                      ),
                     ),
-                    GlassSegment(
-                      label: 'Details',
-                      icon: Icon(Icons.notes_rounded),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.md,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(AppRadii.lg),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (_activeField == 1)
-                        Text(
-                          'Amount charged in ${sourceAccount?.currency ?? ""}',
-                          textAlign: TextAlign.right,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: tone,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        )
-                      else if (_activeField == 2)
-                        Text(
-                          'Amount received in ${counterAccount?.currency ?? ""}',
-                          textAlign: TextAlign.right,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: tone,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Builder(
-                                  builder: (context) {
-                                    final displayAmount = _activeField == 0
-                                        ? _amount
-                                        : _activeField == 1
-                                        ? _localAmount
-                                        : _activeField == 2
-                                        ? _counterAmount
-                                        : '0';
-                                    final displayExpression = _activeField == 0
-                                        ? _expression
-                                        : _activeField == 1
-                                        ? _localExpression
-                                        : _activeField == 2
-                                        ? _counterExpression
-                                        : '';
-                                    final fullText =
-                                        displayExpression +
-                                        (displayAmount.isEmpty
-                                            ? '0'
-                                            : displayAmount);
-                                    // Only prepend the expense/transfer minus
-                                    // sign when the calculation isn't already
-                                    // showing one (e.g. from a negated entry
-                                    // via +/- or a negative running total),
-                                    // to avoid a confusing "--12" display.
-                                    final needsMinusPrefix =
-                                        _type != 'income' &&
-                                        fullText != '0' &&
-                                        !fullText.startsWith('-');
-                                    return FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerRight,
-                                      child: Text(
-                                        (needsMinusPrefix ? '-' : '') +
-                                            _formatExpression(
-                                              fullText,
-                                              state.preferences.locale,
-                                            ),
-                                        key: const Key(
-                                          'addRecordAmountDisplay',
-                                        ),
-                                        maxLines: 1,
-                                        textAlign: TextAlign.right,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .displayLarge
-                                            ?.copyWith(
-                                              color: tone,
-                                              fontWeight: FontWeight.w400,
-                                              letterSpacing: -1.4,
-                                            ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
+                    const SizedBox(height: AppSpacing.sm),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                      child: GlassTabSegmentedControl(
+                        height: 40,
+                        segments: [
+                          GlassSegment(
+                            label: 'Keypad',
+                            icon: Icon(Icons.dialpad_rounded),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          GlassDropdownPill<String>(
-                            value: txCurrency,
-                            options: availableCurrencies(
-                              state,
-                            ).map((c) => GlassDropdownOption(c, c)).toList(),
-                            onChanged: (val) => setState(() {
-                              _transactionCurrency = val;
-                              _localAmountEdited = false;
-                              _localAmount = '';
-                              _localExpression = '';
-                              _localAmountController.clear();
-                            }),
-                            semanticLabel: 'Select currency',
+                          GlassSegment(
+                            label: 'Details',
+                            icon: Icon(Icons.notes_rounded),
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              if (isForeign || isCrossTransfer) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ),
-                  child: _FxAmountPanel(
-                    state: state,
-                    sourceAccount: sourceAccount,
-                    counterAccount: counterAccount,
-                    txCurrency: txCurrency,
-                    isForeign: isForeign,
-                    isCrossTransfer: isCrossTransfer,
-                    sentAmount: _resolvedMainAmountInput(),
-                    localAmount: _localAmountController.text,
-                    counterAmount: _counterAmountController.text,
-                    activeField: _activeField,
-                    onEditMain: () => setState(() => _activeField = 0),
-                    onEditLocal: () => setState(() => _activeField = 1),
-                    onEditCounter: () => setState(() => _activeField = 2),
-                  ),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.sm),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: AddRecordSelectorGrid(
-                  state: state,
-                  sourceAccount: sourceAccount,
-                  counterAccount: counterAccount,
-                  category: category,
-                  type: _type,
-                  onSelectAccount: () => _showAccountPicker(false),
-                  onSelectCounter: () => _showAccountPicker(true),
-                  onSelectCategory: _showCategoryPicker,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    AddRecordCalculatorPad(
-                      type: _type,
-                      onKey: (key) => setState(() {
-                        if (_activeField == 0) {
-                          final next = _applyKey(_amount, _expression, key);
-                          _amount = next.amount;
-                          _expression = next.expression;
-                        } else if (_activeField == 1) {
-                          _localAmountEdited = true;
-                          final next = _applyKey(
-                            _localAmount,
-                            _localExpression,
-                            key,
-                          );
-                          _localAmount = next.amount;
-                          _localExpression = next.expression;
-                          _localAmountController.text = next.amount;
-                        } else if (_activeField == 2) {
-                          _counterAmountEdited = true;
-                          final next = _applyKey(
-                            _counterAmount,
-                            _counterExpression,
-                            key,
-                          );
-                          _counterAmount = next.amount;
-                          _counterExpression = next.expression;
-                          _counterAmountController.text = next.amount;
-                        }
-                      }),
                     ),
-                    ListView(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      children: [
-                        RawAutocomplete<String>(
-                          textEditingController: _notesController,
-                          focusNode: _notesFocusNode,
-                          optionsViewOpenDirection: OptionsViewOpenDirection.up,
-                          optionsBuilder: (textEditingValue) {
-                            final query = textEditingValue.text.trim();
-                            if (query.isEmpty) {
-                              return const Iterable<String>.empty();
-                            }
-                            final lowerQuery = query.toLowerCase();
-                            return uniqueNotes
-                                .where(
-                                  (note) =>
-                                      note.toLowerCase().contains(lowerQuery),
-                                )
-                                .take(8);
-                          },
-                          fieldViewBuilder:
-                              (
-                                context,
-                                textEditingController,
-                                focusNode,
-                                onFieldSubmitted,
-                              ) {
-                                return AppGlassTextField(
-                                  controller: textEditingController,
-                                  focusNode: focusNode,
-                                  minLines: 1,
-                                  maxLines: 3,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Notes',
-                                    prefixIcon: Icon(Icons.notes_outlined),
-                                  ),
-                                );
-                              },
-                          optionsViewBuilder: (context, onSelected, options) {
-                            final optionsList = options.toList();
-                            if (optionsList.isEmpty) {
-                              return const SizedBox.shrink();
-                            }
-                            return Align(
-                              alignment: Alignment.bottomLeft,
-                              child: Material(
-                                elevation: 4,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 200,
-                                  ),
-                                  child: SizedBox(
-                                    width:
-                                        MediaQuery.of(context).size.width -
-                                        (AppSpacing.md * 2),
-                                    child: ListView.builder(
-                                      padding: EdgeInsets.zero,
-                                      shrinkWrap: true,
-                                      itemCount: optionsList.length,
-                                      itemBuilder: (context, index) {
-                                        final option = optionsList[index];
-                                        return AppGroupedTile(
-                                          leading: const Icon(
-                                            Icons.history_rounded,
-                                            size: 18,
-                                          ),
-                                          title: Text(option),
-                                          onTap: () => onSelected(option),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
+                    const SizedBox(height: AppSpacing.sm),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.md,
                         ),
-                        const SizedBox(height: AppSpacing.sm),
-                        RawAutocomplete<String>(
-                          textEditingController: _tagInputController,
-                          focusNode: _tagFocusNode,
-                          optionsViewOpenDirection: OptionsViewOpenDirection.up,
-                          optionsBuilder: (textEditingValue) {
-                            final query = textEditingValue.text.trim();
-                            final lowerQuery = query.toLowerCase();
-                            final cleanAllTags = allTags
-                                .map((t) => t.replaceAll('#', '').trim())
-                                .where((t) => t.isNotEmpty)
-                                .toSet()
-                                .toList();
-                            final unselected = cleanAllTags
-                                .where((t) => !_tags.contains(t))
-                                .toList();
-                            if (query.isEmpty) {
-                              if (_tags.isEmpty) {
-                                return unselected;
-                              }
-                              return const Iterable<String>.empty();
-                            }
-                            final matches = unselected
-                                .where(
-                                  (t) => t.toLowerCase().contains(lowerQuery),
-                                )
-                                .toList();
-                            final exactMatch = cleanAllTags.any(
-                              (t) => t.toLowerCase() == lowerQuery,
-                            );
-                            if (!exactMatch && query.isNotEmpty) {
-                              matches.insert(0, '__create__:$query');
-                            }
-                            return matches;
-                          },
-                          onSelected: (option) {
-                            final clean = option.startsWith('__create__:')
-                                ? option.substring('__create__:'.length)
-                                : option;
-                            final val = clean.replaceAll('#', '').trim();
-                            if (val.isNotEmpty && !_tags.contains(val)) {
-                              setState(() {
-                                _tags.add(val);
-                                _tagInputController.clear();
-                              });
-                            }
-                          },
-                          fieldViewBuilder:
-                              (
-                                context,
-                                textEditingController,
-                                focusNode,
-                                onFieldSubmitted,
-                              ) {
-                                final theme = Theme.of(context);
-                                final isFocused = focusNode.hasFocus;
-                                return InkWell(
-                                  onTap: _triggerTagOptions,
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadii.md,
-                                  ),
-                                  child: InputDecorator(
-                                    isFocused: isFocused,
-                                    isEmpty:
-                                        _tags.isEmpty &&
-                                        textEditingController.text.isEmpty &&
-                                        !isFocused,
-                                    decoration: InputDecoration(
-                                      labelText: 'Tags',
-                                      prefixIcon: const Icon(
-                                        Icons.sell_outlined,
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadii.md,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: AppSpacing.md,
-                                            vertical: AppSpacing.sm,
-                                          ),
-                                    ),
-                                    child: LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        final remainingWidth =
-                                            _computeTagRemainingWidth(
-                                              _tags,
-                                              constraints.maxWidth,
-                                              theme.textTheme.labelMedium,
-                                            );
-                                        final fieldWidth =
-                                            remainingWidth >= 90.0
-                                            ? remainingWidth
-                                            : constraints.maxWidth;
-
-                                        return Wrap(
-                                          spacing: AppSpacing.xs,
-                                          runSpacing: AppSpacing.xs,
-                                          crossAxisAlignment:
-                                              WrapCrossAlignment.center,
-                                          children: [
-                                            for (final tag in _tags)
-                                              InputChip(
-                                                label: Text(
-                                                  tag,
-                                                  style: theme
-                                                      .textTheme
-                                                      .labelMedium
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        AppRadii.pill,
-                                                      ),
-                                                ),
-                                                onDeleted: () => setState(
-                                                  () => _tags.remove(tag),
-                                                ),
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                                materialTapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                    ),
-                                                deleteIconColor: theme
-                                                    .colorScheme
-                                                    .onSurfaceVariant,
-                                              ),
-                                            SizedBox(
-                                              width: fieldWidth,
-                                              child: TextField(
-                                                controller:
-                                                    textEditingController,
-                                                focusNode: focusNode,
-                                                decoration: InputDecoration(
-                                                  border: InputBorder.none,
-                                                  enabledBorder:
-                                                      InputBorder.none,
-                                                  focusedBorder:
-                                                      InputBorder.none,
-                                                  disabledBorder:
-                                                      InputBorder.none,
-                                                  errorBorder: InputBorder.none,
-                                                  focusedErrorBorder:
-                                                      InputBorder.none,
-                                                  filled: false,
-                                                  fillColor: Colors.transparent,
-                                                  isDense: true,
-                                                  contentPadding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: AppSpacing.xs,
-                                                      ),
-                                                  hintText:
-                                                      (!isFocused &&
-                                                          _tags.isEmpty &&
-                                                          textEditingController
-                                                              .text
-                                                              .isEmpty)
-                                                      ? null
-                                                      : (_tags.isNotEmpty
-                                                            ? 'Add tag...'
-                                                            : 'Add tags (e.g. Work, Vacation)'),
-                                                  hintStyle: theme
-                                                      .textTheme
-                                                      .bodyMedium
-                                                      ?.copyWith(
-                                                        color: theme.colorScheme.onSurfaceVariant,
-                                                      ),
-                                                ),
-                                                style:
-                                                    theme.textTheme.bodyMedium,
-                                                onTap: _triggerTagOptions,
-                                                onSubmitted: (value) {
-                                                  final val = value
-                                                      .replaceAll('#', '')
-                                                      .trim();
-                                                  if (val.isNotEmpty &&
-                                                      !_tags.contains(val)) {
-                                                    setState(() {
-                                                      _tags.add(val);
-                                                      textEditingController
-                                                          .clear();
-                                                    });
-                                                  }
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                          optionsViewBuilder: (context, onSelected, options) {
-                            final optionsList = options.toList();
-                            if (optionsList.isEmpty) {
-                              return const SizedBox.shrink();
-                            }
-                            return Align(
-                              alignment: Alignment.bottomLeft,
-                              child: Material(
-                                elevation: 4,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHigh,
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 135,
-                                  ),
-                                  child: SizedBox(
-                                    width:
-                                        MediaQuery.of(context).size.width -
-                                        (AppSpacing.md * 2),
-                                    child: ListView.builder(
-                                      padding: EdgeInsets.zero,
-                                      shrinkWrap: true,
-                                      itemCount: optionsList.length,
-                                      itemBuilder: (context, index) {
-                                        final option = optionsList[index];
-                                        if (option.startsWith('__create__:')) {
-                                          final createVal = option
-                                              .substring('__create__:'.length)
-                                              .replaceAll('#', '')
-                                              .trim();
-                                          return AppGroupedTile(
-                                            leading: const Icon(
-                                              Icons.add_rounded,
-                                              size: 18,
-                                            ),
-                                            title: Text('Create "$createVal"'),
-                                            onTap: () => onSelected(createVal),
-                                          );
-                                        }
-                                        final displayTag = option
-                                            .replaceAll('#', '')
-                                            .trim();
-                                        return AppGroupedTile(
-                                          leading: const Icon(
-                                            Icons.sell_outlined,
-                                            size: 18,
-                                          ),
-                                          title: Text(displayTag),
-                                          onTap: () => onSelected(displayTag),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: AddRecordTappableDetailField(
-                                icon: Icons.today_outlined,
-                                label: formatLedgerDate(
-                                  _occurredAt,
-                                  state.preferences.locale,
-                                ),
-                                onTap: _selectDate,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: AddRecordTappableDetailField(
-                                icon: Icons.schedule_outlined,
-                                label: DateFormat.jm().format(
-                                  _occurredAt.toLocal(),
-                                ),
-                                onTap: _selectTime,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        AppGlassTextField(
-                          controller: _locationController,
-                          decoration: const InputDecoration(
-                            labelText: 'Place',
-                            prefixIcon: Icon(Icons.place_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        AppGlassTextField(
-                          controller: _paymentMethodController,
-                          decoration: const InputDecoration(
-                            labelText: 'Payment method',
-                            prefixIcon: Icon(Icons.payment_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Material(
+                        decoration: BoxDecoration(
                           color: Theme.of(
                             context,
-                          ).colorScheme.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(AppRadii.md),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                              vertical: AppSpacing.sm,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(AppRadii.md),
-                              border: Border.all(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .outlineVariant
-                                    .withValues(alpha: 0.55),
+                          ).colorScheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(AppRadii.lg),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (_activeField == 1)
+                              Text(
+                                'Amount charged in ${sourceAccount?.currency ?? ""}',
+                                textAlign: TextAlign.right,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: tone,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              )
+                            else if (_activeField == 2)
+                              Text(
+                                'Amount received in ${counterAccount?.currency ?? ""}',
+                                textAlign: TextAlign.right,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: tone,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                               ),
-                            ),
-                            child: Row(
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Icon(
-                                  Icons.info_outline_rounded,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
                                 Expanded(
-                                  child: Text(
-                                    'Status',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
-                                        ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Builder(
+                                        builder: (context) {
+                                          final displayAmount =
+                                              _activeField == 0
+                                              ? _amount
+                                              : _activeField == 1
+                                              ? _localAmount
+                                              : _activeField == 2
+                                              ? _counterAmount
+                                              : '0';
+                                          final displayExpression =
+                                              _activeField == 0
+                                              ? _expression
+                                              : _activeField == 1
+                                              ? _localExpression
+                                              : _activeField == 2
+                                              ? _counterExpression
+                                              : '';
+                                          final fullText =
+                                              displayExpression +
+                                              (displayAmount.isEmpty
+                                                  ? '0'
+                                                  : displayAmount);
+                                          // Only prepend the expense/transfer minus
+                                          // sign when the calculation isn't already
+                                          // showing one (e.g. from a negated entry
+                                          // via +/- or a negative running total),
+                                          // to avoid a confusing "--12" display.
+                                          final needsMinusPrefix =
+                                              _type != 'income' &&
+                                              fullText != '0' &&
+                                              !fullText.startsWith('-');
+                                          return FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerRight,
+                                            child: Text(
+                                              (needsMinusPrefix ? '-' : '') +
+                                                  _formatExpression(
+                                                    fullText,
+                                                    state.preferences.locale,
+                                                  ),
+                                              key: const Key(
+                                                'addRecordAmountDisplay',
+                                              ),
+                                              maxLines: 1,
+                                              textAlign: TextAlign.right,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .displayLarge
+                                                  ?.copyWith(
+                                                    color: tone,
+                                                    fontWeight: FontWeight.w400,
+                                                    letterSpacing: -1.4,
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
+                                const SizedBox(width: AppSpacing.sm),
                                 GlassDropdownPill<String>(
-                                  value:
-                                      const [
-                                        'cleared',
-                                        'pending',
-                                        'void',
-                                      ].contains(_status)
-                                      ? _status!
-                                      : 'cleared',
-                                  options: const [
-                                    GlassDropdownOption(
-                                      'cleared',
-                                      'Cleared',
-                                      icon: Icons.check_circle_outline_rounded,
-                                    ),
-                                    GlassDropdownOption(
-                                      'pending',
-                                      'Pending',
-                                      icon: Icons.hourglass_empty_rounded,
-                                    ),
-                                    GlassDropdownOption(
-                                      'void',
-                                      'Skipped / Void',
-                                      icon: Icons.block_rounded,
-                                    ),
-                                  ],
-                                  onChanged: (val) =>
-                                      setState(() => _status = val),
-                                  semanticLabel: 'Select status',
+                                  value: txCurrency,
+                                  options: availableCurrencies(state)
+                                      .map((c) => GlassDropdownOption(c, c))
+                                      .toList(),
+                                  onChanged: (val) => setState(() {
+                                    _transactionCurrency = val;
+                                    _localAmountEdited = false;
+                                    _localAmount = '';
+                                    _localExpression = '';
+                                    _localAmountController.clear();
+                                  }),
+                                  semanticLabel: 'Select currency',
                                 ),
                               ],
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(height: AppSpacing.sm),
-                        // Attached photos
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.sm,
+                      ),
+                    ),
+                    if (isForeign || isCrossTransfer) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                        ),
+                        child: _FxAmountPanel(
+                          state: state,
+                          sourceAccount: sourceAccount,
+                          counterAccount: counterAccount,
+                          txCurrency: txCurrency,
+                          isForeign: isForeign,
+                          isCrossTransfer: isCrossTransfer,
+                          sentAmount: _resolvedMainAmountInput(),
+                          localAmount: _localAmountController.text,
+                          counterAmount: _counterAmountController.text,
+                          activeField: _activeField,
+                          onEditMain: () => setState(() => _activeField = 0),
+                          onEditLocal: () => setState(() => _activeField = 1),
+                          onEditCounter: () => setState(() => _activeField = 2),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                      child: AddRecordSelectorGrid(
+                        state: state,
+                        sourceAccount: sourceAccount,
+                        counterAccount: counterAccount,
+                        category: category,
+                        type: _type,
+                        onSelectAccount: () => _showAccountPicker(false),
+                        onSelectCounter: () => _showAccountPicker(true),
+                        onSelectCategory: _showCategoryPicker,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ),
+              ),
+              SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final labelStyle = Theme.of(context).textTheme.headlineMedium;
+                  final labelHeight =
+                      MediaQuery.textScalerOf(
+                        context,
+                      ).scale(labelStyle?.fontSize ?? 28) *
+                      (labelStyle?.height ?? 1.2);
+                  final keyHeight = math.max(
+                    kMinInteractiveDimension,
+                    labelHeight + AppSpacing.md,
+                  );
+                  final minimumHeight =
+                      keyHeight * 5 + AppSpacing.sm * 5 + AppSpacing.md;
+                  final remainingHeight =
+                      constraints.viewportMainAxisExtent -
+                      constraints.precedingScrollExtent;
+                  return SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: math.max(minimumHeight, remainingHeight),
+                      child: TabBarView(
+                        children: [
+                          AddRecordCalculatorPad(
+                            type: _type,
+                            onKey: (key) => setState(() {
+                              if (_activeField == 0) {
+                                final next = _applyKey(
+                                  _amount,
+                                  _expression,
+                                  key,
+                                );
+                                _amount = next.amount;
+                                _expression = next.expression;
+                              } else if (_activeField == 1) {
+                                _localAmountEdited = true;
+                                final next = _applyKey(
+                                  _localAmount,
+                                  _localExpression,
+                                  key,
+                                );
+                                _localAmount = next.amount;
+                                _localExpression = next.expression;
+                                _localAmountController.text = next.amount;
+                              } else if (_activeField == 2) {
+                                _counterAmountEdited = true;
+                                final next = _applyKey(
+                                  _counterAmount,
+                                  _counterExpression,
+                                  key,
+                                );
+                                _counterAmount = next.amount;
+                                _counterExpression = next.expression;
+                                _counterAmountController.text = next.amount;
+                              }
+                            }),
                           ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerLow
-                                .withAlphaFactor(0.4),
-                            borderRadius: BorderRadius.circular(AppRadii.lg),
-                            border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.outlineVariant.withAlphaFactor(0.2),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          ListView(
+                            padding: const EdgeInsets.all(AppSpacing.md),
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.photo_library_outlined,
-                                    size: 18,
-                                    color: Theme.of(
+                              RawAutocomplete<String>(
+                                textEditingController: _notesController,
+                                focusNode: _notesFocusNode,
+                                optionsViewOpenDirection:
+                                    OptionsViewOpenDirection.up,
+                                optionsBuilder: (textEditingValue) {
+                                  final query = textEditingValue.text.trim();
+                                  if (query.isEmpty) {
+                                    return const Iterable<String>.empty();
+                                  }
+                                  final lowerQuery = query.toLowerCase();
+                                  return uniqueNotes
+                                      .where(
+                                        (note) => note.toLowerCase().contains(
+                                          lowerQuery,
+                                        ),
+                                      )
+                                      .take(8);
+                                },
+                                fieldViewBuilder:
+                                    (
                                       context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: AppSpacing.xs),
-                                  Text(
-                                    'Attached photos',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w700,
+                                      textEditingController,
+                                      focusNode,
+                                      onFieldSubmitted,
+                                    ) {
+                                      return AppGlassTextField(
+                                        controller: textEditingController,
+                                        focusNode: focusNode,
+                                        minLines: 1,
+                                        maxLines: 3,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Notes',
+                                          prefixIcon: Icon(
+                                            Icons.notes_outlined,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                optionsViewBuilder:
+                                    (context, onSelected, options) {
+                                      final optionsList = options.toList();
+                                      if (optionsList.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Align(
+                                        alignment: Alignment.bottomLeft,
+                                        child: Material(
+                                          elevation: 4,
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadii.md,
+                                          ),
+                                          child: ConstrainedBox(
+                                            constraints: const BoxConstraints(
+                                              maxHeight: 200,
+                                            ),
+                                            child: SizedBox(
+                                              width:
+                                                  MediaQuery.of(
+                                                    context,
+                                                  ).size.width -
+                                                  (AppSpacing.md * 2),
+                                              child: ListView.builder(
+                                                padding: EdgeInsets.zero,
+                                                shrinkWrap: true,
+                                                itemCount: optionsList.length,
+                                                itemBuilder: (context, index) {
+                                                  final option =
+                                                      optionsList[index];
+                                                  return AppGroupedTile(
+                                                    leading: const Icon(
+                                                      Icons.history_rounded,
+                                                      size: 18,
+                                                    ),
+                                                    title: Text(option),
+                                                    onTap: () =>
+                                                        onSelected(option),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              RawAutocomplete<String>(
+                                textEditingController: _tagInputController,
+                                focusNode: _tagFocusNode,
+                                optionsViewOpenDirection:
+                                    OptionsViewOpenDirection.up,
+                                optionsBuilder: (textEditingValue) {
+                                  final query = textEditingValue.text.trim();
+                                  final lowerQuery = query.toLowerCase();
+                                  final cleanAllTags = allTags
+                                      .map((t) => t.replaceAll('#', '').trim())
+                                      .where((t) => t.isNotEmpty)
+                                      .toSet()
+                                      .toList();
+                                  final unselected = cleanAllTags
+                                      .where((t) => !_tags.contains(t))
+                                      .toList();
+                                  if (query.isEmpty) {
+                                    if (_tags.isEmpty) {
+                                      return unselected;
+                                    }
+                                    return const Iterable<String>.empty();
+                                  }
+                                  final matches = unselected
+                                      .where(
+                                        (t) => t.toLowerCase().contains(
+                                          lowerQuery,
+                                        ),
+                                      )
+                                      .toList();
+                                  final exactMatch = cleanAllTags.any(
+                                    (t) => t.toLowerCase() == lowerQuery,
+                                  );
+                                  if (!exactMatch && query.isNotEmpty) {
+                                    matches.insert(0, '__create__:$query');
+                                  }
+                                  return matches;
+                                },
+                                onSelected: (option) {
+                                  final clean = option.startsWith('__create__:')
+                                      ? option.substring('__create__:'.length)
+                                      : option;
+                                  final val = clean.replaceAll('#', '').trim();
+                                  if (val.isNotEmpty && !_tags.contains(val)) {
+                                    setState(() {
+                                      _tags.add(val);
+                                      _tagInputController.clear();
+                                    });
+                                  }
+                                },
+                                fieldViewBuilder:
+                                    (
+                                      context,
+                                      textEditingController,
+                                      focusNode,
+                                      onFieldSubmitted,
+                                    ) {
+                                      final theme = Theme.of(context);
+                                      final isFocused = focusNode.hasFocus;
+                                      return InkWell(
+                                        onTap: _triggerTagOptions,
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadii.md,
+                                        ),
+                                        child: InputDecorator(
+                                          isFocused: isFocused,
+                                          isEmpty:
+                                              _tags.isEmpty &&
+                                              textEditingController
+                                                  .text
+                                                  .isEmpty &&
+                                              !isFocused,
+                                          decoration: InputDecoration(
+                                            labelText: 'Tags',
+                                            prefixIcon: const Icon(
+                                              Icons.sell_outlined,
+                                            ),
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppRadii.md,
+                                                  ),
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: AppSpacing.md,
+                                                  vertical: AppSpacing.sm,
+                                                ),
+                                          ),
+                                          child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              final remainingWidth =
+                                                  _computeTagRemainingWidth(
+                                                    _tags,
+                                                    constraints.maxWidth,
+                                                    theme.textTheme.labelMedium,
+                                                  );
+                                              final fieldWidth =
+                                                  remainingWidth >= 90.0
+                                                  ? remainingWidth
+                                                  : constraints.maxWidth;
+
+                                              return Wrap(
+                                                spacing: AppSpacing.xs,
+                                                runSpacing: AppSpacing.xs,
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                children: [
+                                                  for (final tag in _tags)
+                                                    InputChip(
+                                                      label: Text(
+                                                        tag,
+                                                        style: theme
+                                                            .textTheme
+                                                            .labelMedium
+                                                            ?.copyWith(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              AppRadii.pill,
+                                                            ),
+                                                      ),
+                                                      onDeleted: () => setState(
+                                                        () => _tags.remove(tag),
+                                                      ),
+                                                      visualDensity:
+                                                          VisualDensity.compact,
+                                                      materialTapTargetSize:
+                                                          MaterialTapTargetSize
+                                                              .shrinkWrap,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 4,
+                                                          ),
+                                                      deleteIconColor: theme
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                                  SizedBox(
+                                                    width: fieldWidth,
+                                                    child: TextField(
+                                                      controller:
+                                                          textEditingController,
+                                                      focusNode: focusNode,
+                                                      decoration: InputDecoration(
+                                                        border:
+                                                            InputBorder.none,
+                                                        enabledBorder:
+                                                            InputBorder.none,
+                                                        focusedBorder:
+                                                            InputBorder.none,
+                                                        disabledBorder:
+                                                            InputBorder.none,
+                                                        errorBorder:
+                                                            InputBorder.none,
+                                                        focusedErrorBorder:
+                                                            InputBorder.none,
+                                                        filled: false,
+                                                        fillColor:
+                                                            Colors.transparent,
+                                                        isDense: true,
+                                                        contentPadding:
+                                                            const EdgeInsets.symmetric(
+                                                              vertical:
+                                                                  AppSpacing.xs,
+                                                            ),
+                                                        hintText:
+                                                            (!isFocused &&
+                                                                _tags.isEmpty &&
+                                                                textEditingController
+                                                                    .text
+                                                                    .isEmpty)
+                                                            ? null
+                                                            : (_tags.isNotEmpty
+                                                                  ? 'Add tag...'
+                                                                  : 'Add tags (e.g. Work, Vacation)'),
+                                                        hintStyle: theme
+                                                            .textTheme
+                                                            .bodyMedium
+                                                            ?.copyWith(
+                                                              color: theme
+                                                                  .colorScheme
+                                                                  .onSurfaceVariant,
+                                                            ),
+                                                      ),
+                                                      style: theme
+                                                          .textTheme
+                                                          .bodyMedium,
+                                                      onTap: _triggerTagOptions,
+                                                      onSubmitted: (value) {
+                                                        final val = value
+                                                            .replaceAll('#', '')
+                                                            .trim();
+                                                        if (val.isNotEmpty &&
+                                                            !_tags.contains(
+                                                              val,
+                                                            )) {
+                                                          setState(() {
+                                                            _tags.add(val);
+                                                            textEditingController
+                                                                .clear();
+                                                          });
+                                                        }
+                                                      },
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                optionsViewBuilder:
+                                    (context, onSelected, options) {
+                                      final optionsList = options.toList();
+                                      if (optionsList.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Align(
+                                        alignment: Alignment.bottomLeft,
+                                        child: Material(
+                                          elevation: 4,
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadii.md,
+                                          ),
                                           color: Theme.of(
                                             context,
-                                          ).colorScheme.onSurface,
-                                        ),
-                                  ),
-                                  const Spacer(),
-                                  g1455.GlassMenuAnchor(
-                                    finish: ref.watch(
-                                      dropdownMenuGlassFinishProvider,
-                                    ),
-                                    items: [
-                                      g1455.GlassMenuItem(
-                                        label: 'Take photo',
-                                        icon: const Icon(
-                                          Icons.camera_alt_outlined,
-                                          size: 20,
-                                        ),
-                                        onPressed: () => _addPhotoAttachment(
-                                          ImageSource.camera,
-                                        ),
-                                      ),
-                                      g1455.GlassMenuItem(
-                                        label: 'Choose from gallery',
-                                        icon: const Icon(
-                                          Icons.image_outlined,
-                                          size: 20,
-                                        ),
-                                        onPressed: () => _addPhotoAttachment(
-                                          ImageSource.gallery,
-                                        ),
-                                      ),
-                                    ],
-                                    builder: (context, controller) =>
-                                        IconButton(
-                                          tooltip: 'Add photo',
-                                          icon: Icon(
-                                            Icons.add_photo_alternate_outlined,
-                                            size: 20,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
+                                          ).colorScheme.surfaceContainerHigh,
+                                          child: ConstrainedBox(
+                                            constraints: const BoxConstraints(
+                                              maxHeight: 135,
+                                            ),
+                                            child: SizedBox(
+                                              width:
+                                                  MediaQuery.of(
+                                                    context,
+                                                  ).size.width -
+                                                  (AppSpacing.md * 2),
+                                              child: ListView.builder(
+                                                padding: EdgeInsets.zero,
+                                                shrinkWrap: true,
+                                                itemCount: optionsList.length,
+                                                itemBuilder: (context, index) {
+                                                  final option =
+                                                      optionsList[index];
+                                                  if (option.startsWith(
+                                                    '__create__:',
+                                                  )) {
+                                                    final createVal = option
+                                                        .substring(
+                                                          '__create__:'.length,
+                                                        )
+                                                        .replaceAll('#', '')
+                                                        .trim();
+                                                    return AppGroupedTile(
+                                                      leading: const Icon(
+                                                        Icons.add_rounded,
+                                                        size: 18,
+                                                      ),
+                                                      title: Text(
+                                                        'Create "$createVal"',
+                                                      ),
+                                                      onTap: () =>
+                                                          onSelected(createVal),
+                                                    );
+                                                  }
+                                                  final displayTag = option
+                                                      .replaceAll('#', '')
+                                                      .trim();
+                                                  return AppGroupedTile(
+                                                    leading: const Icon(
+                                                      Icons.sell_outlined,
+                                                      size: 18,
+                                                    ),
+                                                    title: Text(displayTag),
+                                                    onTap: () =>
+                                                        onSelected(displayTag),
+                                                  );
+                                                },
+                                              ),
+                                            ),
                                           ),
-                                          onPressed: controller.isOpen
-                                              ? controller.close
-                                              : controller.open,
                                         ),
+                                      );
+                                    },
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: AddRecordTappableDetailField(
+                                      icon: Icons.today_outlined,
+                                      label: formatLedgerDate(
+                                        _occurredAt,
+                                        state.preferences.locale,
+                                      ),
+                                      onTap: _selectDate,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: AddRecordTappableDetailField(
+                                      icon: Icons.schedule_outlined,
+                                      label: DateFormat.jm().format(
+                                        _occurredAt.toLocal(),
+                                      ),
+                                      onTap: _selectTime,
+                                    ),
                                   ),
                                 ],
                               ),
-                              if (_attachments.isEmpty)
-                                Padding(
+                              const SizedBox(height: AppSpacing.sm),
+                              AppGlassTextField(
+                                controller: _locationController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Place',
+                                  prefixIcon: Icon(Icons.place_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              AppGlassTextField(
+                                controller: _paymentMethodController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Payment method',
+                                  prefixIcon: Icon(Icons.payment_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Material(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
+                                child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: AppSpacing.xs,
+                                    horizontal: AppSpacing.md,
+                                    vertical: AppSpacing.sm,
                                   ),
-                                  child: Text(
-                                    'No photos attached yet.',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadii.md,
+                                    ),
+                                    border: Border.all(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outlineVariant
+                                          .withValues(alpha: 0.55),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline_rounded,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      Expanded(
+                                        child: Text(
+                                          'Status',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                              ),
+                                        ),
+                                      ),
+                                      GlassDropdownPill<String>(
+                                        value:
+                                            const [
+                                              'cleared',
+                                              'pending',
+                                              'void',
+                                            ].contains(_status)
+                                            ? _status!
+                                            : 'cleared',
+                                        options: const [
+                                          GlassDropdownOption(
+                                            'cleared',
+                                            'Cleared',
+                                            icon: Icons
+                                                .check_circle_outline_rounded,
+                                          ),
+                                          GlassDropdownOption(
+                                            'pending',
+                                            'Pending',
+                                            icon: Icons.hourglass_empty_rounded,
+                                          ),
+                                          GlassDropdownOption(
+                                            'void',
+                                            'Skipped / Void',
+                                            icon: Icons.block_rounded,
+                                          ),
+                                        ],
+                                        onChanged: (val) =>
+                                            setState(() => _status = val),
+                                        semanticLabel: 'Select status',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              // Attached photos
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                  vertical: AppSpacing.sm,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerLow
+                                      .withAlphaFactor(0.4),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.lg,
+                                  ),
+                                  border: Border.all(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outlineVariant
+                                        .withAlphaFactor(0.2),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.photo_library_outlined,
+                                          size: 18,
                                           color: Theme.of(
                                             context,
                                           ).colorScheme.onSurfaceVariant,
                                         ),
-                                  ),
-                                )
-                              else
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: AppSpacing.xs,
-                                  ),
-                                  child: Wrap(
-                                    spacing: AppSpacing.sm,
-                                    runSpacing: AppSpacing.sm,
-                                    children: [
-                                      for (
-                                        int i = 0;
-                                        i < _attachments.length;
-                                        i++
-                                      )
-                                        AttachmentThumbnail(
-                                          attachment: _attachments[i],
-                                          showDelete: true,
-                                          onDelete: () {
-                                            setState(() {
-                                              _attachments.removeAt(i);
-                                            });
-                                          },
+                                        const SizedBox(width: AppSpacing.xs),
+                                        Expanded(
+                                          child: Text(
+                                            'Attached photos',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.onSurface,
+                                                ),
+                                          ),
                                         ),
-                                    ],
-                                  ),
+                                        g1455.GlassMenuAnchor(
+                                          finish: ref.watch(
+                                            dropdownMenuGlassFinishProvider,
+                                          ),
+                                          items: [
+                                            g1455.GlassMenuItem(
+                                              label: 'Take photo',
+                                              icon: const Icon(
+                                                Icons.camera_alt_outlined,
+                                                size: 20,
+                                              ),
+                                              onPressed: () =>
+                                                  _addPhotoAttachment(
+                                                    ImageSource.camera,
+                                                  ),
+                                            ),
+                                            g1455.GlassMenuItem(
+                                              label: 'Choose from gallery',
+                                              icon: const Icon(
+                                                Icons.image_outlined,
+                                                size: 20,
+                                              ),
+                                              onPressed: () =>
+                                                  _addPhotoAttachment(
+                                                    ImageSource.gallery,
+                                                  ),
+                                            ),
+                                          ],
+                                          builder: (context, controller) =>
+                                              IconButton(
+                                                tooltip: 'Add photo',
+                                                icon: Icon(
+                                                  Icons
+                                                      .add_photo_alternate_outlined,
+                                                  size: 20,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                                onPressed: controller.isOpen
+                                                    ? controller.close
+                                                    : controller.open,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (_attachments.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: AppSpacing.xs,
+                                        ),
+                                        child: Text(
+                                          'No photos attached yet.',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
+                                        ),
+                                      )
+                                    else
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: AppSpacing.xs,
+                                        ),
+                                        child: Wrap(
+                                          spacing: AppSpacing.sm,
+                                          runSpacing: AppSpacing.sm,
+                                          children: [
+                                            for (
+                                              int i = 0;
+                                              i < _attachments.length;
+                                              i++
+                                            )
+                                              AttachmentThumbnail(
+                                                attachment: _attachments[i],
+                                                showDelete: true,
+                                                onDelete: () {
+                                                  setState(() {
+                                                    _attachments.removeAt(i);
+                                                  });
+                                                },
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
                                 ),
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                      ],
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
@@ -1308,9 +1403,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
     );
     final nextId = await showFullScreenPicker<String>(
       context: context,
-      title: counter
-          ? (isLoan ? 'Loan account' : 'Destination')
-          : 'Account',
+      title: counter ? (isLoan ? 'Loan account' : 'Destination') : 'Account',
       selectedValue: counter ? _counterAccountId : _accountId,
       options: [
         for (final a in accounts)
@@ -1504,8 +1597,8 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
           _type == 'loan_repayment'
               ? 'Choose the loan account.'
               : (_type == 'card_payment'
-                  ? 'Choose the card account.'
-                  : 'Choose a destination account.'),
+                    ? 'Choose the card account.'
+                    : 'Choose a destination account.'),
         );
         return;
       }
@@ -1555,10 +1648,10 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
       final resolvedCategoryId = _type == 'transfer'
           ? null
           : (selectedCategory?.id ??
-              (_type == 'loan_repayment'
-                  ? (firstActiveCategory(state, preferred: 'emi')?.id ??
-                      'cat-emi')
-                  : null));
+                (_type == 'loan_repayment'
+                    ? (firstActiveCategory(state, preferred: 'emi')?.id ??
+                          'cat-emi')
+                    : null));
       await ref
           .read(ledgerProvider.notifier)
           .upsertTransaction(
@@ -1945,58 +2038,58 @@ class _FxAmountCard extends StatelessWidget {
         shape: const LiquidRoundedSuperellipse(borderRadius: AppRadii.md),
         quality: GlassQuality.standard,
         clipBehavior: Clip.antiAlias,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.xs),
-            decoration: BoxDecoration(
-              color: selected
-                  ? scheme.primaryContainer.withValues(alpha: 0.43)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              border: Border.all(
-                color: selected ? scheme.primary : scheme.outlineVariant,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.xs),
+              decoration: BoxDecoration(
+                color: selected
+                    ? scheme.primaryContainer.withValues(alpha: 0.43)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(
+                  color: selected ? scheme.primary : scheme.outlineVariant,
+                ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, size: 14, color: color),
-                    const SizedBox(width: AppSpacing.xxs),
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w800,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, size: 14, color: color),
+                      const SizedBox(width: AppSpacing.xxs),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    '$amount $currency',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
                     ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  '$amount $currency',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
+                  ),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
       );
     }
 

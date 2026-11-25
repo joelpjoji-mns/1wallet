@@ -25,8 +25,8 @@ void main() {
       expect(find.text('Subject'), findsOneWidget);
       expect(find.text('Screenshots & Screen Recordings'), findsOneWidget);
       expect(find.text('Include device & app logs'), findsOneWidget);
-      expect(find.text('Send Email'), findsOneWidget);
-      expect(find.text('Copy to clipboard'), findsOneWidget);
+      expect(find.text('Send email'), findsOneWidget);
+      expect(find.text('Copy'), findsOneWidget);
     },
   );
 }

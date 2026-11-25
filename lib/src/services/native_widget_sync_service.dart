@@ -72,7 +72,7 @@ class NativeWidgetSyncService {
         currencyBreakdown.add('$cur ${formatMoney(converted, locale)}');
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeBalanceWidget(
@@ -108,7 +108,7 @@ class NativeWidgetSyncService {
         );
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeAccountsWidget(
@@ -153,7 +153,7 @@ class NativeWidgetSyncService {
         );
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeRecentWidget(transactions: recentEntries),
@@ -181,7 +181,7 @@ class NativeWidgetSyncService {
           ? (monthFlow.expense.amountMinor / monthBudget).clamp(0.0, 1.0)
           : 0.0;
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeSafeSpendWidget(
@@ -234,7 +234,7 @@ class NativeWidgetSyncService {
         );
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeUpcomingWidget(
@@ -255,7 +255,7 @@ class NativeWidgetSyncService {
       final monthExpense = monthFlow.expense;
       final monthName = DateFormat('MMMM yyyy', locale).format(now);
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeCalendarWidget(
@@ -269,7 +269,7 @@ class NativeWidgetSyncService {
       );
 
       // ── 7. Quick Actions ──────────────────────────────────────────────────
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(data: renderTheme, child: const NativeQuickActionsWidget()),
         logicalSize: _sizeCompact,
         key: 'widget_quick_actions_bitmap',
@@ -310,7 +310,7 @@ class NativeWidgetSyncService {
       final isTrendPos = delta >= 0;
       final deltaMoney = Money(amountMinor: delta.abs(), currency: currency);
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeBalanceTrendWidget(
@@ -360,7 +360,7 @@ class NativeWidgetSyncService {
         );
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeTopCategoriesWidget(
@@ -387,7 +387,7 @@ class NativeWidgetSyncService {
         );
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeCurrencyValuesWidget(
@@ -445,7 +445,7 @@ class NativeWidgetSyncService {
         );
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeAccountGroupsWidget(groups: groupEntries),
@@ -485,7 +485,7 @@ class NativeWidgetSyncService {
             )
           : 0.0;
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeCreditUtilizationWidget(
@@ -512,7 +512,7 @@ class NativeWidgetSyncService {
           ? ((savedMinor / incomeMinor) * 100).clamp(0.0, 100.0)
           : 0.0;
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeSavingsRateWidget(
@@ -555,7 +555,7 @@ class NativeWidgetSyncService {
         );
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeTagCloudWidget(tags: tagEntries),
@@ -583,7 +583,7 @@ class NativeWidgetSyncService {
           ? (liquidTotalMinor / monthlyBurnMinor)
           : 99.0;
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeCashBurnRunwayWidget(
@@ -624,7 +624,7 @@ class NativeWidgetSyncService {
         }
       }
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeNoSpendStreakWidget(
@@ -670,7 +670,7 @@ class NativeWidgetSyncService {
           : 0;
       final ratio = avgWeekday > 0 ? (avgWeekend / avgWeekday) : 1.0;
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativeWeekendWeekdayWidget(
@@ -694,7 +694,7 @@ class NativeWidgetSyncService {
           .where((c) => c.status == 'pending')
           .length;
 
-      await HomeWidget.renderFlutterWidget(
+      await _renderWidget(
         Theme(
           data: renderTheme,
           child: NativePendingReviewWidget(
@@ -722,6 +722,20 @@ class NativeWidgetSyncService {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  @visibleForTesting
+  static Widget sizePreviewForRendering(Widget preview, Size logicalSize) =>
+      SizedBox.fromSize(size: logicalSize, child: preview);
+
+  static Future<String> _renderWidget(
+    Widget preview, {
+    required Size logicalSize,
+    required String key,
+  }) => HomeWidget.renderFlutterWidget(
+    sizePreviewForRendering(preview, logicalSize),
+    logicalSize: logicalSize,
+    key: key,
+  );
 
   static String _shortDate(DateTime date, String locale) {
     final now = DateTime.now();

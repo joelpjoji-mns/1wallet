@@ -22,9 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Clear glass finish is now the default for every component, including the island bar, menus, and toolbars. Menus keep a denser tint for legibility.
 
 ### Fixed
+- Loan repayment history uses the same full-width grouped rows and page gutters as History, rather than nesting smaller transaction cards inside another panel.
+- Native home-widget previews receive explicit render dimensions so Android can generate their bitmaps without infinite-height layout errors.
+- Loan, planned-payment, review, capture, feedback, import, and settings actions reflow or use clearer short labels so their text stays on one line in the tested compact layouts.
+- Dashboard summaries and transaction rows reflow at larger text sizes instead of squeezing payment details and amounts together.
+- Transaction entry keeps the keypad and detail fields reachable on short screens and when the keyboard is open; calculator keys retain usable touch targets.
+- Onboarding, cloud-wallet recovery, glass previews, offline consent, and the unknown-route screen adapt to narrow screens and enlarged text.
 - Account tiles expose their full names and selection action together to screen readers.
 - Planned-payment names have more room, with amounts and due status reflowing on narrow screens.
-- Forecast charts keep currency and date labels readable and distinguishable when zoomed or enlarged; zoom controls no longer cover the axis and have larger touch targets.
+- Forecast charts keep currency and date labels readable and distinguishable, including multiple dates in the same year. Grouped payoff markers fit their labels at larger text sizes, and zoom controls no longer cover the axis.
 - Card icons remain visible when a custom account color has poor contrast with the current theme.
 - The drawer privacy switch shows its full label without a redundant on/off suffix.
 - Clearing or signing out of an offline wallet no longer fails on Android when an auto-backup left by a previous install cannot be deleted.

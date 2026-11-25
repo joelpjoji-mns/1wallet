@@ -242,7 +242,7 @@ void main() {
 
         // Verify unified Transfer Card
         expect(find.text('Transfer detected'), findsOneWidget);
-        expect(find.text('Confirm Transfer'), findsOneWidget);
+        expect(find.text('Confirm'), findsOneWidget);
         expect(find.textContaining('From: HDFC Checking'), findsOneWidget);
         expect(find.textContaining('To: ICICI Savings'), findsOneWidget);
       },

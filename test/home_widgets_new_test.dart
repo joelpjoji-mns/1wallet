@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
+import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widget_card.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widget_models.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets_new.dart';
+import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fixtures/sample_ledger.dart';
+import 'test_harness.dart';
 
 void main() {
   Money usd(int minor) => Money(amountMinor: minor, currency: 'USD');
@@ -21,6 +28,117 @@ void main() {
   }
 
   group('New Home Dashboard Widgets Test Suite', () {
+    testWidgets('upcoming payment reflows its full details at large text', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final base = sampleLedgerState();
+      final payment = base.transactions
+          .firstWhere((record) => record.id == 'tx-rent-planned')
+          .copyWith(name: 'Rent', occurredAt: DateTime.now());
+      final state = base.copyWith(transactions: [payment]);
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: state, prefs: prefs),
+      );
+      addTearDown(container.dispose);
+      await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+
+      for (final scale in [1.0, 2.0]) {
+        tester.view.physicalSize = Size(scale == 1 ? 500 : 320, 1200);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: UpcomingDueHomeWidget(state: state),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final title = find.text('Rent');
+        final badge = find.text('TODAY');
+        final account = find.text('HDFC Main');
+        final amount = find.byWidgetPredicate(
+          (widget) =>
+              widget is PrivacyText &&
+              widget.text ==
+                  formatMoney(payment.amount, state.preferences.locale),
+        );
+        expect(title, findsOneWidget);
+        expect(badge, findsOneWidget);
+        expect(account, findsOneWidget);
+        expect(amount, findsOneWidget);
+        for (final text in [title, badge, account]) {
+          expect(
+            tester.renderObject<RenderParagraph>(text).didExceedMaxLines,
+            isFalse,
+          );
+        }
+        final titleRect = tester.getRect(title);
+        final amountRect = tester.getRect(amount);
+        if (scale == 1) {
+          expect(amountRect.top, lessThan(tester.getRect(account).bottom));
+        } else {
+          expect(amountRect.top, greaterThanOrEqualTo(titleRect.bottom));
+        }
+        expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('cash runway metrics remain readable and equal at large text', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final state = sampleLedgerState();
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: CashBurnRunwayHomeWidget(state: state),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final metrics = find.byType(HomeMetricTile);
+      expect(metrics, findsNWidgets(2));
+      expect(
+        tester.getSize(metrics.first).height,
+        tester.getSize(metrics.last).height,
+      );
+      for (final label in ['Daily burn rate', 'Liquid cash']) {
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.text(label),
+        );
+        expect(paragraph.didExceedMaxLines, isFalse);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets(
       '1. PendingReviewHomeWidget displays empty state and populated state',
       (tester) async {

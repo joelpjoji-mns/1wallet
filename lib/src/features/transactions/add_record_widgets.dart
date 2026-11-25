@@ -618,12 +618,20 @@ class _AddRecordCalcKeyState extends State<AddRecordCalcKey> {
                     color: widget.foregroundColor,
                     size: 24,
                   )
-                : Text(
-                    widget.label,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: widget.foregroundColor,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.5,
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: widget.foregroundColor,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.5,
+                            ),
+                      ),
                     ),
                   ),
           ),
