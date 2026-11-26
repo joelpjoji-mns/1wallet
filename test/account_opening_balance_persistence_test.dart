@@ -30,6 +30,66 @@ void main() {
     matching: find.byType(TextFormField),
   );
 
+  testWidgets('account editor fields have room at large text sizes', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(),
+    );
+    addTearDown(container.dispose);
+    final router = container.read(appRouterProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          routerConfig: router,
+          theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+        ),
+      ),
+    );
+    router.go('/account/new');
+    await tester.pumpAndSettle();
+
+    final name = find.text('Name');
+    expect(
+      tester.getSize(find.widgetWithText(TextFormField, 'Name')).width,
+      greaterThan(200),
+    );
+    final nameParagraph = tester.renderObject<RenderParagraph>(
+      find.descendant(of: name, matching: find.byType(RichText)),
+    );
+    expect(nameParagraph.didExceedMaxLines, isFalse);
+    expect(
+      tester.getSemantics(name).getSemanticsData().label,
+      contains('Account name'),
+    );
+    final type = find.text('Bank');
+    final currency = find.text('USD');
+    expect(
+      tester.getTopLeft(currency).dy,
+      greaterThan(tester.getBottomLeft(type).dy),
+    );
+    for (final finder in [type, currency]) {
+      final paragraph = tester.renderObject<RenderParagraph>(finder);
+      expect(
+        paragraph.size.width,
+        greaterThanOrEqualTo(paragraph.getMaxIntrinsicWidth(double.infinity)),
+      );
+    }
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
   testWidgets('opening balance guidance wraps fully at large text size', (
     tester,
   ) async {

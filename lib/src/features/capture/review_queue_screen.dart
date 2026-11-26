@@ -14,6 +14,8 @@ import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
 import '../../widgets/privacy_text.dart';
 import '../notifications/notification_engine.dart';
+import '../onboarding/contextual_discovery_hint.dart';
+import '../onboarding/feature_discovery_guide.dart';
 import 'capture_queue.dart';
 
 class TransferCandidatePair {
@@ -132,6 +134,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     return GlassIsolationScope(
       defaultQuality: GlassQuality.standard,
       child: RouteScaffold(
+        discoveryFeature: 'review-inbox',
         title: 'Review & Inbox',
         // The route sits under a drawer-enabled DrawerConfig but has always
         // offered a back action; keep that navigation.
@@ -150,11 +153,14 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             tooltip: 'SMS auto-capture',
             onPressed: () => context.push('/import-sms'),
           ),
-          HeaderIconButton(
-            icon: Icons.notifications_active_outlined,
-            semanticLabel: 'Notification capture',
-            tooltip: 'Notification capture',
-            onPressed: () => context.push('/notification-capture'),
+          DiscoveryGuideAnchor(
+            id: 'capture-settings',
+            child: HeaderIconButton(
+              icon: Icons.notifications_active_outlined,
+              semanticLabel: 'Notification capture',
+              tooltip: 'Notification capture',
+              onPressed: () => context.push('/notification-capture'),
+            ),
           ),
           HeaderIconButton(
             icon: Icons.bug_report_outlined,
@@ -165,51 +171,76 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         ],
         scrollView: RefreshIndicator(
           onRefresh: _refreshSpooled,
-          child: items.isEmpty
-              ? LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.lg,
-                              vertical: AppSpacing.xl,
-                            ),
-                            child: _buildEmptyState(context),
-                          ),
-                        ),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              const SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                sliver: SliverToBoxAdapter(
+                  child: ContextualDiscoveryHint(
+                    feature: 'review-inbox',
+                    title: 'Review your alerts',
+                    message:
+                        'Review suggested records and alerts here. SMS and notification capture need permissions and can be configured from the toolbar.',
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(
+                child: DiscoveryGuideAnchor(
+                  id: 'inbox',
+                  child: SizedBox(height: AppSpacing.xxs),
+                ),
+              ),
+              if (items.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.xl,
                       ),
-                    );
-                  },
+                      child: _buildEmptyState(context),
+                    ),
+                  ),
                 )
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
+              else
+                SliverPadding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.lg,
                     AppSpacing.md,
                     AppSpacing.lg,
                     AppSpacing.xxl,
                   ),
-                  itemCount: items.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AppSpacing.md),
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    if (item is TransferCandidatePair) {
-                      return _buildTransferPairCard(context, ref, state, item);
-                    } else if (item is CaptureCandidate) {
-                      return _buildCandidateCard(context, ref, state, item);
-                    } else if (item is AppNotification) {
-                      return _buildNotificationCard(context, ref, state, item);
-                    }
-                    return const SizedBox();
-                  },
+                  sliver: SliverList.separated(
+                    itemCount: items.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AppSpacing.md),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      if (item is TransferCandidatePair) {
+                        return _buildTransferPairCard(
+                          context,
+                          ref,
+                          state,
+                          item,
+                        );
+                      } else if (item is CaptureCandidate) {
+                        return _buildCandidateCard(context, ref, state, item);
+                      } else if (item is AppNotification) {
+                        return _buildNotificationCard(
+                          context,
+                          ref,
+                          state,
+                          item,
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
                 ),
+            ],
+          ),
         ),
       ),
     );

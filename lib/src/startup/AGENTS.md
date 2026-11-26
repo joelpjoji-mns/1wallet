@@ -10,8 +10,8 @@ Coordinates application warmup, local database loading from disk, migration chec
 - **`startup_state.dart`**:
   - Tracks warmup progress (`initializing`, `ready`, `error`).
   - Ensures `LedgerController` completes loading cached state from `SharedPreferences` or local filesystem before screens read the ledger.
-  - **Offline mode branch** (`AuthState.isLocalOnly`, via `_offlineStartupState`): routes permissions → onboarding → home for the `'local-user'` owner and skips all cloud-sync gating, so startup works with zero network and no Firebase. Before showing any data it asks `AuthController.verifyLocalOwnership` to confirm the stored wallet is owned by `'local-user'`. A uid-owned wallet finishes an interrupted upgrade or returns to sign-in.
-  - The online branch is unchanged: signed-out users route to `/login`.
+  - **Offline mode branch** (`AuthState.isLocalOnly`, via `_offlineStartupState`): verifies ownership and sends a new `'local-user'` wallet to setup, requiring at least one account before discovery. Existing wallets open Home without hints. It skips cloud-sync gating. A uid-owned wallet finishes an interrupted upgrade or returns to sign-in.
+  - Signed-out users route to `/login`. For an online wallet with no local data, bootstrap and cloud-wallet checks must finish before treating it as new and showing the welcome.
 
 ---
 

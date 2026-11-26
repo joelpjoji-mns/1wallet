@@ -89,6 +89,41 @@ How do users move through 1Wallet? Elegantly and intuitively.
 
 ### In-App Navigation Flow
 
+Fresh offline and signed-in wallets complete profile, currency and account
+setup first. At least one account is required; an existing local or restored
+wallet is never replaced. Home then offers a small optional, anchored guide.
+Coach marks use measured targets, light dimming and animated arrows; the real
+interface stays interactive. Returning from a guided editor continues the
+current session without another resume popup.
+
+**Home basics → Plans → Loans → Forecast → Account credentials → Review &
+matching → Capture permissions → Calendar day sheet → Imports → Widgets →
+Settings.** Deeper workflows are optional and can be explored together or
+individually from **Settings → Feedback & Support → Feature guides / Explore
+all workflows**. Samples on the actual feature screens are labelled **not
+saved**; they use isolated values, and the matching sample uses the real parser
+and matcher with fictional accounts. Real Save and Approve controls always
+retain their real effects. Continuing from an editor explicitly leaves its
+unsaved draft.
+
+Existing wallets receive no automatic welcome, first-visit or resume popups.
+After a restart, use **Resume your guide** in Settings. **Replay the tour**
+confirms resetting introductory progress only, never wallet data. Permissions
+remain optional; the tour never grants access or stores sample credentials.
+
+Progress and dismissed hints are stored locally per account (or the
+device-only offline wallet) and sync to an owner-only Firestore document for
+signed-in users once the updated rules are deployed. Concurrent devices merge
+completed steps and hints and resume at the furthest introductory step.
+Individual replays and deeper workflow positions remain local. They do not
+reopen automatically after restart. If cloud access is unavailable, progress
+remains local and sync retries on app resume.
+
+Android emulator end-to-end validation is currently limited by a host emulator
+graphics crash. The guided setup, navigation, samples, persistence and responsive
+coach marks are covered by Flutter widget tests; device end-to-end verification
+and production Firestore rule deployment remain separate release checks.
+
 ```mermaid
 stateDiagram-v2
     [*] --> Splash

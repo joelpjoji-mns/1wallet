@@ -6,8 +6,11 @@ final _numberPattern = RegExp(r'\d+(\.\d+)?');
 
 class ThousandsSeparatorInputFormatter extends TextInputFormatter {
   final String? locale;
+  final bool allowNegative;
 
-  ThousandsSeparatorInputFormatter([this.locale]);
+  ThousandsSeparatorInputFormatter([this.locale]) : allowNegative = false;
+
+  ThousandsSeparatorInputFormatter.signed([this.locale]) : allowNegative = true;
 
   @override
   TextEditingValue formatEditUpdate(
@@ -17,6 +20,13 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
     if (newValue.text.isEmpty) {
       return newValue;
     }
+
+    if (allowNegative &&
+        (newValue.text.indexOf('-', 1) != -1 ||
+            (newValue.text.contains('-') && !newValue.text.startsWith('-')))) {
+      return oldValue;
+    }
+    final sign = allowNegative && newValue.text.startsWith('-') ? '-' : '';
 
     // Keep only numbers and decimal points
     final numericString = newValue.text.replaceAll(_nonNumericPattern, '');
@@ -40,9 +50,8 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
     if (integerValue == null) {
       return oldValue;
     }
-    String formattedText = parts[0].isEmpty
-        ? ''
-        : formatter.format(integerValue);
+    String formattedText =
+        sign + (parts[0].isEmpty ? '' : formatter.format(integerValue));
 
     if (parts.length > 1) {
       formattedText += '.${parts[1]}';
@@ -66,6 +75,35 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
       selection: TextSelection.collapsed(offset: selectionIndex),
     );
   }
+}
+
+/// Parses a grouped, optionally signed decimal amount without floating point.
+/// Extra fractional digits round to the nearest minor unit, away from zero.
+int? parseDecimalMinorUnits(String input, int fractionDigits) {
+  if (fractionDigits < 0) {
+    throw RangeError.range(fractionDigits, 0, null, 'fractionDigits');
+  }
+  final clean = input.trim().replaceAll(',', '');
+  if (clean.isEmpty) return 0;
+  if (!RegExp(r'^-?(?:\d+(?:\.\d*)?|\.\d+)$').hasMatch(clean)) return null;
+
+  final negative = clean.startsWith('-');
+  final parts = (negative ? clean.substring(1) : clean).split('.');
+  final whole = parts.first.isEmpty ? '0' : parts.first;
+  final fraction = parts.length == 1 ? '' : parts[1];
+  final minorDigits = fraction
+      .padRight(fractionDigits, '0')
+      .substring(0, fractionDigits);
+  var amount = BigInt.parse('$whole$minorDigits');
+  if (fraction.length > fractionDigits &&
+      fraction.codeUnitAt(fractionDigits) >= 0x35) {
+    amount += BigInt.one;
+  }
+
+  // The same exact integer must survive JSON and Flutter web serialization.
+  if (amount > BigInt.from(9007199254740991)) return null;
+  final result = amount.toInt();
+  return negative ? -result : result;
 }
 
 String formatNumberExpression(String expr, String locale) {

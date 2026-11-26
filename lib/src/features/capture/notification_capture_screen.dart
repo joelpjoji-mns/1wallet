@@ -77,6 +77,7 @@ class _NotificationCaptureScreenState
     final parsed = preview.parsed;
 
     return RouteScaffold(
+      discoveryFeature: 'notification-capture',
       title: 'Notification Capture',
       actions: [
         HeaderIconButton(
@@ -918,10 +919,7 @@ class _WordEditorState extends State<_WordEditor> {
             child: TextButton.icon(
               onPressed: widget.onReset,
               icon: const Icon(Icons.restart_alt_rounded, size: 18),
-              label: const Text(
-                'Reset',
-                semanticsLabel: 'Reset to defaults',
-              ),
+              label: const Text('Reset', semanticsLabel: 'Reset to defaults'),
             ),
           ),
         ],

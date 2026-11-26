@@ -14,6 +14,10 @@ import '../../widgets/app_kit.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 import '../onboarding/onboarding_controller.dart';
+import '../onboarding/discovery_controller.dart';
+import '../onboarding/discovery_feature_guides.dart';
+import '../onboarding/feature_discovery_guide.dart';
+import '../onboarding/contextual_discovery_hint.dart';
 import 'account_deletion_controller.dart';
 import 'offline_mode_section.dart';
 import 'permission_setup_controller.dart';
@@ -67,8 +71,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final auth = ref.watch(authControllerProvider);
     final themeState = ref.watch(themeControllerProvider);
     final appLock = ref.watch(appLockProvider);
+    final discovery = auth.ownerId == null
+        ? null
+        : ref.watch(discoveryControllerProvider(auth.ownerId!));
 
     return RouteScaffold(
+      discoveryFeature: 'personalization',
       title: 'Settings',
       child: GlassIsolationScope(
         child: Center(
@@ -79,6 +87,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (discovery?.status == DiscoveryStatus.paused ||
+                      discovery?.requestedHint != null)
+                    AppGroupedTile(
+                      leading: const Icon(Icons.play_arrow_rounded),
+                      title: const Text('Resume your guide'),
+                      subtitle: const Text('Continue when you are ready.'),
+                      onTap: _resumeDiscovery,
+                    ),
+                  const ContextualDiscoveryHint(
+                    feature: 'settings',
+                    title: 'Make 1Wallet yours',
+                    message:
+                        'Choose your base currency and adjust appearance, privacy, permissions and backups here.',
+                  ),
                   // ── Profile ──
                   SettingsProfileSection(
                     user: auth.profileUser,
@@ -352,6 +374,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     header: 'Feedback & Support',
                     children: [
                       AppGroupedTile(
+                        leading: const Icon(Icons.explore_outlined),
+                        title: const Text('Replay the tour'),
+                        subtitle: const Text(
+                          'Restart the guided introduction on this device.',
+                        ),
+                        showChevron: true,
+                        onTap: _replayDiscovery,
+                      ),
+                      const GlassDivider(),
+                      AppGroupedTile(
+                        leading: const Icon(Icons.menu_book_outlined),
+                        title: const Text('Feature guides'),
+                        subtitle: const Text(
+                          'Explore a feature or the record workflow.',
+                        ),
+                        showChevron: true,
+                        onTap: _chooseDiscoveryGuide,
+                      ),
+                      AppGroupedTile(
+                        leading: const Icon(Icons.route_outlined),
+                        title: const Text('Explore all workflows'),
+                        subtitle: const Text(
+                          'Plans, loans, forecast, matching and more.',
+                        ),
+                        onTap: _startWorkflowDiscovery,
+                      ),
+                      const GlassDivider(),
+                      AppGroupedTile(
                         leading: const Icon(Icons.chat_bubble_outline_rounded),
                         title: const Text('Send Feedback & Diagnostics'),
                         subtitle: const Text(
@@ -415,6 +465,202 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Future<void> _chooseDiscoveryGuide() async {
+    final guide =
+        await showAppSheet<
+          ({int? start, int? end, String? feature, String? route})
+        >(
+          context: context,
+          builder: (context) => FractionallySizedBox(
+            heightFactor: 0.7,
+            child: AppSheetSurface(
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: [
+                  AppGroupedSection(
+                    header: 'Choose a guide',
+                    children: [
+                      for (final (label, start, end) in [
+                        ('Accounts and records', 1, 2),
+                        ('Adding a record', 1, 1),
+                        ('History', 2, 2),
+                        ('Calendar', 3, 3),
+                        ('Accounts', 4, 4),
+                        ('Personalization', 5, 5),
+                      ])
+                        AppGroupedTile(
+                          title: Text(label),
+                          showChevron: true,
+                          onTap: () => Navigator.of(context).pop((
+                            start: start,
+                            end: end,
+                            feature: null,
+                            route: null,
+                          )),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppGroupedSection(
+                    header: 'Explore more',
+                    children: [
+                      for (final featureGuide
+                          in availableDiscoveryFeatureGuides)
+                        AppGroupedTile(
+                          title: Text(featureGuide.title),
+                          showChevron: true,
+                          onTap: () => Navigator.of(context).pop((
+                            start: null,
+                            end: null,
+                            feature: featureGuide.id,
+                            route:
+                                discoveryFeatureRoute(
+                                  featureGuide.steps.first.route,
+                                  ref.read(ledgerProvider),
+                                ) ??
+                                '/accounts',
+                          )),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+    if (!mounted || guide == null) return;
+    final feature = guide.feature;
+    final route = guide.route;
+    if (feature != null && route != null) {
+      await _replayDiscoveryHint(feature, route);
+    } else if (guide.start != null && guide.end != null) {
+      await _replayDiscovery(startStep: guide.start!, endStep: guide.end!);
+    } else {
+      _showMessage('Could not open the guide. Please try again.');
+    }
+  }
+
+  Future<void> _startWorkflowDiscovery() async {
+    final owner = ref.read(authControllerProvider).ownerId;
+    if (owner == null) return;
+    try {
+      await ref
+          .read(discoveryControllerProvider(owner).notifier)
+          .startWorkflowTour();
+      if (mounted && ref.read(authControllerProvider).ownerId == owner) {
+        context.go('/recurring');
+      }
+    } catch (error, stack) {
+      debugPrint('Could not start workflow tour: $error');
+      debugPrintStack(stackTrace: stack);
+      if (mounted) _showMessage('Could not start the guide. Please try again.');
+    }
+  }
+
+  Future<void> _resumeDiscovery() async {
+    final owner = ref.read(authControllerProvider).ownerId;
+    if (owner == null) return;
+    try {
+      final progress = ref.read(discoveryControllerProvider(owner));
+      final controller = ref.read(discoveryControllerProvider(owner).notifier);
+      final guide = discoveryFeatureGuide(progress.requestedHint ?? '');
+      if (guide != null) {
+        await controller.resumeFeatureGuide();
+        if (!mounted || ref.read(authControllerProvider).ownerId != owner) {
+          return;
+        }
+        context.go(
+          discoveryFeatureRoute(
+                guide
+                    .steps[progress.guideStep.clamp(0, guide.steps.length - 1)]
+                    .route,
+                ref.read(ledgerProvider),
+              ) ??
+              '/accounts',
+        );
+      } else {
+        await controller.start();
+        if (mounted && ref.read(authControllerProvider).ownerId == owner) {
+          context.go('/?tab=0');
+        }
+      }
+    } catch (error, stack) {
+      debugPrint('Could not resume guide: $error');
+      debugPrintStack(stackTrace: stack);
+      if (mounted) {
+        _showMessage('Could not resume the guide. Please try again.');
+      }
+    }
+  }
+
+  Future<void> _replayDiscoveryHint(String feature, String route) async {
+    final owner = ref.read(authControllerProvider).ownerId;
+    if (owner == null || GoRouter.maybeOf(context) == null) {
+      _showMessage('Open Home to start a feature guide.');
+      return;
+    }
+    try {
+      await ref
+          .read(discoveryControllerProvider(owner).notifier)
+          .replayHint(feature);
+      if (!mounted) return;
+      if (ref.read(authControllerProvider).ownerId != owner) {
+        _showMessage('The active account changed. Please try again.');
+        return;
+      }
+      context.push(route);
+    } catch (error, stack) {
+      debugPrint('Could not open feature guide: $error');
+      debugPrintStack(stackTrace: stack);
+      if (mounted) _showMessage('Could not open the guide. Please try again.');
+    }
+  }
+
+  Future<void> _replayDiscovery({
+    int startStep = 0,
+    int endStep = discoveryStepCount - 1,
+  }) async {
+    final owner = ref.read(authControllerProvider).ownerId;
+    if (owner == null) {
+      _showMessage('Sign in before starting the tour.');
+      return;
+    }
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Restart the tour?',
+      message: startStep == 0 && endStep == discoveryStepCount - 1
+          ? 'Your tour progress on this device will be reset. Your wallet data will not change.'
+          : 'This guide will restart on this device. Your other completed steps and wallet data will not change.',
+      confirmLabel: 'Restart',
+    );
+    if (!mounted || !confirmed) return;
+    if (ref.read(authControllerProvider).ownerId != owner) {
+      _showMessage('The active account changed. Please try again.');
+      return;
+    }
+    try {
+      await ref
+          .read(discoveryControllerProvider(owner).notifier)
+          .replay(startStep: startStep, endStep: endStep);
+      if (!mounted) return;
+      if (ref.read(authControllerProvider).ownerId != owner) {
+        _showMessage('The active account changed. Please try again.');
+        return;
+      }
+      if (GoRouter.maybeOf(context) == null) {
+        _showMessage('Open Home to continue the tour.');
+        return;
+      }
+      context.go('/?tab=0');
+    } catch (error, stack) {
+      debugPrint('Could not restart the tour: $error');
+      debugPrintStack(stackTrace: stack);
+      if (mounted) {
+        _showMessage('Could not restart the tour. Please try again.');
+      }
+    }
+  }
+
   Future<void> _showDeleteAccountDialog() async {
     final deleted = await showDialog<bool>(
       context: context,
@@ -442,7 +688,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (!mounted) return;
     if (confirmed == true) {
+      final owner = ref.read(authControllerProvider).ownerId;
+      final discovery = owner == null
+          ? null
+          : ref.read(discoveryControllerProvider(owner).notifier);
       await ref.read(ledgerProvider.notifier).purgeAllLocalData();
+      await discovery?.clearLocal();
       ref.read(onboardingControllerProvider.notifier).clear();
       ref.read(permissionSetupControllerProvider.notifier).clear();
       await ref.read(authControllerProvider.notifier).setLocalDisplayName('');
@@ -583,6 +834,11 @@ class _PrivacyQuickCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     void toggle() => onChanged(!enabled);
+    final description = enabled
+        ? 'Balances and amounts are hidden across the app.'
+        : 'Hide balances and amounts across the app.';
+    final stackDescription =
+        MediaQuery.textScalerOf(context).scale(14) > 14 * 1.3;
     return Semantics(
       label: 'Privacy mode',
       toggled: enabled,
@@ -595,20 +851,39 @@ class _PrivacyQuickCard extends StatelessWidget {
             child: ExcludeSemantics(
               child: AppGroupedSection(
                 children: [
-                  AppGroupedTile.toggle(
-                    leading: Icon(
-                      enabled
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_outlined,
-                    ),
-                    title: const Text('Privacy mode'),
-                    subtitle: Text(
-                      enabled
-                          ? 'Balances and amounts are hidden across the app.'
-                          : 'Hide balances and amounts across the app.',
-                    ),
-                    value: enabled,
-                    onChanged: onChanged,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AppGroupedTile.toggle(
+                        leading: Icon(
+                          enabled
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_outlined,
+                        ),
+                        title: const Text('Privacy mode'),
+                        subtitle: stackDescription ? null : Text(description),
+                        value: enabled,
+                        onChanged: onChanged,
+                      ),
+                      if (stackDescription)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.md,
+                            0,
+                            AppSpacing.md,
+                            AppSpacing.sm,
+                          ),
+                          child: Text(
+                            description,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -807,9 +1082,8 @@ class _AppUpdatesSection extends ConsumerWidget {
               .completeFlexibleUpdate(),
           child: const Text('Restart'),
         );
-        onUpdateTap = () => ref
-            .read(playStoreUpdateProvider.notifier)
-            .completeFlexibleUpdate();
+        onUpdateTap = () =>
+            ref.read(playStoreUpdateProvider.notifier).completeFlexibleUpdate();
         break;
       case PlayStoreUpdateStatus.updateAvailable:
         leadingIcon = Icon(
@@ -818,14 +1092,12 @@ class _AppUpdatesSection extends ConsumerWidget {
         );
         statusSubtitle = 'New update available on Google Play';
         trailingWidget = FilledButton(
-          onPressed: () => ref
-              .read(playStoreUpdateProvider.notifier)
-              .startFlexibleUpdate(),
+          onPressed: () =>
+              ref.read(playStoreUpdateProvider.notifier).startFlexibleUpdate(),
           child: const Text('Update'),
         );
-        onUpdateTap = () => ref
-            .read(playStoreUpdateProvider.notifier)
-            .startFlexibleUpdate();
+        onUpdateTap = () =>
+            ref.read(playStoreUpdateProvider.notifier).startFlexibleUpdate();
         break;
       case PlayStoreUpdateStatus.upToDate:
         leadingIcon = Icon(
@@ -969,10 +1241,7 @@ void _showWhatsNewSheet(BuildContext context) {
             ),
             const SizedBox(height: AppSpacing.lg),
             for (var i = 0; i < releases.length; i++) ...[
-              _ReleaseCard(
-                release: releases[i],
-                isLatest: i == 0,
-              ),
+              _ReleaseCard(release: releases[i], isLatest: i == 0),
               if (i < releases.length - 1)
                 const SizedBox(height: AppSpacing.md),
             ],
@@ -984,10 +1253,7 @@ void _showWhatsNewSheet(BuildContext context) {
 }
 
 class _ReleaseCard extends StatelessWidget {
-  const _ReleaseCard({
-    required this.release,
-    required this.isLatest,
-  });
+  const _ReleaseCard({required this.release, required this.isLatest});
 
   final AppUpdateRelease release;
   final bool isLatest;
@@ -1054,12 +1320,12 @@ class _ReleaseCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      '• ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Expanded(
-                      child: Text(
-                        feature,
-                        style: theme.textTheme.bodySmall,
-                      ),
+                      child: Text(feature, style: theme.textTheme.bodySmall),
                     ),
                   ],
                 ),
@@ -1081,12 +1347,12 @@ class _ReleaseCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      '• ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Expanded(
-                      child: Text(
-                        fix,
-                        style: theme.textTheme.bodySmall,
-                      ),
+                      child: Text(fix, style: theme.textTheme.bodySmall),
                     ),
                   ],
                 ),

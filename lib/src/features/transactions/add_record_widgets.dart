@@ -274,74 +274,82 @@ class AddRecordSelectorGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: AddRecordSelectorBox(
-            icon: sourceAccount == null
-                ? Icons.wallet_outlined
-                : accountIcon(sourceAccount!),
-            label: type == 'transfer' ? 'From' : 'Account',
-            title: sourceAccount?.name ?? 'Choose',
-            subtitle: sourceAccount == null
+    final isDoubleEntry =
+        type == 'transfer' ||
+        type == 'loan_repayment' ||
+        type == 'card_payment';
+    final isLoan = type == 'loan_repayment';
+    final isCard = type == 'card_payment';
+    final account = AddRecordSelectorBox(
+      icon: sourceAccount == null
+          ? Icons.wallet_outlined
+          : accountIcon(sourceAccount!),
+      label: type == 'transfer' ? 'From' : 'Account',
+      title: sourceAccount?.name ?? 'Choose',
+      subtitle: sourceAccount == null
+          ? 'Required'
+          : maskMoneyIfPrivate(
+              state,
+              '${sourceAccount!.currency} · ${formatMoney(accountBalance(state, sourceAccount!), state.preferences.locale)}',
+            ),
+      iconColor: sourceAccount == null
+          ? null
+          : accountDisplayColor(sourceAccount!),
+      onTap: onSelectAccount,
+    );
+    final other = isDoubleEntry
+        ? AddRecordSelectorBox(
+            icon: isLoan
+                ? Icons.account_balance_outlined
+                : (isCard
+                      ? Icons.credit_card_outlined
+                      : Icons.swap_horiz_rounded),
+            label: isLoan
+                ? 'Loan account'
+                : (isCard ? 'Card account' : 'To account'),
+            title: counterAccount?.name ?? 'Choose',
+            subtitle: counterAccount == null
                 ? 'Required'
                 : maskMoneyIfPrivate(
                     state,
-                    '${sourceAccount!.currency} · ${formatMoney(accountBalance(state, sourceAccount!), state.preferences.locale)}',
+                    '${counterAccount!.currency} · ${formatMoney(accountBalance(state, counterAccount!), state.preferences.locale)}',
                   ),
-            iconColor: sourceAccount == null
+            iconColor: counterAccount == null
                 ? null
-                : accountDisplayColor(sourceAccount!),
-            onTap: onSelectAccount,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        Builder(
-          builder: (context) {
-            final isDoubleEntry =
-                type == 'transfer' ||
-                type == 'loan_repayment' ||
-                type == 'card_payment';
-            final isLoan = type == 'loan_repayment';
-            final isCard = type == 'card_payment';
-
-            return Expanded(
-              child: isDoubleEntry
-                  ? AddRecordSelectorBox(
-                      icon: isLoan
-                          ? Icons.account_balance_outlined
-                          : (isCard
-                                ? Icons.credit_card_outlined
-                                : Icons.swap_horiz_rounded),
-                      label: isLoan
-                          ? 'Loan account'
-                          : (isCard ? 'Card account' : 'To account'),
-                      title: counterAccount?.name ?? 'Choose',
-                      subtitle: counterAccount == null
-                          ? 'Required'
-                          : maskMoneyIfPrivate(
-                              state,
-                              '${counterAccount!.currency} · ${formatMoney(accountBalance(state, counterAccount!), state.preferences.locale)}',
-                            ),
-                      iconColor: counterAccount == null
-                          ? null
-                          : accountDisplayColor(counterAccount!),
-                      onTap: onSelectCounter,
-                    )
-                  : AddRecordSelectorBox(
-                      icon: categoryIcon(category),
-                      label: 'Category',
-                      title: category?.name ?? 'Choose',
-                      subtitle: category == null
-                          ? 'Required'
-                          : categoryPath(state, category),
-                      iconColor: categoryColor(category, context),
-                      onTap: onSelectCategory,
-                    ),
-            );
-          },
-        ),
-      ],
+                : accountDisplayColor(counterAccount!),
+            onTap: onSelectCounter,
+          )
+        : AddRecordSelectorBox(
+            icon: categoryIcon(category),
+            label: 'Category',
+            title: category?.name ?? 'Choose',
+            subtitle: category == null
+                ? 'Required'
+                : categoryPath(state, category),
+            iconColor: categoryColor(category, context),
+            onTap: onSelectCategory,
+          );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+        if (constraints.maxWidth < 220 * textScale) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              account,
+              const SizedBox(height: AppSpacing.xs),
+              other,
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: account),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(child: other),
+          ],
+        );
+      },
     );
   }
 }

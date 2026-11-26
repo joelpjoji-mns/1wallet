@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +10,7 @@ import '../../ledger/ledger_selectors.dart' show minorUnits, accountTypeLabel;
 import '../../auth/auth_controller.dart';
 import '../launch/brand_widgets.dart';
 import 'onboarding_controller.dart';
+import 'discovery_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:uuid/uuid.dart';
 import '../../cloud_sync/cloud_sync_controller.dart';
@@ -37,12 +37,14 @@ IconData _iconForType(String type) {
 }
 
 class _AccountDraft {
+  final String id = const Uuid().v4();
   String name;
   String institution;
   String type;
   String currency;
   Color color;
   String opening;
+  int openingBalanceMinor = 0;
   IconData icon;
 
   _AccountDraft({
@@ -68,19 +70,31 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _currentPage = 0;
 
   final _displayNameController = TextEditingController();
+  final _accountNameController = TextEditingController();
+  final _openingBalanceController = TextEditingController();
+  final _institutionController = TextEditingController();
+  final _accountNameFocus = FocusNode();
+  final _openingBalanceFocus = FocusNode();
+  final _accountNameKey = GlobalKey();
+  final _openingBalanceKey = GlobalKey();
 
   String _baseCurrency = kDefaultCurrency;
   final _accounts = <_AccountDraft>[];
+  final _attemptedAccountIds = <String>{};
   late _AccountDraft _currentDraft;
 
   bool _enableAutoCapture = true;
   bool _enableReminders = true;
+  bool _isFinishing = false;
+  String? _accountNameError;
+  String? _openingBalanceError;
 
   @override
   void initState() {
     super.initState();
     _resetDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final auth = ref.read(authControllerProvider);
       final name = auth.user?.displayName ?? auth.localDisplayName;
       if (name != null && name.isNotEmpty) {
@@ -90,6 +104,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _resetDraft() {
+    _accountNameController.clear();
+    _openingBalanceController.clear();
+    _institutionController.clear();
+    _accountNameError = null;
+    _openingBalanceError = null;
     _currentDraft = _AccountDraft(
       name: '',
       institution: '',
@@ -126,7 +145,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
       ],
     );
-    if (selected != null) {
+    if (selected != null && mounted) {
       setState(() {
         _currentDraft.type = selected;
         _currentDraft.icon = _iconForType(selected);
@@ -138,10 +157,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   void dispose() {
     _pageController.dispose();
     _displayNameController.dispose();
+    _accountNameController.dispose();
+    _openingBalanceController.dispose();
+    _institutionController.dispose();
+    _accountNameFocus.dispose();
+    _openingBalanceFocus.dispose();
     super.dispose();
   }
 
   void _nextPage() {
+    if (_isFinishing) return;
     if (_currentPage < 3) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 600),
@@ -153,7 +178,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _prevPage() {
-    if (_currentPage > 0) {
+    if (!_isFinishing && _currentPage > 0) {
       _pageController.previousPage(
         duration: const Duration(milliseconds: 600),
         curve: Curves.easeOutCubic,
@@ -161,114 +186,197 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
-  Future<void> _finishOnboarding() async {
-    final auth = ref.read(authControllerProvider);
-    final ownerId = auth.ownerId;
-    if (ownerId == null) return;
-    final offline = auth.isLocalOnly;
-
-    final displayName = _displayNameController.text.trim();
-    if (displayName.isNotEmpty) {
-      if (offline) {
-        // Offline mode keeps the name on this device only.
-        await ref
-            .read(authControllerProvider.notifier)
-            .setLocalDisplayName(displayName);
-      } else {
-        await firebase_auth.FirebaseAuth.instance.currentUser
-            ?.updateDisplayName(displayName);
-      }
-    }
-
-    // Save preferences to ledger
-    final ledgerNotifier = ref.read(ledgerProvider.notifier);
-    final currentState = ref.read(ledgerProvider);
-
-    var newPrefs = currentState.preferences.copyWith(
-      baseCurrency: _baseCurrency,
-      displayCurrency: _baseCurrency,
-      enabledCurrencies: {_baseCurrency, kDefaultCurrency}.toList(),
-    );
-    if (!_enableReminders) {
-      newPrefs = newPrefs.copyWith(notificationInboxEnabled: false);
-    }
-    // The "Auto-capture transactions" switch was previously read into
-    // _enableAutoCapture but never written back to preferences, so opting
-    // out during onboarding had no effect and SMS capture stayed on by
-    // default. Honor an explicit opt-out here.
-    if (!_enableAutoCapture) {
-      newPrefs = newPrefs.copyWith(
-        smsCaptureEnabled: false,
-        notificationCaptureEnabled: false,
+  void _focusAccountField(GlobalKey key, FocusNode focus) {
+    final fieldContext = key.currentContext;
+    if (fieldContext != null) {
+      unawaited(
+        Scrollable.ensureVisible(
+          fieldContext,
+          alignment: 0.15,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        ),
       );
     }
-    await ledgerNotifier.updatePreferences(newPrefs);
+    focus.requestFocus();
+  }
 
-    final cloudSync = ref.read(cloudSyncControllerProvider);
-    if (cloudSync.hasCloudWallet) {
-      // Guard: strictly refuse to overwrite cloud wallet from onboarding
-      if (mounted) {
+  void _saveAccountDraft() {
+    final name = _accountNameController.text.trim();
+    final balance = parseDecimalMinorUnits(
+      _openingBalanceController.text,
+      minorUnits(_currentDraft.currency),
+    );
+    setState(() {
+      _accountNameError = name.isEmpty
+          ? 'Enter an account name before saving.'
+          : null;
+      _openingBalanceError = balance == null
+          ? 'Enter a valid balance within the supported range.'
+          : null;
+    });
+    if (name.isEmpty) {
+      _focusAccountField(_accountNameKey, _accountNameFocus);
+      return;
+    }
+    if (balance == null) {
+      _focusAccountField(_openingBalanceKey, _openingBalanceFocus);
+      return;
+    }
+    setState(() {
+      _currentDraft.name = name;
+      _currentDraft.openingBalanceMinor = balance;
+      _accounts.add(_currentDraft);
+      _resetDraft();
+    });
+    _nextPage();
+  }
+
+  void _toggleOpeningBalanceSign() {
+    final value = _openingBalanceController.text;
+    final next = value.startsWith('-') ? value.substring(1) : '-$value';
+    _openingBalanceController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
+    );
+    setState(() {
+      _currentDraft.opening = next;
+      _openingBalanceError = null;
+    });
+    _openingBalanceFocus.requestFocus();
+  }
+
+  Future<void> _finishOnboarding() async {
+    if (_isFinishing) return;
+    if (_accounts.isEmpty) {
+      showAppSnackBar(context, 'Add at least one account to finish setup.');
+      _pageController.animateToPage(
+        1,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
+    final auth = ref.read(authControllerProvider);
+    final ownerId = auth.ownerId;
+    if (ownerId == null) {
+      showAppSnackBar(
+        context,
+        'Your session ended. Sign in again to finish setup.',
+      );
+      return;
+    }
+    final offline = auth.isLocalOnly;
+    setState(() => _isFinishing = true);
+    try {
+      final displayName = _displayNameController.text.trim();
+      if (displayName.isNotEmpty) {
+        if (offline) {
+          await ref
+              .read(authControllerProvider.notifier)
+              .setLocalDisplayName(displayName);
+        } else {
+          final user = firebase_auth.FirebaseAuth.instance.currentUser;
+          if (user == null || user.uid != ownerId) {
+            throw StateError('The signed-in session changed during setup.');
+          }
+          await user.updateDisplayName(displayName);
+        }
+      }
+
+      if (!mounted) return;
+      if (ref.read(authControllerProvider).ownerId != ownerId) {
+        throw StateError('The wallet owner changed during setup.');
+      }
+      if (ref.read(cloudSyncControllerProvider).hasCloudWallet) {
         showAppSnackBar(
           context,
           'Existing cloud wallet found. Restoring your wallet instead of creating a new account.',
         );
         ref.read(cloudSyncControllerProvider.notifier).retryBootstrap();
         context.go('/launch');
+        return;
       }
-      return;
-    }
 
-    // Guard: if wallet data already arrived (e.g. cloud restored while the
-    // user was stepping through onboarding), skip creating new accounts to
-    // prevent duplicates being pushed back over the real cloud backup.
-    final ledgerAfterPrefs = ref.read(ledgerProvider);
-    final hasExistingData =
-        ledgerAfterPrefs.accounts.isNotEmpty ||
-        ledgerAfterPrefs.transactions.isNotEmpty;
+      final ledgerNotifier = ref.read(ledgerProvider.notifier);
+      final discoveryNotifier = ref.read(
+        discoveryControllerProvider(ownerId).notifier,
+      );
+      _attemptedAccountIds.addAll(_accounts.map((draft) => draft.id));
+      final accounts = [
+        for (var index = 0; index < _accounts.length; index++)
+          Account(
+            id: _accounts[index].id,
+            name: _accounts[index].name,
+            type: _accounts[index].type,
+            currency: _accounts[index].currency,
+            openingBalance: Money(
+              amountMinor: _accounts[index].openingBalanceMinor,
+              currency: _accounts[index].currency,
+            ),
+            institution: _accounts[index].institution.trim().isEmpty
+                ? null
+                : _accounts[index].institution.trim(),
+            color: _accounts[index].color,
+            sortOrder: index + 1,
+          ),
+      ];
+      final initialized = await ledgerNotifier.initializeOnboardingWallet(
+        ownerId: ownerId,
+        accounts: accounts,
+        attemptedAccountIds: Set.of(_attemptedAccountIds),
+        updatePreferences: (preferences) => preferences.copyWith(
+          baseCurrency: _baseCurrency,
+          displayCurrency: _baseCurrency,
+          enabledCurrencies: {_baseCurrency, kDefaultCurrency}.toList(),
+          notificationInboxEnabled: _enableReminders,
+          smsCaptureEnabled: _enableAutoCapture,
+          notificationCaptureEnabled: _enableAutoCapture,
+        ),
+      );
+      if (!initialized) {
+        await ledgerNotifier.flushPendingWrites();
+      }
 
-    if (!hasExistingData) {
-      // Save accounts to ledger — only when we know there is no existing
-      // wallet data; an empty ledger means this really is a fresh setup.
-      for (final draft in _accounts) {
-        final parsedOpening =
-            double.tryParse(draft.opening.replaceAll(RegExp(r'[^0-9.]'), '')) ??
-            0;
-        final openingBalanceMinor =
-            (parsedOpening * math.pow(10, minorUnits(draft.currency))).round();
-        await ledgerNotifier.upsertAccount(
-          id: const Uuid().v4(),
-          name: draft.name,
-          institution: draft.institution.trim().isEmpty
-              ? null
-              : draft.institution.trim(),
-          type: draft.type,
-          currency: draft.currency,
-          openingBalanceMinor: openingBalanceMinor,
-          color: draft.color,
+      if (initialized && discoveryNotifier.mounted) {
+        await discoveryNotifier.prepareWelcome();
+      }
+      if (!mounted) return;
+      if (ref.read(authControllerProvider).ownerId != ownerId) {
+        throw StateError('The wallet owner changed during setup.');
+      }
+      await ref
+          .read(onboardingControllerProvider.notifier)
+          .setCompleted(ownerId, true);
+
+      if (!mounted) return;
+      if (initialized && !offline) {
+        unawaited(
+          ref
+              .read(cloudSyncControllerProvider.notifier)
+              .uploadSnapshot(reason: 'onboarding'),
         );
       }
+      if (!initialized && accounts.isNotEmpty) {
+        showAppSnackBar(
+          context,
+          'Your existing wallet was kept. Add these accounts from Accounts.',
+        );
+      }
+
+      context.go('/permissions-setup');
+    } catch (error, stack) {
+      debugPrint('Could not finish setup: ${error.runtimeType}');
+      debugPrintStack(stackTrace: stack);
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          'Could not finish setup. Check your connection or device storage and try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isFinishing = false);
     }
-
-    await ref
-        .read(onboardingControllerProvider.notifier)
-        .setCompleted(ownerId, true);
-
-    // Force an immediate cloud upload so the brand-new wallet reaches
-    // Firebase right away, before the user can clear app data or background
-    // the app within the normal 2500ms upload debounce window.
-    // Only needed for genuinely new wallets — if existing cloud data was
-    // already restored, the sync controller handles uploads automatically.
-    // Offline mode never uploads.
-    if (!hasExistingData && !offline) {
-      unawaited(
-        ref
-            .read(cloudSyncControllerProvider.notifier)
-            .uploadSnapshot(reason: 'onboarding'),
-      );
-    }
-
-    if (!mounted) return;
-    context.go('/permissions-setup');
   }
 
   @override
@@ -352,7 +460,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     if (_currentPage > 0)
                       HeaderIconButton(
                         icon: Icons.arrow_back_ios_new_rounded,
-                        onPressed: _prevPage,
+                        onPressed: _isFinishing ? null : _prevPage,
                         semanticLabel: 'Back',
                         tooltip: 'Back',
                       )
@@ -550,24 +658,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   size: 22,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xxs,
-                ),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                  border: Border.all(
-                    color: scheme.outlineVariant.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Text(
-                  badgeLabel,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    color: scheme.onSurfaceVariant,
+              Flexible(
+                child: Tooltip(
+                  message: badgeLabel,
+                  excludeFromSemantics: true,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xxs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.35,
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      badgeLabel,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -600,7 +718,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Widget _buildColorPicker() {
-    final colors = AppColors.accountPalette.take(8).toList();
+    // These names correspond to the first eight colors in accountPalette.
+    const colorNames = [
+      'Blue',
+      'Forest green',
+      'Taupe',
+      'Bright violet',
+      'Teal',
+      'Terracotta',
+      'Violet',
+      'Olive green',
+    ];
+    final colors = AppColors.accountPalette.take(colorNames.length).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -618,77 +747,102 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              for (final c in colors)
-                Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: InkWell(
-                    onTap: () => setState(() => _currentDraft.color = c),
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: c,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _currentDraft.color == c
-                              ? Colors.white
-                              : Colors.transparent,
-                          width: 2.5,
-                        ),
-                        boxShadow: [
-                          if (_currentDraft.color == c)
-                            BoxShadow(
-                              color: c.withValues(alpha: 0.45),
-                              blurRadius: 8,
-                              spreadRadius: 1,
+              for (final (index, color) in colors.indexed)
+                Tooltip(
+                  message: '${colorNames[index]} account color',
+                  excludeFromSemantics: true,
+                  child: Semantics(
+                    label: '${colorNames[index]} account color',
+                    button: true,
+                    selected: _currentDraft.color == color,
+                    child: InkWell(
+                      onTap: () => setState(() => _currentDraft.color = color),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Center(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _currentDraft.color == color
+                                    ? Colors.white
+                                    : Colors.transparent,
+                                width: 2.5,
+                              ),
+                              boxShadow: [
+                                if (_currentDraft.color == color)
+                                  BoxShadow(
+                                    color: color.withValues(alpha: 0.45),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                              ],
                             ),
-                        ],
+                            child: _currentDraft.color == color
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    size: 18,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ),
                       ),
-                      child: _currentDraft.color == c
-                          ? const Icon(
-                              Icons.check_rounded,
-                              size: 18,
-                              color: Colors.white,
-                            )
-                          : null,
                     ),
                   ),
                 ),
-              Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.sm),
-                child: InkWell(
-                  onTap: () async {
-                    final picked = await showAppColorPicker(
-                      context: context,
-                      initialColor: _currentDraft.color,
-                      title: 'Choose account color',
-                    );
-                    if (picked != null) {
-                      setState(() => _currentDraft.color = picked);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: 0.4),
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+              Tooltip(
+                message: 'Choose custom account color',
+                excludeFromSemantics: true,
+                child: Semantics(
+                  label: 'Choose custom account color',
+                  button: true,
+                  selected: !colors.contains(_currentDraft.color),
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showAppColorPicker(
+                        context: context,
+                        initialColor: _currentDraft.color,
+                        title: 'Choose account color',
+                      );
+                      if (picked != null && mounted) {
+                        setState(() => _currentDraft.color = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Center(
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.4),
+                            border: Border.all(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant
+                                  .withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.colorize_rounded,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Icon(
-                      Icons.colorize_rounded,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -701,137 +855,163 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Widget _buildAccountStep() {
-    return ListView(
+    return SingleChildScrollView(
       primary: false,
       physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.xl),
-      children: [
-        StaggeredFadeIn(
-          child: Text(
-            'Add your first\naccount.',
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              height: 1.1,
-              letterSpacing: -1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          StaggeredFadeIn(
+            child: Text(
+              'Add your first\naccount.',
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                fontWeight: FontWeight.w900,
+                height: 1.1,
+                letterSpacing: -1,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        StaggeredFadeIn(
-          delay: const Duration(milliseconds: 60),
-          child: _buildAccountPreviewCard(),
-        ),
-        StaggeredFadeIn(
-          delay: const Duration(milliseconds: 120),
-          child: BrandFrostedPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Account name',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                AppGlassTextField(
-                  onChanged: (v) => setState(() => _currentDraft.name = v),
-                  decoration: const InputDecoration(
-                    hintText: 'Account name (e.g. Cash, Savings)',
+          const SizedBox(height: AppSpacing.lg),
+          StaggeredFadeIn(
+            delay: const Duration(milliseconds: 60),
+            child: _buildAccountPreviewCard(),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          StaggeredFadeIn(
+            delay: const Duration(milliseconds: 120),
+            child: BrandFrostedPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Account name',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Account type',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                PremiumRow(
-                  glass: true,
-                  icon: _currentDraft.icon,
-                  iconColor: _currentDraft.color.withValues(alpha: 0.25),
-                  title: accountTypeLabel(_currentDraft.type),
-                  subtitle: 'Tap to change account type',
-                  onTap: () => _chooseAccountType(context),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Current balance',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                AppGlassTextField(
-                  onChanged: (v) => setState(() => _currentDraft.opening = v),
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                  const SizedBox(height: AppSpacing.xs),
+                  AppGlassTextField(
+                    key: _accountNameKey,
+                    controller: _accountNameController,
+                    focusNode: _accountNameFocus,
+                    onChanged: (v) => setState(() {
+                      _currentDraft.name = v;
+                      _accountNameError = null;
+                    }),
+                    decoration: InputDecoration(
+                      hintText: 'Account name (e.g. Cash)',
+                      errorText: _accountNameError,
+                    ),
                   ),
-                  inputFormatters: [ThousandsSeparatorInputFormatter()],
-                  decoration: InputDecoration(
-                    hintText: 'Current balance',
-                    suffixText: _currentDraft.currency,
+                  const SizedBox(height: AppSpacing.md),
+                  const Text(
+                    'Account type',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Currency',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                PremiumRow(
-                  glass: true,
-                  icon: iconForCurrency(_currentDraft.currency),
-                  title: _currentDraft.currency,
-                  subtitle:
-                      '${getCurrencyInfo(_currentDraft.currency).name} • Tap to change',
-                  onTap: () async {
-                    final curr = await showCurrencyPicker(
-                      context: context,
-                      state: ref.read(ledgerProvider),
-                      selectedValue: _currentDraft.currency,
-                    );
-                    if (curr != null) {
-                      setState(() {
-                        _currentDraft.currency = curr;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Institution / Bank name (optional)',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                AppGlassTextField(
-                  onChanged: (v) =>
-                      setState(() => _currentDraft.institution = v),
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. Chase, Revolut, Cash in wallet',
+                  const SizedBox(height: AppSpacing.xs),
+                  PremiumRow(
+                    glass: true,
+                    icon: _currentDraft.icon,
+                    iconColor: _currentDraft.color.withValues(alpha: 0.25),
+                    title: accountTypeLabel(_currentDraft.type),
+                    subtitle: 'Tap to change',
+                    onTap: () => _chooseAccountType(context),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _buildColorPicker(),
-              ],
+                  const SizedBox(height: AppSpacing.md),
+                  const Text(
+                    'Current balance',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  AppGlassTextField(
+                    key: _openingBalanceKey,
+                    controller: _openingBalanceController,
+                    focusNode: _openingBalanceFocus,
+                    onChanged: (v) => setState(() {
+                      _currentDraft.opening = v;
+                      _openingBalanceError = null;
+                    }),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    ),
+                    inputFormatters: [
+                      ThousandsSeparatorInputFormatter.signed(
+                        ref.read(ledgerProvider).preferences.locale,
+                      ),
+                    ],
+                    decoration: InputDecoration(
+                      hintText: 'Current balance',
+                      suffixText: _currentDraft.currency,
+                      helperText:
+                          'Use a negative balance for debts. Extra decimals are rounded.',
+                      errorText: _openingBalanceError,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(
+                      onPressed: _toggleOpeningBalanceSign,
+                      child: const Text('Change sign'),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  const Text(
+                    'Currency',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  PremiumRow(
+                    glass: true,
+                    icon: iconForCurrency(_currentDraft.currency),
+                    title: _currentDraft.currency,
+                    subtitle: getCurrencyInfo(_currentDraft.currency).name,
+                    onTap: () async {
+                      final curr = await showCurrencyPicker(
+                        context: context,
+                        state: ref.read(ledgerProvider),
+                        selectedValue: _currentDraft.currency,
+                      );
+                      if (curr != null && mounted) {
+                        setState(() {
+                          _currentDraft.currency = curr;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  const Text(
+                    'Institution / Bank name (optional)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  AppGlassTextField(
+                    controller: _institutionController,
+                    onChanged: (v) =>
+                        setState(() => _currentDraft.institution = v),
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. Chase, Revolut, Cash in wallet',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildColorPicker(),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.xxl),
-        StaggeredFadeIn(
-          delay: const Duration(milliseconds: 200),
-          child: FilledButton(
-            onPressed: () {
-              if (_currentDraft.name.isNotEmpty) {
-                setState(() {
-                  _accounts.add(_currentDraft);
-                  _resetDraft();
-                });
-                _nextPage();
-              }
-            },
-            style: AppButtonStyles.cta,
-            child: const Text('Save account'),
+          const SizedBox(height: AppSpacing.xxl),
+          StaggeredFadeIn(
+            delay: const Duration(milliseconds: 200),
+            child: FilledButton(
+              onPressed: _saveAccountDraft,
+              style: AppButtonStyles.cta,
+              child: const Text('Save account'),
+            ),
           ),
-        ),
-        TextButton(onPressed: _nextPage, child: const Text('Skip for now')),
-      ],
+          const SizedBox(height: AppSpacing.xs),
+          TextButton(onPressed: _nextPage, child: const Text('Skip for now')),
+        ],
+      ),
     );
   }
 
@@ -876,7 +1056,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'You can always create accounts later from the Accounts tab.',
+                    'Add your first cash, bank or card account before finishing setup.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -976,7 +1156,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     'Scan SMS and notifications for expenses.',
                   ),
                   value: _enableAutoCapture,
-                  onChanged: (v) => setState(() => _enableAutoCapture = v),
+                  onChanged: _isFinishing
+                      ? null
+                      : (v) => setState(() => _enableAutoCapture = v),
                 ),
                 AppSwitchListTile(
                   title: const Text('Reminders'),
@@ -984,7 +1166,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     'Get notified for upcoming bills and EMIs.',
                   ),
                   value: _enableReminders,
-                  onChanged: (v) => setState(() => _enableReminders = v),
+                  onChanged: _isFinishing
+                      ? null
+                      : (v) => setState(() => _enableReminders = v),
                 ),
               ],
             ),
@@ -994,9 +1178,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         StaggeredFadeIn(
           delay: const Duration(milliseconds: 200),
           child: FilledButton(
-            onPressed: _nextPage,
+            onPressed: _isFinishing ? null : _nextPage,
             style: AppButtonStyles.cta,
-            child: const Text('Finish Setup'),
+            child: Text(_isFinishing ? 'Finishing...' : 'Finish Setup'),
           ),
         ),
       ],

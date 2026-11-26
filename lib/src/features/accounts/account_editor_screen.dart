@@ -20,6 +20,8 @@ import '../../widgets/privacy_text.dart';
 import '../../utils/number_formatter.dart';
 import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
+import '../onboarding/guided_editor_overlay.dart';
+import '../onboarding/feature_discovery_guide.dart';
 
 class AccountEditorScreen extends ConsumerStatefulWidget {
   const AccountEditorScreen({super.key, this.accountId, this.initialType});
@@ -46,6 +48,7 @@ class _CashOpeningDraft {
 }
 
 class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
+  final _discoveryNameKey = GlobalKey();
   final _nameController = TextEditingController();
   final _institutionController = TextEditingController();
   final _creditLimitController = TextEditingController();
@@ -104,9 +107,58 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         _selectedType ?? account?.type ?? widget.initialType ?? 'bank';
     final isCash = currentType == 'cash';
     final isCardType = currentType == 'card' || currentType == 'credit_card';
+    final accountIconPreview = Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: selectedColor,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Icon(
+        account == null
+            ? Icons.account_balance_wallet_outlined
+            : accountIcon(account),
+        color: selectedForeground,
+        size: 32,
+      ),
+    );
+    final typeField = _DetailField(
+      icon: Icons.category_outlined,
+      label: accountTypeLabel(currentType),
+      onTap: () => _chooseAccountType(context),
+    );
+    final currencyField = isCash
+        ? const _DetailField(
+            icon: Icons.all_inclusive_rounded,
+            label: 'Multi-currency',
+          )
+        : _DetailField(
+            icon: iconForCurrency(
+              _selectedCurrency ??
+                  account?.currency ??
+                  state.preferences.baseCurrency,
+            ),
+            label: getCurrencyInfo(
+              _selectedCurrency ??
+                  account?.currency ??
+                  state.preferences.baseCurrency,
+            ).shortName,
+            onTap: () => _chooseCurrency(context, state),
+          );
 
     return RouteScaffold(
+      discoveryFeature: 'account-details',
       title: isNew ? 'New account' : account.name,
+      overlay: isNew
+          ? GuidedEditorOverlay(
+              target: _discoveryNameKey,
+              feature: 'guide-account',
+              step: 1,
+              title: 'Create your first account',
+              message:
+                  'Enter a name and check the account type, currency and opening balance. Saving creates a real account; go back to cancel.',
+            )
+          : null,
       actions: [
         if (account != null)
           HeaderIconButton(
@@ -117,9 +169,12 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                 ? null
                 : () => _confirmDeleteAccount(state, account),
           ),
-        HeaderSaveAction(
-          isSaving: _isSaving,
-          onPressed: () => _saveAccount(state, account),
+        DiscoveryGuideAnchor(
+          id: 'save',
+          child: HeaderSaveAction(
+            isSaving: _isSaving,
+            onPressed: () => _saveAccount(state, account),
+          ),
         ),
       ],
       child: Column(
@@ -181,83 +236,75 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                 'Name, institution, icon, color, currency and visibility.',
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: selectedColor,
-                        borderRadius: BorderRadius.circular(AppRadii.lg),
-                      ),
-                      child: Icon(
-                        account == null
-                            ? Icons.account_balance_wallet_outlined
-                            : accountIcon(account),
-                        color: selectedForeground,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          TextFormField(
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final stackAccountFields =
+                        constraints.maxWidth < 480 &&
+                        MediaQuery.textScalerOf(context).scale(14) > 20;
+                    final identityFields = Column(
+                      children: [
+                        DiscoveryGuideAnchor(
+                          id: 'account-name',
+                          child: TextFormField(
+                            key: _discoveryNameKey,
                             controller: _nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Account name',
-                            ),
+                            decoration: stackAccountFields
+                                ? const InputDecoration(
+                                    label: Text(
+                                      'Name',
+                                      semanticsLabel: 'Account name',
+                                    ),
+                                  )
+                                : const InputDecoration(
+                                    labelText: 'Account name',
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextFormField(
+                          controller: _institutionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Institution',
+                          ),
+                        ),
+                      ],
+                    );
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (stackAccountFields) ...[
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: accountIconPreview,
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          TextFormField(
-                            controller: _institutionController,
-                            decoration: const InputDecoration(
-                              labelText: 'Institution',
-                            ),
+                          identityFields,
+                        ] else
+                          Row(
+                            children: [
+                              accountIconPreview,
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(child: identityFields),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _DetailField(
-                        icon: Icons.category_outlined,
-                        label: accountTypeLabel(currentType),
-                        onTap: () => _chooseAccountType(context),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    if (isCash)
-                      const Expanded(
-                        child: _DetailField(
-                          icon: Icons.all_inclusive_rounded,
-                          label: 'Multi-currency',
-                          onTap: null,
-                        ),
-                      )
-                    else
-                      Expanded(
-                        child: _DetailField(
-                          icon: iconForCurrency(
-                            _selectedCurrency ??
-                                account?.currency ??
-                                state.preferences.baseCurrency,
+                        const SizedBox(height: AppSpacing.md),
+                        if (stackAccountFields) ...[
+                          typeField,
+                          const SizedBox(height: AppSpacing.sm),
+                          currencyField,
+                        ] else
+                          Row(
+                            children: [
+                              Expanded(child: typeField),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(child: currencyField),
+                            ],
                           ),
-                          label: getCurrencyInfo(
-                            _selectedCurrency ??
-                                account?.currency ??
-                                state.preferences.baseCurrency,
-                          ).shortName,
-                          onTap: () => _chooseCurrency(context, state),
-                        ),
-                      ),
-                  ],
+                        const SizedBox(height: AppSpacing.md),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(height: AppSpacing.md),
                 if (isCash)
                   AppPanel(
                     child: Column(

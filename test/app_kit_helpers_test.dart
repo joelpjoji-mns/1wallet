@@ -3,10 +3,13 @@ import 'dart:ui' show SemanticsAction, Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+import 'package:one_wallet_flutter/src/design/tokens.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
+import 'package:one_wallet_flutter/src/widgets/color_picker_dialog.dart';
 
 Widget _host(Widget child, {ThemeData? theme}) => MaterialApp(
   theme: theme ?? AppTheme.light(),
@@ -14,6 +17,196 @@ Widget _host(Widget child, {ThemeData? theme}) => MaterialApp(
 );
 
 void main() {
+  testWidgets('premium rows give large text and trailing content room', (
+    tester,
+  ) async {
+    var taps = 0;
+    Future<void> pumpAt(double scale) => tester.pumpWidget(
+      _host(
+        MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: Center(
+            child: SizedBox(
+              width: 248,
+              child: PremiumRow(
+                icon: Icons.schedule,
+                title: 'Timeframe',
+                subtitle: 'Last 1 day',
+                trailing: const Text('Options'),
+                onTap: () => taps++,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await pumpAt(1);
+    expect(
+      tester.getTopLeft(find.text('Options')).dy -
+          tester.getBottomLeft(find.text('Last 1 day')).dy,
+      greaterThanOrEqualTo(AppSpacing.xs),
+    );
+    expect(
+      tester.getTopLeft(find.text('Timeframe')).dy,
+      lessThan(tester.getBottomLeft(find.byIcon(Icons.schedule)).dy),
+    );
+
+    await pumpAt(2);
+    expect(
+      tester.getTopLeft(find.text('Timeframe')).dy,
+      greaterThanOrEqualTo(
+        tester.getBottomLeft(find.byIcon(Icons.schedule)).dy,
+      ),
+    );
+    expect(tester.getSize(find.text('Timeframe')).width, greaterThan(180));
+    await tester.tap(find.byType(PremiumRow));
+    expect(taps, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('premium rows work in intrinsic-sized dialogs', (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var taps = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Center(
+            child: AlertDialog(
+              content: PremiumRow(
+                icon: Icons.schedule,
+                title: 'Type',
+                subtitle: 'Select',
+                onTap: () => taps++,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byType(PremiumRow));
+    expect(taps, 1);
+  });
+
+  testWidgets('color picker fits compact and landscape dialogs', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    for (final (size, scale) in [
+      (const Size(320, 568), 1.0),
+      (const Size(320, 568), 2.0),
+      (const Size(400, 300), 1.0),
+      (const Size(400, 300), 2.0),
+      (const Size(568, 320), 1.0),
+      (const Size(568, 320), 2.0),
+    ]) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      Color? selected;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: FilledButton(
+                  onPressed: () async {
+                    selected = await showAppColorPicker(
+                      context: context,
+                      initialColor: const Color(0xff315da8),
+                    );
+                  },
+                  child: const Text('Choose color'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Choose color'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getSize(find.byType(ColorPickerArea)).width,
+        greaterThanOrEqualTo(100),
+      );
+
+      final hexInput = find.byType(TextField);
+      final canEditHex = tester.widget<TextField>(hexInput).enabled != false;
+      if (canEditHex) {
+        await tester.ensureVisible(hexInput);
+        await tester.enterText(hexInput, '#123456');
+        await tester.pump();
+      }
+      await tester.ensureVisible(find.text('Select'));
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      expect(
+        selected,
+        canEditHex ? const Color(0xff123456) : const Color(0xff315da8),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+  });
+
+  testWidgets('color picker keeps edits when the viewport changes', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    Color? selected;
+    await tester.pumpWidget(
+      _host(
+        Builder(
+          builder: (context) => FilledButton(
+            onPressed: () async {
+              selected = await showAppColorPicker(
+                context: context,
+                initialColor: const Color(0xff315da8),
+              );
+            },
+            child: const Text('Choose color'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Choose color'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), '#123456');
+    await tester.pump();
+
+    for (final size in [const Size(360, 568), const Size(568, 320)]) {
+      tester.view.physicalSize = size;
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '#123456',
+      );
+    }
+    await tester.tap(find.text('Select'));
+    await tester.pumpAndSettle();
+    expect(selected, const Color(0xff123456));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('action groups align odd rows and retain their actions', (
     tester,
   ) async {
@@ -577,16 +770,29 @@ void main() {
   });
 
   testWidgets('HeaderIconButton exposes an optional tooltip', (tester) async {
+    final handle = tester.ensureSemantics();
     await tester.pumpWidget(
       _host(
-        HeaderIconButton(
-          icon: Icons.refresh_rounded,
-          semanticLabel: 'Refresh',
-          tooltip: 'Refresh',
-          onPressed: () {},
+        Column(
+          children: [
+            HeaderIconButton(
+              icon: Icons.refresh_rounded,
+              semanticLabel: 'Refresh',
+              tooltip: 'Refresh',
+              onPressed: () {},
+            ),
+            IslandFloatingActionButton(
+              icon: Icons.add_rounded,
+              tooltip: 'Add record',
+              onPressed: () {},
+            ),
+          ],
         ),
       ),
     );
     expect(find.byTooltip('Refresh'), findsOneWidget);
+    expect(find.bySemanticsLabel('Refresh'), findsOneWidget);
+    expect(find.bySemanticsLabel('Add record'), findsOneWidget);
+    handle.dispose();
   });
 }

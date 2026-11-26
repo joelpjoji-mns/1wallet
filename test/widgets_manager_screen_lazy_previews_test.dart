@@ -23,6 +23,42 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  testWidgets('gallery summary remains readable at large text sizes', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: authenticatedSampleOverrides(),
+        child: MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: const WidgetsManagerScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    final summary = find.text('16 active on Home');
+    final reset = find.widgetWithText(FilledButton, 'Reset order');
+    expect(summary, findsOneWidget);
+    expect(reset, findsOneWidget);
+    expect(
+      tester.getRect(reset).top,
+      greaterThanOrEqualTo(tester.getRect(summary).bottom),
+    );
+    expect(tester.getSize(summary).width, greaterThan(150));
+    await tester.tap(reset);
+    await tester.pump();
+    expect(find.text('Home widgets reset'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('offscreen dashboard previews are not all built initially, and '
       'scrolling builds more of them', (tester) async {
     // A modest phone-sized viewport so only a handful of ~16 previews fit

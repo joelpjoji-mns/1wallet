@@ -5,6 +5,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import '../main/main_shell.dart';
+import '../onboarding/feature_discovery_guide.dart';
 
 class DrawerConfig extends InheritedWidget {
   const DrawerConfig({required super.child, this.hasDrawer = false, super.key});
@@ -32,6 +33,8 @@ class RouteScaffold extends StatelessWidget {
     this.hasDrawer,
     this.leading,
     this.automaticallyImplyLeading = true,
+    this.overlay,
+    this.discoveryFeature,
   }) : assert(
          (child == null) != (scrollView == null),
          'Provide exactly one of child or scrollView.',
@@ -68,6 +71,8 @@ class RouteScaffold extends StatelessWidget {
   /// When false no back action is added even if the route can pop (blocking
   /// flows such as account deletion).
   final bool automaticallyImplyLeading;
+  final Widget? overlay;
+  final String? discoveryFeature;
 
   @override
   Widget build(BuildContext context) {
@@ -137,16 +142,18 @@ class RouteScaffold extends StatelessWidget {
               ? const AppBackAction()
               : effectiveDrawer != null
               ? (isDesktop
-                  ? const SizedBox.shrink()
-                  : Builder(
-                      builder: (scaffoldContext) => AppMenuAction(
-                        onPressed: Scaffold.of(scaffoldContext).openDrawer,
-                      ),
-                    ))
+                    ? const SizedBox.shrink()
+                    : Builder(
+                        builder: (scaffoldContext) => AppMenuAction(
+                          onPressed: Scaffold.of(scaffoldContext).openDrawer,
+                        ),
+                      ))
               : null);
 
       return GlassAppBar(
-        title: titleWidget,
+        title: discoveryFeature == null
+            ? titleWidget
+            : DiscoveryGuideAnchor(id: 'screen', child: titleWidget),
         leading: leadingWidget,
         actions: actions,
         centerTitle: false,
@@ -181,6 +188,20 @@ class RouteScaffold extends StatelessWidget {
       ),
     );
 
-    return AppResponsiveLayout(mobile: mobileView, desktop: desktopView);
+    final contentView = AppResponsiveLayout(
+      mobile: mobileView,
+      desktop: desktopView,
+    );
+    final result = overlay == null
+        ? contentView
+        : Stack(
+            children: [
+              contentView,
+              Positioned.fill(child: overlay!),
+            ],
+          );
+    return discoveryFeature == null
+        ? result
+        : FeatureDiscoverySurface(feature: discoveryFeature!, child: result);
   }
 }

@@ -54,11 +54,15 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({
     required this.onMenuPressed,
     required this.onTabSelected,
+    this.discoveryDashboardKey,
+    this.discoveryProfileKey,
     super.key,
   });
 
   final VoidCallback onMenuPressed;
   final ValueChanged<int> onTabSelected;
+  final Key? discoveryDashboardKey;
+  final Key? discoveryProfileKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -113,11 +117,14 @@ class HomeScreen extends ConsumerWidget {
         UnconstrainedBox(
           child: Padding(
             padding: const EdgeInsets.only(left: AppSpacing.xxs),
-            child: AuthUserActionButton(
-              user: user,
-              radius: 14,
-              tooltip: 'Open profile and settings',
-              onPressed: () => context.push('/settings'),
+            child: KeyedSubtree(
+              key: discoveryProfileKey,
+              child: AuthUserActionButton(
+                user: user,
+                radius: 14,
+                tooltip: 'Open profile and settings',
+                onPressed: () => context.push('/settings'),
+              ),
             ),
           ),
         ),
@@ -134,6 +141,7 @@ class HomeScreen extends ConsumerWidget {
               onTabSelected: onTabSelected,
               reorderMode: reorderMode,
               onMenuPressed: onMenuPressed,
+              discoveryDashboardKey: discoveryDashboardKey,
             ),
           ),
         ],
@@ -148,12 +156,14 @@ class _HomeDashboardList extends ConsumerWidget {
     required this.onTabSelected,
     required this.reorderMode,
     required this.onMenuPressed,
+    this.discoveryDashboardKey,
   });
 
   final List<HomeDashboardWidgetId> widgetOrder;
   final ValueChanged<int> onTabSelected;
   final bool reorderMode;
   final VoidCallback onMenuPressed;
+  final Key? discoveryDashboardKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -186,7 +196,7 @@ class _HomeDashboardList extends ConsumerWidget {
         padding: padding,
         itemCount: widgetOrder.length,
         separatorBuilder: (context, index) =>
-            const SizedBox(height: AppSpacing.xxs),
+            const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) =>
             _buildScopedHomeWidget(context, ref, state, index),
       );
@@ -293,14 +303,12 @@ class _HomeDashboardList extends ConsumerWidget {
       ),
     );
 
-    if (canSwipeToOpenDrawer) {
-      return RightSwipeToOpenDrawer(
-        onOpenDrawer: onMenuPressed,
-        child: widgetCard,
-      );
-    }
-
-    return widgetCard;
+    final content = canSwipeToOpenDrawer
+        ? RightSwipeToOpenDrawer(onOpenDrawer: onMenuPressed, child: widgetCard)
+        : widgetCard;
+    return index == 0
+        ? KeyedSubtree(key: discoveryDashboardKey, child: content)
+        : content;
   }
 
   void _enterReorderMode(BuildContext context, WidgetRef ref) {

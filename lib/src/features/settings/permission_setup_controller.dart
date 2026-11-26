@@ -96,7 +96,9 @@ class PermissionSetupController extends StateNotifier<PermissionSetupState> {
 
   Future<void> setCompleted(String userId, bool completed) async {
     final preferences = _prefs ?? await SharedPreferences.getInstance();
-    await preferences.setBool(_key(userId), completed);
+    if (!await preferences.setBool(_key(userId), completed)) {
+      throw StateError('Could not save permission setup.');
+    }
     if (!mounted) return;
     state = PermissionSetupState(userId: userId, completed: completed);
   }

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../auth/auth_controller.dart';
+import '../onboarding/discovery_controller.dart';
+import '../onboarding/feature_discovery_guide.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:g1455/g1455.dart' as g1455;
 import 'package:go_router/go_router.dart';
@@ -130,7 +133,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final bottomDockClearance =
         AppSizes.bottomBarClearance + MediaQuery.paddingOf(context).bottom;
 
-    return AppScreen(
+    final screen = AppScreen(
       maxWidth: 1400,
       title: 'Calendar',
       scrollable: false,
@@ -175,6 +178,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         g1455.GlassToolbarItem(
                           icon: Tooltip(
                             message: 'Previous month',
+                            excludeFromSemantics: true,
                             child: Icon(
                               Icons.chevron_left_rounded,
                               size: 20,
@@ -192,6 +196,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         g1455.GlassToolbarItem(
                           icon: Tooltip(
                             message: 'Current month',
+                            excludeFromSemantics: true,
                             child: Icon(
                               Icons.today_rounded,
                               size: 18,
@@ -209,6 +214,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         g1455.GlassToolbarItem(
                           icon: Tooltip(
                             message: 'Next month',
+                            excludeFromSemantics: true,
                             child: Icon(
                               Icons.chevron_right_rounded,
                               size: 20,
@@ -261,19 +267,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       children: [
                         SizedBox(
                           width: width,
-                          child: SummaryPill(
-                            label: 'Net',
-                            money: convertMoneyForDisplay(
-                              state,
-                              Money(
-                                amountMinor: net,
-                                currency: state.preferences.baseCurrency,
+                          child: Tooltip(
+                            message:
+                                'Month-end balance for the selected accounts. '
+                                'Future balances include recurring forecasts; '
+                                'category filters affect income and expense only.',
+                            child: SummaryPill(
+                              label: 'Balance',
+                              money: convertMoneyForDisplay(
+                                state,
+                                Money(
+                                  amountMinor: net,
+                                  currency: state.preferences.baseCurrency,
+                                ),
                               ),
+                              tone: net >= 0
+                                  ? MetricTone.positive
+                                  : MetricTone.danger,
+                              locale: state.preferences.locale,
                             ),
-                            tone: net >= 0
-                                ? MetricTone.positive
-                                : MetricTone.danger,
-                            locale: state.preferences.locale,
                           ),
                         ),
                         SizedBox(
@@ -390,7 +402,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                   final records =
                                       summaries[_key(day)] ??
                                       const <TransactionRecord>[];
-                                  return _DayCell(
+                                  final cell = _DayCell(
                                     date: day,
                                     inMonth: day.month == _visibleMonth.month,
                                     records: records,
@@ -398,6 +410,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                     onTap: () =>
                                         _showDay(context, state, day, records),
                                   );
+                                  final now = DateTime.now();
+                                  final targetDay =
+                                      now.year == _visibleMonth.year &&
+                                          now.month == _visibleMonth.month
+                                      ? now.day
+                                      : 1;
+                                  return day.month == _visibleMonth.month &&
+                                          day.day == targetDay
+                                      ? DiscoveryGuideAnchor(
+                                          id: 'calendar-day',
+                                          child: cell,
+                                        )
+                                      : cell;
                                 },
                               ),
                             ),
@@ -418,6 +443,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ],
       ),
     );
+    return FeatureDiscoverySurface(feature: 'calendar-days', child: screen);
   }
 
   Map<String, List<TransactionRecord>> _summariesByDay(
@@ -496,20 +522,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     final now = DateTime.now();
 
-    // For past months, undo the effect of any transactions that happened after `through`
-    if (through.isBefore(DateTime(now.year, now.month, now.day))) {
-      // Ensure through covers the entire day of the month end by setting it to 23:59:59
-      final endOfDayThrough = DateTime(
-        through.year,
-        through.month,
-        through.day,
-        23,
-        59,
-        59,
-      );
+    // `through` is the exclusive local-midnight boundary after the target day.
+    if (!through.isAfter(now)) {
       for (final tx in state.transactions) {
-        if (tx.status != 'posted' && tx.status != 'cleared') continue;
-        if (tx.occurredAt.isAfter(endOfDayThrough)) {
+        if (tx.status == 'scheduled' ||
+            tx.status == 'paused' ||
+            tx.status == 'void' ||
+            tx.status == 'finished') {
+          continue;
+        }
+        if (!tx.occurredAt.isBefore(through)) {
           if (selectedAccountIds.contains(tx.accountId)) {
             final delta = convertMoneyForDisplay(
               state,
@@ -584,10 +606,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   List<DateTime> _calendarDays(DateTime month) {
     final first = DateTime(month.year, month.month);
     final startOffset = first.weekday % 7; // Sunday = 0
-    final gridStart = first.subtract(Duration(days: startOffset));
+    final gridStart = DateTime(
+      first.year,
+      first.month,
+      first.day - startOffset,
+    );
 
-    final nextMonth = DateTime(month.year, month.month + 1);
-    final monthEnd = nextMonth.subtract(const Duration(days: 1));
+    final monthEnd = DateTime(month.year, month.month + 1, 0);
     final endOffset = 6 - (monthEnd.weekday % 7);
     final dayCount = monthEnd.day + startOffset + endOffset;
 
@@ -655,18 +680,37 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     });
   }
 
-  void _showDay(
+  Future<void> _showDay(
     BuildContext context,
     LedgerState state,
     DateTime date,
     List<TransactionRecord> records,
-  ) {
-    // Use end-of-day so the tapped day's own transactions are included in
-    // its running balance instead of being treated as "after" it.
-    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
+  ) async {
+    final owner = ref.read(authControllerProvider).ownerId;
+    if (owner != null) {
+      final progress = ref.read(discoveryControllerProvider(owner));
+      if (progress.requestedHint == 'calendar-days' &&
+          progress.guideActive &&
+          progress.guideStep == 0) {
+        try {
+          await ref
+              .read(discoveryControllerProvider(owner).notifier)
+              .setGuideStep(1);
+        } catch (error, stack) {
+          debugPrint('Could not update calendar guide: $error');
+          debugPrintStack(stackTrace: stack);
+          if (context.mounted) {
+            showAppSnackBar(context, 'Could not save guide progress.');
+          }
+        }
+        if (!mounted || !context.mounted) return;
+      }
+    }
+    if (!mounted || !context.mounted) return;
+    final nextDay = DateTime(date.year, date.month, date.day + 1);
     final balanceBaseMinor = _projectedNetThroughMonthEnd(
       state,
-      through: endOfDay,
+      through: nextDay,
     );
     final balanceDisplayMoney = convertMoneyForDisplay(
       state,
@@ -687,7 +731,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     Widget buildCardContent(BuildContext modalContext) {
       final isDark = theme.brightness == Brightness.dark;
-      return Material(
+      final card = Material(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(AppRadii.xl),
         clipBehavior: Clip.antiAlias,
@@ -700,93 +744,105 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             borderRadius: BorderRadius.circular(AppRadii.xl),
             border: Border.all(color: scheme.outlineVariant, width: 1.0),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          DateFormat.yMMMMd(
-                            state.preferences.locale.replaceAll('_', '-'),
-                          ).format(date),
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: scheme.onSurface,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DiscoveryGuideAnchor(
+                  id: 'calendar-sheet',
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat.yMMMMd(
+                                state.preferences.locale.replaceAll('_', '-'),
+                              ).format(date),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: scheme.onSurface,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'End-of-day balance',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            PrivacyText(
+                              balanceDisplay,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: balanceMinor < 0
+                                    ? scheme.error
+                                    : (isDark
+                                          ? scheme.primary
+                                          : AppColors.positiveLight),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        PrivacyText(
-                          balanceDisplay,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: balanceMinor < 0
-                                ? scheme.error
-                                : (isDark
-                                      ? scheme.primary
-                                      : AppColors.positiveLight),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  IconButton.filledTonal(
-                    tooltip: 'Close',
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => Navigator.of(modalContext).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (records.isEmpty)
-                const EmptyState(
-                  icon: Icons.event_busy_outlined,
-                  title: 'No records on this day',
-                  body: 'Nothing was posted or scheduled for this date.',
-                )
-              else
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 280),
-                  child: AppTopFadeMask(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: records.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: AppSpacing.sm),
-                      itemBuilder: (context, index) {
-                        final transaction = records[index];
-                        return TransactionRow(
-                          state: state,
-                          transaction: transaction,
-                          glass: false,
-                          onTap: () {
-                            if (transaction.status == 'forecast') {
-                              final templateId =
-                                  transaction.originalTransactionId;
-                              if (templateId != null) {
-                                context.push('/recurring/$templateId/edit');
-                              }
-                            } else {
-                              context.push('/transaction/${transaction.id}');
-                            }
-                          },
-                        );
-                      },
-                    ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      IconButton.filledTonal(
+                        tooltip: 'Close',
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => Navigator.of(modalContext).pop(),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+                const SizedBox(height: AppSpacing.md),
+                if (records.isEmpty)
+                  const EmptyState(
+                    icon: Icons.event_busy_outlined,
+                    title: 'No records on this day',
+                    body: 'Nothing was posted or scheduled for this date.',
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    child: AppTopFadeMask(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: records.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: AppSpacing.sm),
+                        itemBuilder: (context, index) {
+                          final transaction = records[index];
+                          return TransactionRow(
+                            state: state,
+                            transaction: transaction,
+                            glass: false,
+                            onTap: () {
+                              if (transaction.status == 'forecast') {
+                                final templateId =
+                                    transaction.originalTransactionId;
+                                if (templateId != null) {
+                                  context.push('/recurring/$templateId/edit');
+                                }
+                              } else {
+                                context.push('/transaction/${transaction.id}');
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       );
+      return FeatureDiscoverySurface(feature: 'calendar-days', child: card);
     }
 
     if (isDesktop) {
@@ -1021,109 +1077,120 @@ class _DayCell extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.xxs),
-        decoration: BoxDecoration(
-          color: isToday
-              ? (isDark
-                    ? scheme.primaryContainer.withValues(alpha: 0.55)
-                    : scheme.primaryContainer.withValues(alpha: 0.70))
-              : (inMonth
-                    ? (isDark
-                          ? scheme.surfaceContainer.withValues(alpha: 0.70)
-                          : scheme.surface)
-                    : (isDark
-                          ? scheme.surfaceContainer.withValues(alpha: 0.25)
-                          : scheme.surfaceContainerLow)),
+    return MergeSemantics(
+      child: Semantics(
+        label: DateFormat.yMMMMEEEEd(
+          state.preferences.locale.replaceAll('_', '-'),
+        ).format(date),
+        child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: isToday
-                ? (isDark
-                      ? scheme.primary.withValues(alpha: 0.75)
-                      : AppColors.positiveLight)
-                : (inMonth
-                      ? (isDark
-                            ? scheme.outlineVariant.withValues(alpha: 0.6)
-                            : scheme.outlineVariant)
-                      : (isDark
-                            ? scheme.outlineVariant.withValues(alpha: 0.25)
-                            : scheme.surfaceContainerLow)),
-            width: isToday ? 1.5 : 0.8,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.xxs),
+            decoration: BoxDecoration(
+              color: isToday
+                  ? (isDark
+                        ? scheme.primaryContainer.withValues(alpha: 0.55)
+                        : scheme.primaryContainer.withValues(alpha: 0.70))
+                  : (inMonth
+                        ? (isDark
+                              ? scheme.surfaceContainer.withValues(alpha: 0.70)
+                              : scheme.surface)
+                        : (isDark
+                              ? scheme.surfaceContainer.withValues(alpha: 0.25)
+                              : scheme.surfaceContainerLow)),
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(
+                color: isToday
+                    ? (isDark
+                          ? scheme.primary.withValues(alpha: 0.75)
+                          : AppColors.positiveLight)
+                    : (inMonth
+                          ? (isDark
+                                ? scheme.outlineVariant.withValues(alpha: 0.6)
+                                : scheme.outlineVariant)
+                          : (isDark
+                                ? scheme.outlineVariant.withValues(alpha: 0.25)
+                                : scheme.surfaceContainerLow)),
+                width: isToday ? 1.5 : 0.8,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(
-                    '${date.day}',
-                    maxLines: 1,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: isDark
-                          ? scheme.onSurface.withAlphaFactor(
-                              inMonth ? 1.0 : 0.42,
-                            )
-                          : (inMonth ? scheme.onSurface : scheme.outline),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: ExcludeSemantics(
+                        child: Text(
+                          '${date.day}',
+                          maxLines: 1,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: isDark
+                                ? scheme.onSurface.withAlphaFactor(
+                                    inMonth ? 1.0 : 0.42,
+                                  )
+                                : (inMonth ? scheme.onSurface : scheme.outline),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (records.isNotEmpty)
+                      Icon(
+                        Icons.circle_rounded,
+                        size: 6,
+                        color: scheme.primary.withAlphaFactor(
+                          inMonth ? 1.0 : 0.42,
+                        ),
+                      ),
+                  ],
+                ),
+                // Day cells are fixed-size; scale the amounts down so they stay
+                // whole instead of clipping or overflowing the cell.
+                Expanded(
+                  child: Align(
+                    alignment: AlignmentDirectional.bottomStart,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.bottomStart,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (income > 0)
+                            PrivacyText(
+                              '+${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: income, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
+                              maxLines: 1,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: amountColor(
+                                  context,
+                                  income,
+                                ).withAlphaFactor(inMonth ? 1.0 : 0.42),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          if (expense > 0)
+                            PrivacyText(
+                              '-${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: expense, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
+                              maxLines: 1,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: amountColor(
+                                  context,
+                                  -expense,
+                                ).withAlphaFactor(inMonth ? 1.0 : 0.42),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                if (records.isNotEmpty)
-                  Icon(
-                    Icons.circle_rounded,
-                    size: 6,
-                    color: scheme.primary.withAlphaFactor(inMonth ? 1.0 : 0.42),
-                  ),
               ],
             ),
-            // Day cells are fixed-size; scale the amounts down so they stay
-            // whole instead of clipping or overflowing the cell.
-            Expanded(
-              child: Align(
-                alignment: AlignmentDirectional.bottomStart,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.bottomStart,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (income > 0)
-                        PrivacyText(
-                          '+${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: income, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
-                          maxLines: 1,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: amountColor(
-                              context,
-                              income,
-                            ).withAlphaFactor(inMonth ? 1.0 : 0.42),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      if (expense > 0)
-                        PrivacyText(
-                          '-${formatCompactMoney(convertMoneyForDisplay(state, Money(amountMinor: expense, currency: state.preferences.baseCurrency)), state.preferences.locale)}',
-                          maxLines: 1,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: amountColor(
-                              context,
-                              -expense,
-                            ).withAlphaFactor(inMonth ? 1.0 : 0.42),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

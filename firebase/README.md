@@ -15,6 +15,10 @@ in `../pwa`) make against Cloud Firestore.
 
 - `users/{uid}` — profile doc (`email`, `displayName`, `authProvider`,
   `lastWriterDeviceId`, …), owner-only.
+- `users/{uid}/discovery/intro` — owner-only introductory tour progress and
+  dismissed hints, independent of wallet snapshots. Concurrent progress is
+  merged transactionally; feature replays remain device-local. Deploy the
+  updated Firestore rules before shipping a client that writes this document.
 - `users/{uid}/wallet_backups/chunk_N` — the **live** sync path. Both the
   Flutter app (`uploadSnapshot()` /  `_restoreFromCloud()` in
   `lib/src/cloud_sync/cloud_sync_controller.dart`) and the web PWA

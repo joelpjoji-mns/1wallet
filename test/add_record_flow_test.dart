@@ -50,6 +50,157 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('account and category selectors reflow for large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var accountTapped = false;
+    var categoryTapped = false;
+    final state = sampleLedgerState();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: AddRecordSelectorGrid(
+            state: state,
+            sourceAccount: state.accounts.first,
+            counterAccount: null,
+            category: state.categories.first,
+            type: 'expense',
+            onSelectAccount: () => accountTapped = true,
+            onSelectCounter: () {},
+            onSelectCategory: () => categoryTapped = true,
+          ),
+        ),
+      ),
+    );
+    final selectors = find.byType(AddRecordSelectorBox);
+    expect(selectors, findsNWidgets(2));
+    final first = tester.getRect(selectors.first);
+    final second = tester.getRect(selectors.last);
+    expect(second.top, greaterThanOrEqualTo(first.bottom));
+    expect(second.left, first.left);
+    for (final label in ['Account', 'Category']) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(
+        paragraph.size.width,
+        greaterThanOrEqualTo(paragraph.getMaxIntrinsicWidth(double.infinity)),
+      );
+    }
+    await tester.tap(selectors.first);
+    await tester.tap(selectors.last);
+    expect(accountTapped, isTrue);
+    expect(categoryTapped, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('changing add-record route parameters opens the intended draft', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1080, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(),
+    );
+    addTearDown(container.dispose);
+    await container
+        .read(ledgerProvider.notifier)
+        .restoreLedgerState(sampleLedgerState());
+    final router = container.read(appRouterProvider);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+
+    Future<void> settle() async {
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    router.go('/add');
+    await settle();
+    expect(
+      tester.widget<AddRecordTypeTabs>(find.byType(AddRecordTypeTabs)).value,
+      'expense',
+    );
+    router.go(
+      '/add?type=transfer&accountId=acc-bank&counterAccountId=acc-card',
+    );
+    await settle();
+    expect(
+      tester.widget<AddRecordTypeTabs>(find.byType(AddRecordTypeTabs)).value,
+      'transfer',
+    );
+    final grid = tester.widget<AddRecordSelectorGrid>(
+      find.byType(AddRecordSelectorGrid),
+    );
+    expect(grid.sourceAccount?.id, 'acc-bank');
+    expect(grid.counterAccount?.id, 'acc-card');
+
+    await tester.tap(find.text('1'));
+    await settle();
+    expect(
+      tester.widget<Text>(find.byKey(const Key('addRecordAmountDisplay'))).data,
+      '-1',
+    );
+    router.go(
+      '/add?type=transfer&accountId=acc-bank&counterAccountId=acc-card&tab=1',
+    );
+    await settle();
+    expect(
+      DefaultTabController.of(
+        tester.element(find.byType(AddRecordTypeTabs)),
+      ).index,
+      1,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('addRecordAmountDisplay'))).data,
+      '-1',
+    );
+    expect(
+      tester
+          .widget<AddRecordSelectorGrid>(find.byType(AddRecordSelectorGrid))
+          .sourceAccount
+          ?.id,
+      'acc-bank',
+    );
+
+    router.go('/add?transactionId=tx-salary');
+    await settle();
+    expect(
+      tester.widget<AddRecordTypeTabs>(find.byType(AddRecordTypeTabs)).value,
+      'income',
+    );
+    expect(find.text('Edit record'), findsOneWidget);
+    router.go('/add');
+    await settle();
+    expect(
+      tester.widget<AddRecordTypeTabs>(find.byType(AddRecordTypeTabs)).value,
+      'expense',
+    );
+    expect(
+      tester
+          .widget<AddRecordSelectorGrid>(find.byType(AddRecordSelectorGrid))
+          .sourceAccount,
+      isNull,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('calculator backspace has a usable accessible label', (
     tester,
   ) async {

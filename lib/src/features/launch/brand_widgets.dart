@@ -320,6 +320,7 @@ class StaggeredFadeIn extends StatefulWidget {
 
 class _StaggeredFadeInState extends State<StaggeredFadeIn>
     with SingleTickerProviderStateMixin {
+  bool _reduceMotion = false;
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 600),
@@ -337,8 +338,15 @@ class _StaggeredFadeInState extends State<StaggeredFadeIn>
   void initState() {
     super.initState();
     Future.delayed(widget.delay, () {
-      if (mounted) _ctrl.forward();
+      if (mounted && !_reduceMotion) _ctrl.forward();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (_reduceMotion) _ctrl.value = 1;
   }
 
   @override

@@ -10,6 +10,7 @@ import 'package:one_wallet_flutter/src/auth/auth_controller.dart';
 import 'package:one_wallet_flutter/src/cloud_sync/cloud_sync_write_guard.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/launch/brand_widgets.dart';
+import 'package:one_wallet_flutter/src/features/onboarding/discovery_controller.dart';
 import 'package:one_wallet_flutter/src/features/settings/offline_mode_section.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
@@ -147,6 +148,9 @@ void main() {
     router.push('/settings');
     await _frames(tester);
 
+    await container
+        .read(discoveryControllerProvider(localOwnerId).notifier)
+        .prepareWelcome();
     final signOut = find.byKey(const Key('offline-sign-out'));
     await tester.ensureVisible(signOut);
     await _frames(tester);
@@ -174,6 +178,10 @@ void main() {
     expect(auth.phase, AuthPhase.signedOut);
     expect(prefs.getString(AppModeStore.storageKey), AppMode.online.name);
     expect(prefs.getString(AppModeStore.localDisplayNameKey), isNull);
+    expect(
+      prefs.getString('one_wallet_flutter.discovery.v1.local-user'),
+      isNull,
+    );
     expect(ledgerRepository.saved, isNull);
     expect(container.read(ledgerProvider).accounts, isEmpty);
     // A stale flag would make the next Google sign-in refuse its cloud restore.

@@ -1,6 +1,7 @@
-- Planned payments show how much was spent or paid so far
-- Offline wallets can sign out from Settings
-- Compact planned and loan detail headers and summaries
-- History filters in three columns; cleaner search bar
-- Fixed login, onboarding and layouts at large text sizes
-- Clear glass is now the default finish
+- Compact interactive tours with real-screen spotlights and arrows
+- Guides for plans, loans, forecasts, credentials and alert matching
+- Safe sample workflows and replay controls in Settings
+- Fresh offline wallets finish account setup before discovery
+- Existing wallets stay free of unsolicited tour popups
+- Improved small-screen, large-text and navigation layouts
+- Samples never save transactions or credentials

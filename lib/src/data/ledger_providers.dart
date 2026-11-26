@@ -1534,6 +1534,42 @@ class LedgerController extends StateNotifier<LedgerState> {
     await _commit(starter.copyWith(accounts: [account]));
   });
 
+  /// Initializes a fresh wallet in one ledger write. IDs from an earlier
+  /// failed attempt may be replaced, but unrelated wallet data is never touched.
+  Future<bool> initializeOnboardingWallet({
+    required String ownerId,
+    required List<Account> accounts,
+    required Set<String> attemptedAccountIds,
+    required LedgerPreferences Function(LedgerPreferences) updatePreferences,
+  }) => _runMutation(() async {
+    if ((_activeUser != null && _activeUser!.userId != ownerId) ||
+        (state.userId != ownerId && state.userId != 'local-user')) {
+      throw const StaleLedgerSessionException();
+    }
+    final ids = accounts.map((account) => account.id).toSet();
+    if (ids.length != accounts.length ||
+        !attemptedAccountIds.containsAll(ids)) {
+      throw StateError('Invalid onboarding account IDs.');
+    }
+    if (state.hasAuthoritativeEmptyWallet ||
+        state.transactions.isNotEmpty ||
+        state.captureCandidates.isNotEmpty ||
+        state.importBatches.isNotEmpty ||
+        state.accounts.any(
+          (account) => !attemptedAccountIds.contains(account.id),
+        )) {
+      return false;
+    }
+    await _commit(
+      state.copyWith(
+        accounts: accounts,
+        preferences: updatePreferences(state.preferences),
+      ),
+      publishAfterSave: true,
+    );
+    return true;
+  });
+
   String exportArchive({String source = 'flutter-local'}) {
     return encodeLedgerArchive(state, source: source);
   }
@@ -3272,7 +3308,7 @@ class LedgerController extends StateNotifier<LedgerState> {
           : parsed.matchedIgnoreWord,
     );
 
-    matchedAccountId ??= _matchAccountToSms(state, effectiveParsed);
+    matchedAccountId ??= matchAccountToCapturedMessage(state, effectiveParsed);
     final duplicateMatch = _captureDuplicateKind(
       state: state,
       parsed: effectiveParsed,
@@ -3695,7 +3731,10 @@ class LedgerController extends StateNotifier<LedgerState> {
     return next.copyWith(accounts: accounts, transactions: transactions);
   }
 
-  Future<void> _commit(LedgerState next) async {
+  Future<void> _commit(
+    LedgerState next, {
+    bool publishAfterSave = false,
+  }) async {
     final active = _activeUser;
     final withOwner =
         (active != null &&
@@ -3784,9 +3823,15 @@ class LedgerController extends StateNotifier<LedgerState> {
       nextPrefs,
     );
 
-    state = normalized;
-    await _repository.save(normalized);
-    _checkSession();
+    if (publishAfterSave) {
+      await _repository.save(normalized);
+      _checkSession();
+      state = normalized;
+    } else {
+      state = normalized;
+      await _repository.save(normalized);
+      _checkSession();
+    }
 
     if (capturePrefsChanged) {
       await _publishCaptureConfiguration();
@@ -4491,7 +4536,10 @@ final RegExp _bankContextRegex = RegExp(
   caseSensitive: false,
 );
 
-String? _matchAccountToSms(LedgerState state, ParsedTransactionMessage parsed) {
+String? matchAccountToCapturedMessage(
+  LedgerState state,
+  ParsedTransactionMessage parsed,
+) {
   final activeAccounts = state.accounts.where((a) => !a.isArchived).toList();
   if (activeAccounts.isEmpty) return null;
 

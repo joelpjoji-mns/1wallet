@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/features/transactions/transactions_components.dart';
 import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
@@ -170,6 +171,55 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  for (final scale in [1.0, 2.0]) {
+    testWidgets('planned summary remains readable at ${scale}x text', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      final seed = buildSeed(hideSkipped: false);
+      final plan = seed.transactions.first.copyWith(
+        amount: const Money(amountMinor: 7850000, currency: 'USD'),
+        baseAmount: const Money(amountMinor: 7850000, currency: 'USD'),
+      );
+      final ledger = seed.copyWith(transactions: [plan]);
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: ledger),
+      );
+      addTearDown(container.dispose);
+      final router = container.read(appRouterProvider);
+      router.go('/recurring');
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final text in ['Planned summary', 'INCOME', 'EXPENSE', 'NET']) {
+        final paragraph = tester.renderObject<RenderParagraph>(find.text(text));
+        expect(paragraph.didExceedMaxLines, isFalse, reason: text);
+      }
+      final expense = find.byWidgetPredicate(
+        (widget) => widget is MiniFlowStat && widget.label == 'EXPENSE',
+      );
+      final stat = tester.widget<MiniFlowStat>(expense);
+      final amount = find.descendant(
+        of: expense,
+        matching: find.text(stat.value),
+      );
+      expect(tester.getRect(amount).height, greaterThanOrEqualTo(12 * scale));
+    });
   }
 
   test('plan totals use actual posted amounts and exclude unpaid records', () {

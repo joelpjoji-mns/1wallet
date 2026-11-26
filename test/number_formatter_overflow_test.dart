@@ -31,6 +31,43 @@ void main() {
       expect(format('12345').text, '12,345');
     });
 
+    test(
+      'signed formatting preserves a leading minus and rejects misplaced signs',
+      () {
+        final formatter = ThousandsSeparatorInputFormatter.signed('en_US');
+        const old = TextEditingValue(text: '42');
+        TextEditingValue format(String text) => formatter.formatEditUpdate(
+          old,
+          TextEditingValue(
+            text: text,
+            selection: TextSelection.collapsed(offset: text.length),
+          ),
+        );
+        expect(format('-1234.50').text, '-1,234.50');
+        expect(format('-').text, '-');
+        expect(format('12-34'), old);
+        expect(format('--12'), old);
+      },
+    );
+
+    test(
+      'decimal amounts round exactly and reject invalid or unsafe values',
+      () {
+        expect(parseDecimalMinorUnits('-1,234.565', 2), -123457);
+        expect(parseDecimalMinorUnits('-0.005', 2), -1);
+        expect(parseDecimalMinorUnits('.5', 3), 500);
+        expect(parseDecimalMinorUnits('0.5', 0), 1);
+        expect(parseDecimalMinorUnits('', 2), 0);
+        expect(parseDecimalMinorUnits('-', 2), isNull);
+        expect(parseDecimalMinorUnits('1.2.3', 2), isNull);
+        expect(parseDecimalMinorUnits('90071992547409.92', 2), isNull);
+        expect(
+          parseDecimalMinorUnits('90071992547409.91', 2),
+          9007199254740991,
+        );
+      },
+    );
+
     test('an integer part beyond the 64-bit range does not throw and rejects '
         'the edit instead of crashing', () {
       final huge = '9' * 25;

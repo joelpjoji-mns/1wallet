@@ -180,6 +180,33 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.16',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.16',
+    versionCode: 16,
+    runtimeVersion: '1.0.16',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-26T00:30:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Compact interactive tours with real-screen spotlights and arrows',
+        'Guides for plans, loans, forecasts, credentials and alert matching',
+        'Safe sample workflows and replay controls in Settings',
+      ],
+      bugFixes: const [
+        'Fresh offline wallets finish account setup before discovery',
+        'Existing wallets stay free of unsolicited tour popups',
+        'Improved small-screen, large-text and navigation layouts',
+      ],
+      notes: const ['Samples never save transactions or credentials'],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.15',
     platform: 'android',
     channel: 'stable',

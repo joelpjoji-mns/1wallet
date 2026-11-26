@@ -151,18 +151,28 @@ class _CaptureDiagnosticsScreenState
             title: 'Automatic cleanup',
             subtitle:
                 'Logs older than the selected timeframe are automatically purged to keep storage clean.',
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Keep logs for',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                GlassDropdownPill<int>(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final stack =
+                    constraints.maxWidth < 240 ||
+                    MediaQuery.textScalerOf(context).scale(14) > 20;
+                const pickerChromeWidth =
+                    AppSpacing.sm * 2 + AppSpacing.xxxs + 16;
+                final label = Text(
+                  'Keep logs for',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                );
+                final picker = GlassDropdownPill<int>(
                   value: _retentionDays,
+                  displayLabel: _retentionDays == 30 ? '30 days' : null,
+                  maxLabelWidth: stack
+                      ? (constraints.maxWidth - pickerChromeWidth).clamp(
+                          0.0,
+                          double.infinity,
+                        )
+                      : 148,
                   options: const [
                     GlassDropdownOption(7, '1 week'),
                     GlassDropdownOption(14, '2 weeks'),
@@ -186,8 +196,25 @@ class _CaptureDiagnosticsScreenState
                     }
                     _refresh();
                   },
-                ),
-              ],
+                );
+                if (stack) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      label,
+                      const SizedBox(height: AppSpacing.xs),
+                      picker,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: label),
+                    const SizedBox(width: AppSpacing.sm),
+                    picker,
+                  ],
+                );
+              },
             ),
           ),
           const Gap(AppSpacing.lg),

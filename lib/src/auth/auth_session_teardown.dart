@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_providers.dart';
 import '../features/onboarding/onboarding_controller.dart';
+import '../features/onboarding/discovery_controller.dart';
+import 'app_mode.dart';
 import '../features/settings/permission_setup_controller.dart';
 import 'auth_controller.dart';
 
@@ -20,7 +22,11 @@ Future<void> signOutOfflineWallet(WidgetRef ref) async {
   final auth = ref.read(authControllerProvider.notifier);
   final onboarding = ref.read(onboardingControllerProvider.notifier);
   final permissions = ref.read(permissionSetupControllerProvider.notifier);
+  final discovery = ref.read(
+    discoveryControllerProvider(localOwnerId).notifier,
+  );
   await ledger.purgeAllLocalData();
+  await discovery.clearLocal();
   await auth.leaveOfflineMode();
   onboarding.clear();
   permissions.clear();

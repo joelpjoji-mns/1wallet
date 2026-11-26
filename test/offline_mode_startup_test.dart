@@ -60,18 +60,20 @@ void main() {
   }
 
   group('offline startup', () {
-    test('deferred setup survives a startup dependency changing', () async {
-      final container = await build(
-        initialPrefs: {..._offlinePrefs, _permissionsDoneLocal: true},
-        ledger: sampleLedgerState(),
-      );
-      await settle(container);
-      container.read(permissionSetupControllerProvider.notifier).clear();
-      expect(container.read(startupStateProvider).isPending, isTrue);
-      container.read(onboardingControllerProvider.notifier).clear();
+    test(
+      'existing wallet remains available when setup state changes',
+      () async {
+        final container = await build(
+          initialPrefs: {..._offlinePrefs, _permissionsDoneLocal: true},
+          ledger: sampleLedgerState(),
+        );
+        await settle(container);
+        container.read(permissionSetupControllerProvider.notifier).clear();
+        container.read(onboardingControllerProvider.notifier).clear();
 
-      expect((await settle(container)).destination, StartupDestination.home);
-    });
+        expect((await settle(container)).destination, StartupDestination.home);
+      },
+    );
 
     test('opens with no Firebase at all and never routes to login', () async {
       final container = await build(initialPrefs: _offlinePrefs);
@@ -85,30 +87,34 @@ void main() {
 
       final startup = await settle(container);
       expect(startup.isPending, isFalse);
-      expect(startup.destination, StartupDestination.permissions);
+      expect(startup.destination, StartupDestination.onboarding);
+      expect(startup.needsDiscoveryWelcome, isFalse);
     });
 
-    test('flows permissions → onboarding → home for the local owner', () async {
-      final container = await build(
-        initialPrefs: {..._offlinePrefs, _permissionsDoneLocal: true},
-      );
-      expect(
-        (await settle(container)).destination,
-        StartupDestination.onboarding,
-      );
+    test(
+      'requires setup for a new local wallet but not a completed wallet',
+      () async {
+        final container = await build(
+          initialPrefs: {..._offlinePrefs, _permissionsDoneLocal: true},
+        );
+        final fresh = await settle(container);
+        expect(fresh.destination, StartupDestination.onboarding);
+        expect(fresh.needsDiscoveryWelcome, isFalse);
 
-      final withOnboarding = await build(
-        initialPrefs: {
-          ..._offlinePrefs,
-          _permissionsDoneLocal: true,
-          _onboardingDoneLocal: true,
-        },
-      );
-      expect(
-        (await settle(withOnboarding)).destination,
-        StartupDestination.home,
-      );
-    });
+        final withOnboarding = await build(
+          initialPrefs: {
+            ..._offlinePrefs,
+            _permissionsDoneLocal: true,
+            _onboardingDoneLocal: true,
+          },
+        );
+        expect(
+          (await settle(withOnboarding)).destination,
+          StartupDestination.home,
+        );
+        expect((await settle(withOnboarding)).needsDiscoveryWelcome, isFalse);
+      },
+    );
 
     test('an existing local wallet opens home without cloud gating', () async {
       final container = await build(

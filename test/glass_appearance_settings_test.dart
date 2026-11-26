@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,12 +11,22 @@ import 'package:one_wallet_flutter/src/data/ledger_codec.dart';
 import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/features/settings/glass_effect_screen.dart';
 import 'package:one_wallet_flutter/src/features/settings/settings_screen.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
 import 'test_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() async {
+    final inter = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      inter.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await inter.load();
+  });
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -226,6 +238,73 @@ void main() {
   });
 
   group('Settings screen glass appearance UI', () {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('glass preview stays readable at ${scale}x text', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 568);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: authenticatedSampleOverrides(prefs: prefs),
+        );
+        addTearDown(container.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const GlassEffectScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: 'initial preview');
+
+        for (final text in [
+          'Checking',
+          'Savings',
+          'Groceries',
+          '\$1,460.00',
+          '+\$7,370.00',
+          '-\$96.50',
+        ]) {
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.text(text),
+          );
+          final painter = TextPainter(
+            text: paragraph.text,
+            textDirection: paragraph.textDirection,
+            textScaler: paragraph.textScaler,
+          )..layout(maxWidth: paragraph.size.width);
+          expect(painter.computeLineMetrics(), hasLength(1), reason: text);
+          painter.dispose();
+          expect(paragraph.didExceedMaxLines, isFalse, reason: text);
+        }
+
+        if (scale == 2) {
+          for (final (label, heading) in [
+            ('FAB', 'Action Button (FAB) Finish'),
+            ('Dropdowns', 'Dropdown & Menus Finish'),
+            ('Toolbars', 'Toolbars & Buttons Finish'),
+            ('Surfaces', 'Cards & Base Surfaces Finish'),
+          ]) {
+            final option = find.text(label).first;
+            await tester.ensureVisible(option);
+            await tester.pumpAndSettle();
+            await tester.tap(option);
+            await tester.pumpAndSettle();
+            expect(find.text(heading), findsOneWidget);
+            expect(tester.takeException(), isNull, reason: label);
+          }
+        }
+      });
+    }
+
     testWidgets(
       'shows glass effect tile and navigates to optics customization screen with per-component selector and no frosted',
       (tester) async {

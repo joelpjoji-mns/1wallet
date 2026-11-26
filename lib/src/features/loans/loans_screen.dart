@@ -23,6 +23,7 @@ import '../transactions/transaction_row.dart';
 import '../../utils/number_formatter.dart';
 import '../../widgets/privacy_text.dart';
 import 'loan_forecast_simulator.dart';
+import '../onboarding/feature_discovery_guide.dart';
 
 class LoansScreen extends ConsumerWidget {
   const LoansScreen({super.key, this.mode = 'overview', this.accountId});
@@ -61,6 +62,7 @@ class LoansScreen extends ConsumerWidget {
           return sum + converted.amountMinor;
         });
     return RouteScaffold(
+      discoveryFeature: mode == 'forecast' ? 'loan-forecast' : 'loans',
       title: switch (mode) {
         'forecast' => 'Loan forecast',
         'new' => 'New loan',
@@ -85,6 +87,10 @@ class LoansScreen extends ConsumerWidget {
           AppSpacing.xxl,
         ),
         children: [
+          if (mode == 'forecast')
+            const DiscoveryGuideSample(feature: 'loan-forecast')
+          else if (mode == 'overview')
+            const DiscoveryGuideSample(feature: 'loans'),
           if (mode != 'detail' &&
               mode != 'edit' &&
               mode != 'new' &&
@@ -292,8 +298,14 @@ class _LoanFormState extends ConsumerState<LoanForm> {
     }
 
     return RouteScaffold(
+      discoveryFeature: 'loans',
       title: loan == null ? 'New loan' : 'Edit loan',
-      actions: [HeaderSaveAction(onPressed: () => _saveLoan(state, loan))],
+      actions: [
+        DiscoveryGuideAnchor(
+          id: 'save',
+          child: HeaderSaveAction(onPressed: () => _saveLoan(state, loan)),
+        ),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -304,10 +316,13 @@ class _LoanFormState extends ConsumerState<LoanForm> {
               subtitle: 'Create a loan account and optional scheduled EMI.',
               child: Column(
                 children: [
-                  GlassTextField(
-                    controller: _nameController,
-                    placeholder: 'Loan name',
-                    prefixIcon: const Icon(Icons.account_balance_outlined),
+                  DiscoveryGuideAnchor(
+                    id: 'loan-fields',
+                    child: GlassTextField(
+                      controller: _nameController,
+                      placeholder: 'Loan name',
+                      prefixIcon: const Icon(Icons.account_balance_outlined),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   GlassTextField(
@@ -2932,10 +2947,13 @@ class _LoanForecastViewState extends ConsumerState<LoanForecastView> {
                 alignment: Alignment.centerLeft,
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  child: Text(
-                    'Emergency Fund / Savings Buffer',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+                  child: DiscoveryGuideAnchor(
+                    id: 'forecast-controls',
+                    child: Text(
+                      'Emergency Fund / Savings Buffer',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),

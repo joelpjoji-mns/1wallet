@@ -23,6 +23,7 @@ import '../../widgets/app_kit.dart';
 import '../common/route_scaffold.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
+import '../onboarding/guided_editor_overlay.dart';
 import 'attachment_thumbnail.dart';
 
 class AddRecordScreen extends ConsumerStatefulWidget {
@@ -52,6 +53,7 @@ class AddRecordScreen extends ConsumerStatefulWidget {
 }
 
 class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
+  final _discoverySelectorsKey = GlobalKey();
   var _type = 'expense';
   var _amount = '0';
   var _expression = '';
@@ -261,6 +263,20 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
         initialIndex: widget.initialTab,
         child: RouteScaffold(
           title: editingTransaction == null ? 'Add record' : 'Edit record',
+          overlay:
+              widget.transactionId == null &&
+                  widget.plannedId == null &&
+                  widget.captureCandidateId == null &&
+                  !widget.autoScan
+              ? GuidedEditorOverlay(
+                  target: _discoverySelectorsKey,
+                  feature: 'guide-record',
+                  step: 2,
+                  title: 'Try a real record',
+                  message:
+                      'Choose a type, enter an amount, and select an account and category. Saving adds this record to your wallet; go back to cancel.',
+                )
+              : null,
           hasDrawer: false,
           leading: HeaderIconButton(
             icon: Icons.arrow_back_rounded,
@@ -489,6 +505,7 @@ class _AddRecordScreenState extends ConsumerState<AddRecordScreen> {
                         horizontal: AppSpacing.md,
                       ),
                       child: AddRecordSelectorGrid(
+                        key: _discoverySelectorsKey,
                         state: state,
                         sourceAccount: sourceAccount,
                         counterAccount: counterAccount,

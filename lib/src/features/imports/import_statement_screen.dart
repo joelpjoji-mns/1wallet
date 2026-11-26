@@ -15,6 +15,7 @@ import '../../imports/wallet_csv_parser.dart' show ParsedWalletCsvRow;
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
 import '../common/route_scaffold.dart';
+import '../onboarding/contextual_discovery_hint.dart';
 
 class ImportStatementScreen extends ConsumerStatefulWidget {
   const ImportStatementScreen({super.key});
@@ -45,10 +46,18 @@ class _ImportStatementScreenState extends ConsumerState<ImportStatementScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return RouteScaffold(
+      discoveryFeature: 'statement-import',
       title: 'Import statement',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_step == _ImportStep.pick)
+            const ContextualDiscoveryHint(
+              feature: 'statement-import',
+              title: 'Review before importing',
+              message:
+                  'Choose a statement, preview the extracted entries, and decide what to import. Selecting a file does not create records.',
+            ),
           if (_step == _ImportStep.pick) _buildPickStep(theme),
           if (_step == _ImportStep.preview) _buildPreviewStep(theme),
           if (_step == _ImportStep.done) _buildDoneStep(theme),

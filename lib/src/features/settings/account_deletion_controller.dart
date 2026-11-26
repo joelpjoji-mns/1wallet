@@ -12,6 +12,7 @@ import '../../utils/secure_key_store.dart';
 import '../../theme/theme_controller.dart';
 import 'account_deletion_api.dart';
 import '../onboarding/onboarding_controller.dart';
+import '../onboarding/discovery_controller.dart';
 import 'permission_setup_controller.dart';
 
 enum AccountDeletionStage {
@@ -244,6 +245,10 @@ class AccountDeletionController extends StateNotifier<AccountDeletionState> {
       }
       await ledger.purgeAllLocalData(userOverride: operation.owner);
       await SecureKeyStore.clear(userId: operation.owner.userId);
+      if (!mounted) return false;
+      await _ref
+          .read(discoveryControllerProvider(operation.owner.userId).notifier)
+          .clearLocal();
       if (!mounted) return false;
       if (currentOwner == operation.owner.userId || currentOwner == null) {
         _ref.read(onboardingControllerProvider.notifier).clear();

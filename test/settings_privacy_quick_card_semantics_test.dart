@@ -14,16 +14,26 @@
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/settings/settings_screen.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
 
 import 'test_harness.dart';
 
 void main() {
+  setUpAll(() async {
+    final inter = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      inter.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await inter.load();
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -95,4 +105,50 @@ void main() {
       handle.dispose();
     },
   );
+
+  testWidgets('large-text privacy description is readable and tappable', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(prefs: prefs),
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: const SettingsScreen(),
+          theme: AppTheme.light(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final card = find.byWidgetPredicate(
+      (widget) => widget.runtimeType.toString() == '_PrivacyQuickCard',
+    );
+    final description = find.text('Hide balances and amounts across the app.');
+    expect(
+      tester.getRect(description).width,
+      greaterThan(tester.getRect(card).width * 0.75),
+    );
+    await tester.ensureVisible(description);
+    await tester.pumpAndSettle();
+    await tester.tap(description);
+    await tester.pumpAndSettle();
+    expect(
+      container.read(ledgerProvider).preferences.privacyModeEnabled,
+      isTrue,
+    );
+    expect(
+      find.text('Balances and amounts are hidden across the app.'),
+      findsOneWidget,
+    );
+  });
 }

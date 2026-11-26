@@ -7,7 +7,6 @@ import '../cloud_sync/cloud_sync_controller.dart';
 import '../data/ledger_models.dart';
 import '../data/ledger_providers.dart';
 import '../features/onboarding/onboarding_controller.dart';
-import '../features/settings/permission_setup_controller.dart';
 import '../features/settings/account_deletion_controller.dart';
 import '../theme/theme_controller.dart';
 
@@ -24,7 +23,6 @@ final startupStateProvider = Provider<StartupState>((ref) {
     ),
   );
   final onboarding = ref.watch(onboardingControllerProvider);
-  final permissionSetup = ref.watch(permissionSetupControllerProvider);
   final isThemeLoaded = ref.watch(
     themeControllerProvider.select((s) => s.isLoaded),
   );
@@ -49,7 +47,6 @@ final startupStateProvider = Provider<StartupState>((ref) {
       ledgerOwner: ledgerSummary.userId,
       hasWalletData: ledgerSummary.hasWalletData,
       onboarding: onboarding,
-      permissionSetup: permissionSetup,
     );
   }
 
@@ -80,39 +77,6 @@ final startupStateProvider = Provider<StartupState>((ref) {
       (ledgerSummary.userId == userId ||
           ledgerSummary.userId == 'local-user') &&
       ledgerSummary.hasWalletData;
-
-  if (permissionSetup.userId != userId && !permissionSetup.isLoading) {
-    _deferStartupAction(
-      ref,
-      (container) => container
-          .read(permissionSetupControllerProvider.notifier)
-          .loadForUser(userId),
-    );
-    return const StartupState.pending(
-      stage: StartupStage.wallet,
-      message: 'Preparing permission setup',
-    );
-  }
-
-  if (permissionSetup.isLoading) {
-    return const StartupState.pending(
-      stage: StartupStage.wallet,
-      message: 'Checking device permissions',
-    );
-  }
-
-  if (permissionSetup.errorMessage != null) {
-    return StartupState.recoverableError(
-      title: 'Permissions setup needs attention',
-      message: permissionSetup.errorMessage!,
-    );
-  }
-
-  if (!permissionSetup.completed) {
-    return const StartupState.ready(
-      destination: StartupDestination.permissions,
-    );
-  }
 
   // Existing local/restored data is authoritative for startup routing. Do not
   // keep the user on onboarding or a sync splash while usable wallet data is
@@ -226,9 +190,7 @@ void _deferStartupAction(
   });
 }
 
-/// Offline mode startup: the same permissions → onboarding → home flow as a
-/// signed-in account, owned by [localOwnerId], with no cloud-sync gating and
-/// no dependency on Firebase or the network.
+/// Offline mode startup has no cloud-sync gating or Firebase dependency.
 StartupState _offlineStartupState(
   Ref ref, {
   required AuthState auth,
@@ -236,7 +198,6 @@ StartupState _offlineStartupState(
   required String ledgerOwner,
   required bool hasWalletData,
   required OnboardingState onboarding,
-  required PermissionSetupState permissionSetup,
 }) {
   const ownerId = localOwnerId;
 
@@ -274,39 +235,6 @@ StartupState _offlineStartupState(
     return const StartupState.pending(
       stage: StartupStage.wallet,
       message: 'Checking your offline wallet',
-    );
-  }
-
-  if (permissionSetup.userId != ownerId && !permissionSetup.isLoading) {
-    _deferStartupAction(
-      ref,
-      (container) => container
-          .read(permissionSetupControllerProvider.notifier)
-          .loadForUser(ownerId),
-    );
-    return const StartupState.pending(
-      stage: StartupStage.wallet,
-      message: 'Preparing permission setup',
-    );
-  }
-
-  if (permissionSetup.isLoading) {
-    return const StartupState.pending(
-      stage: StartupStage.wallet,
-      message: 'Checking device permissions',
-    );
-  }
-
-  if (permissionSetup.errorMessage != null) {
-    return StartupState.recoverableError(
-      title: 'Permissions setup needs attention',
-      message: permissionSetup.errorMessage!,
-    );
-  }
-
-  if (!permissionSetup.completed) {
-    return const StartupState.ready(
-      destination: StartupDestination.permissions,
     );
   }
 
@@ -381,6 +309,7 @@ class StartupState {
     this.message,
     this.isRecoverableError = false,
     this.progress,
+    this.needsDiscoveryWelcome = false,
   });
 
   const StartupState.pending({
@@ -398,11 +327,13 @@ class StartupState {
   const StartupState.ready({
     required StartupDestination destination,
     String? message,
+    bool needsDiscoveryWelcome = false,
   }) : this._(
          stage: stageReady,
          destination: destination,
          isPending: false,
          message: message,
+         needsDiscoveryWelcome: needsDiscoveryWelcome,
        );
 
   static const StartupStage stageReady = StartupStage.ready;
@@ -426,6 +357,7 @@ class StartupState {
   final String? message;
   final bool isRecoverableError;
   final double? progress;
+  final bool needsDiscoveryWelcome;
 
   @override
   bool operator ==(Object other) {
@@ -437,7 +369,8 @@ class StartupState {
         other.title == title &&
         other.message == message &&
         other.isRecoverableError == isRecoverableError &&
-        other.progress == progress;
+        other.progress == progress &&
+        other.needsDiscoveryWelcome == needsDiscoveryWelcome;
   }
 
   @override
@@ -449,5 +382,6 @@ class StartupState {
     message,
     isRecoverableError,
     progress,
+    needsDiscoveryWelcome,
   );
 }

@@ -1,6 +1,14 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:one_wallet_flutter/src/features/capture/capture_diagnostics.dart';
+import 'package:one_wallet_flutter/src/features/capture/capture_diagnostics_screen.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
+
+import 'test_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -10,6 +18,54 @@ void main() {
   });
 
   group('CaptureDiagnostics retention and auto-pruning', () {
+    testWidgets('retention controls have room at large text sizes', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: authenticatedSampleOverrides(),
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: const CaptureDiagnosticsScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final label = find.text('Keep logs for');
+      final picker = find.byType(GlassDropdownPill<int>);
+      expect(
+        tester.getTopLeft(picker).dy,
+        greaterThan(tester.getBottomLeft(label).dy),
+      );
+      final paragraph = tester.renderObject<RenderParagraph>(label);
+      expect(
+        paragraph.size.width,
+        greaterThanOrEqualTo(paragraph.getMinIntrinsicWidth(double.infinity)),
+      );
+      final selectedLabel = find.text('30 days');
+      final selection = tester.renderObject<RenderParagraph>(
+        find.descendant(of: selectedLabel, matching: find.byType(RichText)),
+      );
+      expect(selection.didExceedMaxLines, isFalse);
+      expect(
+        tester.getSemantics(selectedLabel).getSemanticsData().label,
+        contains('30 days (default)'),
+      );
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    });
+
     test('defaults to 30 days retention and persists updates', () async {
       expect(await CaptureDiagnostics.getRetentionDays(), 30);
 

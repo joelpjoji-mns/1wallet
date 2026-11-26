@@ -21,52 +21,76 @@ class PermissionsSetupScreen extends ConsumerStatefulWidget {
 
 class _PermissionsSetupScreenState
     extends ConsumerState<PermissionsSetupScreen> {
-  bool _requestingAll = false;
+  bool _finishing = false;
+  String? _errorMessage;
 
-  Future<void> _finishSetup() async {
-    if (_requestingAll) return;
+  Future<void> _finishSetup({required bool requestPermissions}) async {
+    if (_finishing) return;
     final ownerId = ref.read(authControllerProvider).ownerId;
     if (ownerId == null) {
       context.go('/login');
       return;
     }
 
-    setState(() => _requestingAll = true);
+    setState(() {
+      _finishing = true;
+      _errorMessage = null;
+    });
+    var requesting = requestPermissions;
     try {
-      if (!kIsWeb) {
-        if (defaultTargetPlatform == TargetPlatform.android) {
-          await [
-            Permission.notification,
-            Permission.camera,
-            Permission.photos,
+      var allGranted = false;
+      if (requestPermissions) {
+        final permissions = [
+          Permission.notification,
+          Permission.camera,
+          if (!kIsWeb) Permission.photos,
+          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
             Permission.storage,
             Permission.sms,
-          ].request();
-        } else {
-          await [
-            Permission.notification,
-            Permission.camera,
-            Permission.photos,
-          ].request();
-        }
-      } else {
-        try {
-          await Permission.notification.request();
-        } catch (_) {}
-        try {
-          await Permission.camera.request();
-        } catch (_) {}
+          ],
+        ];
+        final statuses = await permissions.request();
+        allGranted = permissions.every(
+          (permission) => statuses[permission]?.isGranted ?? false,
+        );
       }
+      requesting = false;
 
+      if (!mounted) return;
+      if (ref.read(authControllerProvider).ownerId != ownerId) {
+        context.go('/login');
+        return;
+      }
       await ref
           .read(permissionSetupControllerProvider.notifier)
           .setCompleted(ownerId, true);
 
       if (!mounted) return;
-      showAppSnackBar(context, 'Permissions setup complete.');
+      if (ref.read(authControllerProvider).ownerId != ownerId) {
+        context.go('/login');
+        return;
+      }
+      showAppSnackBar(
+        context,
+        !requestPermissions
+            ? 'You can manage permissions later in Settings.'
+            : allGranted
+            ? 'Permissions are ready.'
+            : 'Some permissions were not granted. Change them later in Settings.',
+      );
       context.go('/');
+    } catch (error, stack) {
+      debugPrint('Could not finish permission setup: ${error.runtimeType}');
+      debugPrintStack(stackTrace: stack);
+      if (mounted) {
+        setState(() {
+          _errorMessage = requesting
+              ? 'Could not request permissions. Try again or choose Not now.'
+              : 'Could not save setup. Check device storage and try again.';
+        });
+      }
     } finally {
-      if (mounted) setState(() => _requestingAll = false);
+      if (mounted) setState(() => _finishing = false);
     }
   }
 
@@ -94,18 +118,22 @@ class _PermissionsSetupScreenState
                     child: Text(
                       'Almost\nthere.',
                       textAlign: TextAlign.left,
-                      style: theme.textTheme.displayMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        height: 1.1,
-                        letterSpacing: -1,
-                      ),
+                      style:
+                          (MediaQuery.textScalerOf(context).scale(14) > 20
+                                  ? theme.textTheme.headlineLarge
+                                  : theme.textTheme.displayMedium)
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                height: 1.1,
+                                letterSpacing: -1,
+                              ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   StaggeredFadeIn(
                     delay: const Duration(milliseconds: 100),
                     child: Text(
-                      'To get the most out of 1Wallet, we need a few permissions to automate your expense tracking.',
+                      'These permissions are optional. Allow them now or set them up later in Settings.',
                       textAlign: TextAlign.left,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: scheme.onSurface.withValues(alpha: 0.7),
@@ -169,11 +197,40 @@ class _PermissionsSetupScreenState
             padding: const EdgeInsets.all(AppSpacing.xl),
             child: StaggeredFadeIn(
               delay: const Duration(milliseconds: 300),
-              child: FilledButton.icon(
-                onPressed: _requestingAll ? null : _finishSetup,
-                style: AppButtonStyles.cta,
-                icon: const Icon(Icons.check_circle_outline_rounded),
-                label: Text(_requestingAll ? 'Requesting...' : 'Finish Setup'),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_errorMessage != null) ...[
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _errorMessage!,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: scheme.error,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                  FilledButton.icon(
+                    onPressed: _finishing
+                        ? null
+                        : () => _finishSetup(requestPermissions: true),
+                    style: AppButtonStyles.cta,
+                    icon: _finishing
+                        ? const AppInlineSpinner()
+                        : const Icon(Icons.check_circle_outline_rounded),
+                    label: Text(_finishing ? 'Please wait...' : 'Allow access'),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  TextButton(
+                    onPressed: _finishing
+                        ? null
+                        : () => _finishSetup(requestPermissions: false),
+                    style: AppButtonStyles.cta,
+                    child: const Text('Not now'),
+                  ),
+                ],
               ),
             ),
           ),

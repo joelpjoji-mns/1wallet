@@ -25,6 +25,8 @@ import '../settings/offline_mode_section.dart';
 import '../home/home_screen.dart'
     show HomeScreen, homeSelectedAccountProvider, homeWidgetReorderModeProvider;
 import '../notifications/notification_engine.dart';
+import '../onboarding/discovery_controller.dart';
+import '../onboarding/discovery_overlay.dart';
 import '../../services/notification_service.dart';
 import '../../theme/theme_controller.dart';
 import '../transactions/transactions_screen.dart';
@@ -43,6 +45,10 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell>
     with WidgetsBindingObserver {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _discoveryDashboardKey = GlobalKey();
+  final _discoveryNavigationKey = GlobalKey();
+  final _discoveryActionKey = GlobalKey();
+  final _discoveryProfileKey = GlobalKey();
   late final PageController _pageController;
   late final ValueNotifier<int> _selectedIndex;
   Timer? _lightBackgroundPeriodicTimer;
@@ -50,6 +56,10 @@ class _MainShellState extends ConsumerState<MainShell>
   late final Widget _mainBody;
   RouteInformationProvider? _routeInformationProvider;
   RouteInformation? _lastRouteInformation;
+  ProviderSubscription<DiscoveryProgress>? _discoverySubscription;
+  String? _observedDiscoveryOwner;
+  String? _routePausedDiscoveryOwner;
+  GoRouter? _discoveryRouter;
 
   void _noteGlassChange() {
     if (mounted) {
@@ -64,12 +74,17 @@ class _MainShellState extends ConsumerState<MainShell>
     _pageController = PageController(initialPage: widget.initialTab);
     _pageController.addListener(_noteGlassChange);
     _selectedIndex = ValueNotifier(widget.initialTab);
+    ref.listenManual<AuthState>(authControllerProvider, (_, next) {
+      _observeDiscovery(next.ownerId);
+    }, fireImmediately: true);
     _screens = [
       _KeepAliveWrapper(
         key: const PageStorageKey<String>('main-shell-tab-0'),
         child: HomeScreen(
           onMenuPressed: _openDrawer,
           onTabSelected: _selectTab,
+          discoveryDashboardKey: _discoveryDashboardKey,
+          discoveryProfileKey: _discoveryProfileKey,
         ),
       ),
       _KeepAliveWrapper(
@@ -140,7 +155,15 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final provider = GoRouter.maybeOf(context)?.routeInformationProvider;
+    final router = GoRouter.maybeOf(context);
+    if (!identical(router, _discoveryRouter)) {
+      _discoveryRouter?.routerDelegate.removeListener(
+        _handleDiscoveryNavigation,
+      );
+      _discoveryRouter = router;
+      router?.routerDelegate.addListener(_handleDiscoveryNavigation);
+    }
+    final provider = router?.routeInformationProvider;
     if (identical(provider, _routeInformationProvider)) return;
     _routeInformationProvider?.removeListener(_handleRouteInformation);
     _routeInformationProvider = provider;
@@ -176,6 +199,37 @@ class _MainShellState extends ConsumerState<MainShell>
     });
   }
 
+  void _handleDiscoveryNavigation() {
+    final routes = _discoveryRouter?.routerDelegate.currentConfiguration;
+    if (!mounted || routes == null || routes.isEmpty) return;
+    final path = routes.last.matchedLocation;
+    if (path != '/') {
+      final owner = ref.read(authControllerProvider).ownerId;
+      if (owner != null) {
+        final progress = ref.read(discoveryControllerProvider(owner));
+        if (progress.status == DiscoveryStatus.active) {
+          _routePausedDiscoveryOwner = owner;
+          _runDiscovery(
+            ref.read(discoveryControllerProvider(owner).notifier).pause(),
+          );
+        }
+      }
+    }
+    if (path == '/' && _routePausedDiscoveryOwner != null) {
+      final owner = ref.read(authControllerProvider).ownerId;
+      if (owner != null &&
+          owner == _routePausedDiscoveryOwner &&
+          ref.read(discoveryControllerProvider(owner)).status ==
+              DiscoveryStatus.paused &&
+          !ref.read(discoveryControllerProvider(owner)).guideActive) {
+        _runDiscovery(
+          ref.read(discoveryControllerProvider(owner).notifier).start(),
+        );
+      }
+      _routePausedDiscoveryOwner = null;
+    }
+  }
+
   @override
   void didUpdateWidget(covariant MainShell oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -191,11 +245,21 @@ class _MainShellState extends ConsumerState<MainShell>
       ref.read(exchangeRateServiceProvider).refreshRatesIfStale();
       ref.read(ledgerProvider.notifier).processSpooledSms();
       ref.read(ledgerProvider.notifier).processSpooledNotifications();
+      final owner = ref.read(authControllerProvider).ownerId;
+      if (owner != null) {
+        unawaited(
+          ref
+              .read(discoveryControllerProvider(owner).notifier)
+              .refreshCloudCompletion(),
+        );
+      }
     }
   }
 
   @override
   void dispose() {
+    _discoveryRouter?.routerDelegate.removeListener(_handleDiscoveryNavigation);
+    _discoverySubscription?.close();
     _routeInformationProvider?.removeListener(_handleRouteInformation);
     WidgetsBinding.instance.removeObserver(this);
     _lightBackgroundPeriodicTimer?.cancel();
@@ -206,6 +270,43 @@ class _MainShellState extends ConsumerState<MainShell>
   }
 
   void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
+
+  void _observeDiscovery(String? owner) {
+    if (_observedDiscoveryOwner == owner) return;
+    _observedDiscoveryOwner = owner;
+    _discoverySubscription?.close();
+    _discoverySubscription = owner == null
+        ? null
+        : ref.listenManual(discoveryControllerProvider(owner), (
+            previous,
+            next,
+          ) {
+            if (next.syncError != null &&
+                next.syncError != previous?.syncError) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted &&
+                    ref.read(authControllerProvider).ownerId == owner) {
+                  showAppSnackBar(context, next.syncError!);
+                }
+              });
+            }
+          });
+  }
+
+  void _runDiscovery(Future<void> operation) {
+    unawaited(
+      operation.catchError((Object error, StackTrace stack) {
+        debugPrint('Could not save guide progress: $error');
+        debugPrintStack(stackTrace: stack);
+        if (mounted) {
+          showAppSnackBar(
+            context,
+            'Could not save tour progress. Please try again.',
+          );
+        }
+      }),
+    );
+  }
 
   void _selectTab(int index) {
     _noteGlassChange();
@@ -316,7 +417,7 @@ class _MainShellState extends ConsumerState<MainShell>
           final islandGlassFinish = ref.watch(islandBarGlassFinishProvider);
           final fabGlassFinish = ref.watch(fabGlassFinishProvider);
           final showAction = selectedIndex != 0 || !homeReordering;
-          final action = selectedIndex == 3
+          final actionButton = selectedIndex == 3
               ? IslandFloatingActionButton(
                   key: ValueKey(
                     'add-account-action_${themeState.fabOutlineThickness}_${themeState.fabOutlineOpacity}',
@@ -334,6 +435,20 @@ class _MainShellState extends ConsumerState<MainShell>
                   tooltip: 'Add record',
                   finish: fabGlassFinish,
                   onPressed: () {
+                    final owner = ref.read(authControllerProvider).ownerId;
+                    if (owner != null) {
+                      final guide = ref.read(
+                        discoveryControllerProvider(owner),
+                      );
+                      if (guide.status == DiscoveryStatus.active &&
+                          guide.step == 1) {
+                        _runDiscovery(
+                          ref
+                              .read(discoveryControllerProvider(owner).notifier)
+                              .advance(),
+                        );
+                      }
+                    }
                     if (selectedIndex == 0) {
                       final accountId = ref.read(homeSelectedAccountProvider);
                       if (accountId != null && accountId != 'cash_group') {
@@ -349,6 +464,10 @@ class _MainShellState extends ConsumerState<MainShell>
                     context.push('/add');
                   },
                 );
+          final action = KeyedSubtree(
+            key: _discoveryActionKey,
+            child: actionButton,
+          );
 
           Widget mobileBody = Stack(
             children: [
@@ -356,18 +475,21 @@ class _MainShellState extends ConsumerState<MainShell>
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 0,
-                child: BottomIslandNavBar(
-                  key: ValueKey(
-                    'island_nav_${theme.brightness}_${themeState.preference}_${themeState.islandOutlineThickness}_${themeState.islandOutlineOpacity}_${islandGlassFinish.name}_${islandGlassFinish.blurSigmaLogical}',
+                bottom: AppSpacing.xxs,
+                child: KeyedSubtree(
+                  key: _discoveryNavigationKey,
+                  child: BottomIslandNavBar(
+                    key: ValueKey(
+                      'island_nav_${theme.brightness}_${themeState.preference}_${themeState.islandOutlineThickness}_${themeState.islandOutlineOpacity}_${islandGlassFinish.name}_${islandGlassFinish.blurSigmaLogical}',
+                    ),
+                    items: tabs,
+                    selectedIndex: selectedIndex,
+                    onSelected: _selectTab,
+                    action: showAction ? action : null,
+                    compactAction: selectedIndex == 2,
+                    pageController: _pageController,
+                    finish: islandGlassFinish,
                   ),
-                  items: tabs,
-                  selectedIndex: selectedIndex,
-                  onSelected: _selectTab,
-                  action: showAction ? action : null,
-                  compactAction: selectedIndex == 2,
-                  pageController: _pageController,
-                  finish: islandGlassFinish,
                 ),
               ),
             ],
@@ -378,10 +500,13 @@ class _MainShellState extends ConsumerState<MainShell>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AppMainDrawer(
-                  selectedIndex: selectedIndex,
-                  isStatic: true,
-                  onTabSelected: _selectTab,
+                KeyedSubtree(
+                  key: _discoveryNavigationKey,
+                  child: AppMainDrawer(
+                    selectedIndex: selectedIndex,
+                    isStatic: true,
+                    onTabSelected: _selectTab,
+                  ),
                 ),
                 Expanded(
                   child: Stack(
@@ -401,6 +526,12 @@ class _MainShellState extends ConsumerState<MainShell>
           );
 
           final isDesktop = AppResponsiveLayout.isDesktop(context);
+          final owner = ref.watch(
+            authControllerProvider.select((state) => state.ownerId),
+          );
+          final discovery = owner == null
+              ? null
+              : ref.watch(discoveryControllerProvider(owner));
           final snackBarBottomInset = isDesktop
               ? AppSpacing.md
               : (AppSizes.bottomBarClearance + 64 + AppSpacing.md).clamp(
@@ -428,9 +559,92 @@ class _MainShellState extends ConsumerState<MainShell>
                         _selectTab(index);
                       },
                     ),
-              body: AppResponsiveLayout(
-                mobile: mobileBody,
-                desktop: desktopBody,
+              body: Stack(
+                children: [
+                  AppResponsiveLayout(mobile: mobileBody, desktop: desktopBody),
+                  if (owner != null &&
+                      discovery != null &&
+                      !discovery.guideActive &&
+                      (discovery.status != DiscoveryStatus.welcome ||
+                          discovery.automaticTourEligible ||
+                          discovery.isReplay))
+                    Positioned.fill(
+                      child: DiscoveryOverlay(
+                        progress: discovery,
+                        dashboardTarget: _discoveryDashboardKey,
+                        navigationTarget: _discoveryNavigationKey,
+                        actionTarget: _discoveryActionKey,
+                        profileTarget: _discoveryProfileKey,
+                        selectedTab: selectedIndex,
+                        hasAccounts: ref.watch(
+                          ledgerProvider.select(
+                            (state) => state.accounts.any(
+                              (account) => !account.isDeleted,
+                            ),
+                          ),
+                        ),
+                        onSelectTab: _selectTab,
+                        onExploreWorkflows: () => _runDiscovery(() async {
+                          await ref
+                              .read(discoveryControllerProvider(owner).notifier)
+                              .startWorkflowTour();
+                          if (context.mounted &&
+                              ref.read(authControllerProvider).ownerId ==
+                                  owner) {
+                            unawaited(context.push<void>('/recurring'));
+                          }
+                        }()),
+                        onStart: () => _runDiscovery(
+                          ref
+                              .read(discoveryControllerProvider(owner).notifier)
+                              .start(),
+                        ),
+                        onPause: () => _runDiscovery(
+                          ref
+                              .read(discoveryControllerProvider(owner).notifier)
+                              .pause(),
+                        ),
+                        onFinish: () {
+                          _runDiscovery(
+                            ref
+                                .read(
+                                  discoveryControllerProvider(owner).notifier,
+                                )
+                                .finish(),
+                          );
+                        },
+                        onPrevious: () => _runDiscovery(
+                          ref
+                              .read(discoveryControllerProvider(owner).notifier)
+                              .previous(),
+                        ),
+                        onNext: () {
+                          _runDiscovery(
+                            ref
+                                .read(
+                                  discoveryControllerProvider(owner).notifier,
+                                )
+                                .advance(),
+                          );
+                          if (discovery.step == discovery.endStep) {
+                            _selectTab(0);
+                          }
+                        },
+                        onSkipStep: () {
+                          _runDiscovery(
+                            ref
+                                .read(
+                                  discoveryControllerProvider(owner).notifier,
+                                )
+                                .advance(skipped: true),
+                          );
+                          if (discovery.step == discovery.endStep) {
+                            _selectTab(0);
+                          }
+                        },
+                      ),
+                    ),
+                ],
               ),
             ),
           );

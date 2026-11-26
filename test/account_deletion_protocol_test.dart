@@ -10,6 +10,7 @@ import 'package:one_wallet_flutter/src/data/ledger_defaults.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/capture/capture_queue.dart';
+import 'package:one_wallet_flutter/src/features/onboarding/discovery_controller.dart';
 import 'package:one_wallet_flutter/src/features/settings/account_deletion_api.dart';
 import 'package:one_wallet_flutter/src/features/settings/account_deletion_controller.dart';
 import 'package:one_wallet_flutter/src/theme/theme_controller.dart';
@@ -125,6 +126,12 @@ void main() {
 
   test('success requires remote confirmation and strict local purge', () async {
     final (container, repository, auth, api) = await setup();
+    await container
+        .read(discoveryControllerProvider('owner-a').notifier)
+        .prepareWelcome();
+    await container
+        .read(discoveryControllerProvider('owner-b').notifier)
+        .prepareWelcome();
     final controller = container.read(
       accountDeletionControllerProvider.notifier,
     );
@@ -135,6 +142,12 @@ void main() {
     expect(repository.cleared, isTrue);
     expect(api.requests, 1);
     expect(auth.signOutCalls, 1);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('one_wallet_flutter.discovery.v1.owner-a'), isNull);
+    expect(
+      prefs.getString('one_wallet_flutter.discovery.v1.owner-b'),
+      isNotNull,
+    );
     expect(await DeletionOperation.load(), isNull);
   });
   test(

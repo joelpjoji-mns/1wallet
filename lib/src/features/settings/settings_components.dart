@@ -35,110 +35,126 @@ class SettingsProfileSection extends StatelessWidget {
       glass: false,
       child: Material(
         type: MaterialType.transparency,
-        child: Column(
-          children: [
-            Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+            final stacked = constraints.maxWidth < 320 * textScale;
+            final avatar = AuthUserAvatar(
+              user: user,
+              fallbackLabel: user?.initials ?? '1W',
+            );
+            final identity = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AuthUserAvatar(
-                  user: user,
-                  fallbackLabel: user?.initials ?? '1W',
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              user?.displayName ??
-                                  (offline
-                                      ? 'Offline wallet'
-                                      : '1wallet account'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          if (onEditName != null) ...[
-                            const SizedBox(width: AppSpacing.xxs),
-                            InkWell(
-                              onTap: onEditName,
-                              borderRadius: BorderRadius.circular(AppRadii.sm),
-                              child: Padding(
-                                padding: const EdgeInsets.all(AppSpacing.xxxs),
-                                child: Icon(
-                                  Icons.edit_outlined,
-                                  size: 16,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      Text(
-                        user?.email ?? 'Not signed in',
-                        maxLines: 1,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        user?.displayName ??
+                            (offline ? 'Offline wallet' : '1wallet account'),
+                        maxLines: stacked ? 2 : 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    if (onEditName != null) ...[
+                      const SizedBox(width: AppSpacing.xxs),
+                      InkWell(
+                        onTap: onEditName,
+                        borderRadius: BorderRadius.circular(AppRadii.sm),
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.xxxs),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],
+                  ],
+                ),
+                Text(
+                  user?.email ?? 'Not signed in',
+                  maxLines: stacked ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+              ],
+            );
+            final status = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  offline
+                      ? Icons.phonelink_lock_outlined
+                      : user?.isGoogleProvider == true
+                      ? Icons.cloud_done_outlined
+                      : Icons.cloud_outlined,
+                  size: 14,
+                  color: !offline && user?.isGoogleProvider == true
+                      ? theme.colorScheme.positive
+                      : theme.colorScheme.primary,
+                ),
+                const SizedBox(width: AppSpacing.xxs),
+                Text(
+                  offline
+                      ? 'Offline'
+                      : user?.isGoogleProvider == true
+                      ? 'Google Sync'
+                      : 'Local',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            );
+            final action = FilledButton.tonal(
+              onPressed: offline ? onUpgrade : onSignOut,
+              style: AppButtonStyles.compact(context),
+              child: Text(offline ? 'Sync with Google' : 'Sign out'),
+            );
+            final profile = Row(
+              children: [
+                avatar,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: identity),
+              ],
+            );
+            if (stacked) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  profile,
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    children: [status, action],
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: profile),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          offline
-                              ? Icons.phonelink_lock_outlined
-                              : user?.isGoogleProvider == true
-                              ? Icons.cloud_done_outlined
-                              : Icons.cloud_outlined,
-                          size: 14,
-                          color: !offline && user?.isGoogleProvider == true
-                              ? theme.colorScheme.positive
-                              : theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: AppSpacing.xxs),
-                        Text(
-                          offline
-                              ? 'Offline'
-                              : user?.isGoogleProvider == true
-                              ? 'Google Sync'
-                              : 'Local',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
+                    status,
                     const SizedBox(height: AppSpacing.xxs),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        FilledButton.tonal(
-                          onPressed: offline ? onUpgrade : onSignOut,
-                          style: AppButtonStyles.compact(context),
-                          child: Text(
-                            offline ? 'Sync with Google' : 'Sign out',
-                          ),
-                        ),
-                      ],
-                    ),
+                    action,
                   ],
                 ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

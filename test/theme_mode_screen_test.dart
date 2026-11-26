@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,6 +56,30 @@ void main() {
     expect(find.text('Default (100%)'), findsWidgets);
     expect(find.text('Vibrant (150%)'), findsOneWidget);
     expect(find.text('Reset theme settings'), findsOneWidget);
+  });
+
+  testWidgets('preview balance stays on one line at large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(buildSubject());
+    await tester.pumpAndSettle();
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.text('\$12,450.00'),
+    );
+    final painter = TextPainter(
+      text: paragraph.text,
+      textDirection: paragraph.textDirection,
+      textScaler: paragraph.textScaler,
+    )..layout(maxWidth: paragraph.size.width);
+    expect(painter.computeLineMetrics(), hasLength(1));
+    painter.dispose();
+    expect(paragraph.didExceedMaxLines, isFalse);
   });
 
   testWidgets('tapping Light mode updates theme controller', (

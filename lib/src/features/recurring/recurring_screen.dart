@@ -18,6 +18,8 @@ import '../../utils/number_formatter.dart';
 import '../../widgets/privacy_text.dart';
 import '../common/category_hierarchy_picker.dart';
 import '../common/full_screen_picker.dart';
+import '../onboarding/contextual_discovery_hint.dart';
+import '../onboarding/feature_discovery_guide.dart';
 import '../transactions/transaction_row.dart';
 import '../transactions/transactions_components.dart';
 
@@ -118,6 +120,7 @@ class RecurringScreen extends ConsumerWidget {
     );
 
     return RouteScaffold(
+      discoveryFeature: 'planned-payments',
       title: switch (mode) {
         'new' => 'New recurring',
         'past' => 'Past recurring',
@@ -173,6 +176,13 @@ class RecurringScreen extends ConsumerWidget {
       ],
       child: Column(
         children: [
+          if (recordId == null && mode == 'overview')
+            const ContextualDiscoveryHint(
+              feature: 'planned-payments',
+              title: 'Plan recurring payments',
+              message:
+                  'Review upcoming activity and create recurring plans. Saving a plan adds scheduled records to your wallet.',
+            ),
           if (recordId == null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -187,21 +197,19 @@ class RecurringScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xs,
                           children: [
-                            Flexible(
-                              child: Text(
-                                mode == 'past'
-                                    ? 'Historical summary'
-                                    : 'Planned summary',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
+                            Text(
+                              mode == 'past'
+                                  ? 'Historical summary'
+                                  : 'Planned summary',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
-                            const SizedBox(width: AppSpacing.xs),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: AppSpacing.xs,
@@ -804,9 +812,15 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
     final counterAccount = accountById(state, _counterAccountId);
     final category = categoryById(state, _categoryId);
     return RouteScaffold(
+      discoveryFeature: 'planned-payments',
       title: record == null ? 'New recurring' : 'Edit recurring',
       actions: [
-        HeaderSaveAction(onPressed: () => _saveRecurring(state, record)),
+        DiscoveryGuideAnchor(
+          id: 'save',
+          child: HeaderSaveAction(
+            onPressed: () => _saveRecurring(state, record),
+          ),
+        ),
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -841,13 +855,16 @@ class _RecurringFormState extends ConsumerState<RecurringForm> {
                   onTap: _showRecurringTypePicker,
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                TextFormField(
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Plan name',
-                    helperText: 'Optional',
-                    prefixIcon: Icon(Icons.title_outlined),
+                DiscoveryGuideAnchor(
+                  id: 'plan-fields',
+                  child: TextFormField(
+                    controller: _nameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Plan name',
+                      helperText: 'Optional',
+                      prefixIcon: Icon(Icons.title_outlined),
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),

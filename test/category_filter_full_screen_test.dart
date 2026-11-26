@@ -84,6 +84,8 @@ void main() {
       expect(find.byIcon(Icons.check_box_rounded), findsNWidgets(3));
 
       // Tap Apply button
+      await tester.ensureVisible(find.text('Apply (3)'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Apply (3)'));
       await tester.pumpAndSettle();
 

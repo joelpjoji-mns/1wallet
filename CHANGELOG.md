@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.16] - 2026-11-26
+
+### Added
+- A skippable, resumable overlay tour introduces the dashboard, accounts, records, history, calendar and settings after first-account setup. Compact measured coach marks guide real actions; Settings offers full and individual workflow replays.
+- Tour progress is isolated per account and syncs introductory steps and dismissed hints through an owner-only Firestore document for signed-in users; individual replays remain device-local.
+- Optional feature guides introduce the review inbox, statement imports and planned payments without unsolicited first-visit popups.
+
+### Changed
+- New offline and signed-in wallets complete setup with at least one account before an optional tour. Existing wallets no longer receive unsolicited welcome, first-visit or resume popups.
+- Replaced large tour panels with compact, measured coach marks and animated arrows. Added real-route guides and isolated interactive samples for plans, loans, forecast, credentials, account matching, inbox notifications and calendar day sheets; all workflows are replayable from Settings.
+- Permission setup explains that access is optional and can be skipped without requesting device permissions.
+- Raised the floating island navigation bar by 4 logical pixels on mobile.
+
+### Fixed
+- Onboarding accepts negative opening balances, explains invalid entries, protects existing wallets, and keeps drafts available if setup cannot be saved.
+- Added breathing room to onboarding and dashboard cards; account forms, picker rows, and capture diagnostics adapt to large text instead of squeezing controls together. Empty account and history actions can scroll clear of the bottom navigation.
+- Onboarding account colors have larger touch targets and announce their names and selection to screen readers.
+- The custom color picker fits compact and landscape screens without clipping its controls and keeps edits when the viewport changes.
+- Settings profile and privacy controls, appearance previews, and the planned-payment summary keep labels and amounts readable on compact screens and with larger text.
+- Calendar historical balances use the correct local-day boundaries, and calendar dates and navigation actions have clearer screen-reader labels.
+- Dashboard currency breakdowns retain negative balances, while dashboard summaries and transaction selectors reflow for larger text.
+- Opening an add-record link with different draft parameters now opens the requested draft instead of retaining the previous one.
+- Reduced-motion settings are respected during launch transitions, and permission failures provide recoverable feedback.
+
 ## [1.0.15] - 2026-11-25
 
 ### Added

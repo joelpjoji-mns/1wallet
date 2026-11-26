@@ -192,10 +192,9 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
       )),
     );
 
-    final currencyBreakdown = ref
-        .watch(homeCurrencyBreakdownProvider(selectedAccountId))
-        .map((m) => m.amountMinor < 0 ? m.copyWith(amountMinor: 0) : m)
-        .toList();
+    final currencyBreakdown = ref.watch(
+      homeCurrencyBreakdownProvider(selectedAccountId),
+    );
 
     return Container(
       constraints: const BoxConstraints(minHeight: 178),
@@ -392,46 +391,59 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
                 : const SizedBox.shrink(),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    ref.read(transactionsTypeFilterProvider.notifier).state =
-                        'income';
-                    ref.read(transactionsDateFilterProvider.notifier).state =
-                        _mapPeriodToDateFilter(_period);
-                    widget.onTabSelected(1);
-                  },
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  child: HomeFlowPanel(
-                    label: 'Income',
-                    value: flow.income,
-                    locale: widget.state.preferences.locale,
-                    tone: MetricTone.positive,
-                  ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final income = InkWell(
+                onTap: () {
+                  ref.read(transactionsTypeFilterProvider.notifier).state =
+                      'income';
+                  ref.read(transactionsDateFilterProvider.notifier).state =
+                      _mapPeriodToDateFilter(_period);
+                  widget.onTabSelected(1);
+                },
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                child: HomeFlowPanel(
+                  label: 'Income',
+                  value: flow.income,
+                  locale: widget.state.preferences.locale,
+                  tone: MetricTone.positive,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    ref.read(transactionsTypeFilterProvider.notifier).state =
-                        'expense';
-                    ref.read(transactionsDateFilterProvider.notifier).state =
-                        _mapPeriodToDateFilter(_period);
-                    widget.onTabSelected(1);
-                  },
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  child: HomeFlowPanel(
-                    label: 'Expense',
-                    value: flow.expense,
-                    locale: widget.state.preferences.locale,
-                    tone: MetricTone.danger,
-                  ),
+              );
+              final expense = InkWell(
+                onTap: () {
+                  ref.read(transactionsTypeFilterProvider.notifier).state =
+                      'expense';
+                  ref.read(transactionsDateFilterProvider.notifier).state =
+                      _mapPeriodToDateFilter(_period);
+                  widget.onTabSelected(1);
+                },
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                child: HomeFlowPanel(
+                  label: 'Expense',
+                  value: flow.expense,
+                  locale: widget.state.preferences.locale,
+                  tone: MetricTone.danger,
                 ),
-              ),
-            ],
+              );
+              final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+              if (constraints.maxWidth < 220 * textScale) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    income,
+                    const SizedBox(height: AppSpacing.sm),
+                    expense,
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: income),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: expense),
+                ],
+              );
+            },
           ),
         ],
       ),

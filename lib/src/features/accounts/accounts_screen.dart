@@ -9,6 +9,7 @@ import '../../design/tokens.dart';
 import '../../ledger/ledger_selectors.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/privacy_text.dart';
+import '../onboarding/feature_discovery_guide.dart';
 
 class AccountsScreen extends ConsumerStatefulWidget {
   const AccountsScreen({this.onMenuPressed, super.key});
@@ -46,7 +47,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
 
     final rows = _filteredRows(state);
 
-    return AppScreen(
+    final screen = AppScreen(
       maxWidth: 1400,
       title: 'Accounts',
       onMenuPressed: widget.onMenuPressed,
@@ -88,36 +89,70 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PremiumSearchInput(
-            hintText: 'Search accounts...',
-            value: _query,
-            onChanged: (value) => setState(() => _query = value),
-            height: 46,
+          DiscoveryGuideAnchor(
+            id: 'accounts-search',
+            child: PremiumSearchInput(
+              hintText: 'Search accounts...',
+              value: _query,
+              onChanged: (value) => setState(() => _query = value),
+              height: 46,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: AppTopFadeMask(
               enabled: rows.isNotEmpty,
               child: rows.isEmpty
-                  ? EmptyState(
-                      icon: _query.isNotEmpty
-                          ? Icons.search_off_rounded
-                          : Icons.wallet_outlined,
-                      title: _query.isNotEmpty
-                          ? 'No matching accounts'
-                          : 'No accounts found',
-                      body: _query.isNotEmpty
-                          ? 'No accounts match "$_query". Try a different search term.'
-                          : 'Add a cash, bank, card, loan, or wallet account to start tracking.',
-                      actionLabel: _query.isNotEmpty
-                          ? 'Clear search'
-                          : 'Add account',
-                      actionIcon: _query.isNotEmpty
-                          ? Icons.clear_rounded
-                          : Icons.add_rounded,
-                      onAction: _query.isNotEmpty
-                          ? () => setState(() => _query = '')
-                          : () => context.push('/account/new'),
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        final bottomClearance =
+                            widget.onMenuPressed != null &&
+                                !AppResponsiveLayout.isDesktop(context)
+                            ? AppSizes.bottomBarClearance +
+                                  AppSizes.islandActionSize +
+                                  MediaQuery.paddingOf(context).bottom
+                            : 0.0;
+                        final reserved =
+                            (constraints.maxHeight - AppSizes.rowLarge).clamp(
+                              0.0,
+                              bottomClearance,
+                            );
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: reserved),
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.only(
+                              bottom: bottomClearance - reserved,
+                            ),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight:
+                                    (constraints.maxHeight - bottomClearance)
+                                        .clamp(0.0, double.infinity),
+                              ),
+                              child: EmptyState(
+                                icon: _query.isNotEmpty
+                                    ? Icons.search_off_rounded
+                                    : Icons.wallet_outlined,
+                                title: _query.isNotEmpty
+                                    ? 'No matching accounts'
+                                    : 'No accounts found',
+                                body: _query.isNotEmpty
+                                    ? 'No accounts match "$_query". Try a different search term.'
+                                    : 'Add a cash, bank, card, loan, or wallet account to start tracking.',
+                                actionLabel: _query.isNotEmpty
+                                    ? 'Clear search'
+                                    : 'Add account',
+                                actionIcon: _query.isNotEmpty
+                                    ? Icons.clear_rounded
+                                    : Icons.add_rounded,
+                                onAction: _query.isNotEmpty
+                                    ? () => setState(() => _query = '')
+                                    : () => context.push('/account/new'),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     )
                   : AppResponsiveLayout(
                       mobile: ReorderableListView.builder(
@@ -191,6 +226,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
         ],
       ),
     );
+    return FeatureDiscoverySurface(feature: 'account-details', child: screen);
   }
 
   List<Account> _filteredRows(LedgerState state) {

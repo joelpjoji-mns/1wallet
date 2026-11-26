@@ -665,9 +665,36 @@ class _LiveGlassPreview extends StatelessWidget {
     final borderAlpha = specularOpacity.clamp(0.10, 0.95);
     final previewScale = (MediaQuery.textScalerOf(context).scale(13) / 13)
         .clamp(1.0, double.infinity);
+    final stackedCards = previewScale > 1.2;
+    final cards = [
+      _accountPreviewCard(
+        icon: Icons.credit_card_rounded,
+        label: 'Checking',
+        amount: '\$1,460.00',
+        colors: const [Color(0xFF1976D2), Color(0xFF0D47A1)],
+        stacked: stackedCards,
+        previewScale: previewScale,
+      ),
+      _accountPreviewCard(
+        icon: Icons.account_balance_rounded,
+        label: 'Savings',
+        amount: '+\$7,370.00',
+        colors: const [Color(0xFF00C853), Color(0xFF007E33)],
+        stacked: stackedCards,
+        previewScale: previewScale,
+      ),
+      _accountPreviewCard(
+        icon: Icons.shopping_bag_rounded,
+        label: 'Groceries',
+        amount: '-\$96.50',
+        colors: const [Color(0xFFFF3D00), Color(0xFFDD2C00)],
+        stacked: stackedCards,
+        previewScale: previewScale,
+      ),
+    ];
 
     return Container(
-      height: 260 * previewScale,
+      height: (stackedCards ? 290 : 260) * previewScale,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
@@ -817,137 +844,36 @@ class _LiveGlassPreview extends StatelessWidget {
                     top: 60 * previewScale,
                     left: 16,
                     right: 16,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            height: 110 * previewScale,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF1976D2), Color(0xFF0D47A1)],
-                              ),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.credit_card_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                Spacer(),
-                                Text(
-                                  'Checking',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                Text(
-                                  '\$1,460.00',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                    child: stackedCards
+                        ? Column(
+                            children: [
+                              for (
+                                var index = 0;
+                                index < cards.length;
+                                index++
+                              ) ...[
+                                if (index > 0) const SizedBox(height: 8),
+                                cards[index],
                               ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            height: 110 * previewScale,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF00C853), Color(0xFF007E33)],
-                              ),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.account_balance_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                Spacer(),
-                                Text(
-                                  'Savings',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                Text(
-                                  '+\$7,370.00',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              for (
+                                var index = 0;
+                                index < cards.length;
+                                index++
+                              ) ...[
+                                if (index > 0) const SizedBox(width: 8),
+                                Expanded(child: cards[index]),
                               ],
-                            ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            height: 110 * previewScale,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFFFF3D00), Color(0xFFDD2C00)],
-                              ),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.shopping_bag_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                Spacer(),
-                                Text(
-                                  'Groceries',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                Text(
-                                  '-\$96.50',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
 
                   // Chart bars spanning across the middle
                   Positioned(
-                    top: 166 * previewScale,
+                    top: (stackedCards ? 208 : 166) * previewScale,
                     left: 20,
                     right: 20,
                     child: Row(
@@ -992,6 +918,76 @@ class _LiveGlassPreview extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _accountPreviewCard({
+    required IconData icon,
+    required String label,
+    required String amount,
+    required List<Color> colors,
+    required bool stacked,
+    required double previewScale,
+  }) {
+    final title = Text(
+      label,
+      maxLines: 1,
+      softWrap: false,
+      style: const TextStyle(fontSize: 10, color: Colors.white70),
+    );
+    final balance = FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(
+        amount,
+        maxLines: 1,
+        softWrap: false,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w900,
+          color: Colors.white,
+        ),
+      ),
+    );
+    final cardIcon = Icon(icon, color: Colors.white, size: 16);
+    return Container(
+      height: stacked ? null : 110 * previewScale,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+      ),
+      child: stacked
+          ? Row(
+              children: [
+                cardIcon,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [title, balance],
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                cardIcon,
+                const Spacer(),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: title,
+                ),
+                balance,
+              ],
+            ),
     );
   }
 
@@ -1205,30 +1201,18 @@ class _LiveGlassPreview extends StatelessWidget {
         ),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          child: Wrap(
+            alignment: WrapAlignment.spaceAround,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
             children: [
               _menuPreviewOption(
                 Icons.add_circle_outline_rounded,
                 'Add record',
               ),
-              Container(
-                width: 1,
-                height: 24,
-                color: (isDark ? Colors.white : Colors.black).withAlphaFactor(
-                  0.15,
-                ),
-              ),
               _menuPreviewOption(
                 Icons.document_scanner_outlined,
                 'Scan receipt',
-              ),
-              Container(
-                width: 1,
-                height: 24,
-                color: (isDark ? Colors.white : Colors.black).withAlphaFactor(
-                  0.15,
-                ),
               ),
               _menuPreviewOption(Icons.file_download_outlined, 'Export CSV'),
             ],
@@ -1271,6 +1255,13 @@ class _LiveGlassPreview extends StatelessWidget {
     final borderColor = (isDark ? Colors.white : scheme.outlineVariant)
         .withAlphaFactor((custom.outlineOpacity * 0.7).clamp(0.04, 0.40));
     final toolbarRadius = BorderRadius.circular(18);
+    final stacked = MediaQuery.textScalerOf(context).scale(12) > 12 * 1.2;
+    final segments = [
+      _toolbarSegment('All', true, centered: !stacked),
+      _toolbarSegment('Income', false, centered: !stacked),
+      _toolbarSegment('Expense', false, centered: !stacked),
+      _toolbarSegment('Transfer', false, centered: !stacked),
+    ];
 
     return g1455.GlassSurface(
       borderRadius: toolbarRadius,
@@ -1284,47 +1275,58 @@ class _LiveGlassPreview extends StatelessWidget {
               : null,
         ),
         child: Container(
-          height: 52,
           padding: const EdgeInsets.all(4),
-          child: Row(
-            children: [
-              _toolbarSegment('All', true),
-              _toolbarSegment('Income', false),
-              _toolbarSegment('Expense', false),
-              _toolbarSegment('Transfer', false),
-            ],
-          ),
+          child: stacked
+              ? Wrap(
+                  spacing: AppSpacing.xxs,
+                  runSpacing: AppSpacing.xxs,
+                  children: segments,
+                )
+              : SizedBox(
+                  height: 44,
+                  child: Row(
+                    children: [
+                      for (final segment in segments) Expanded(child: segment),
+                    ],
+                  ),
+                ),
         ),
       ),
     );
   }
 
-  Widget _toolbarSegment(String title, bool isSelected) {
-    return Expanded(
-      child: Container(
-        alignment: Alignment.center,
-        decoration: isSelected
-            ? BoxDecoration(
-                color: scheme.primary,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: scheme.primary.withAlphaFactor(0.30),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              )
-            : null,
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: isSelected
-                ? Colors.white
-                : (isDark ? Colors.white70 : Colors.black87),
-          ),
+  Widget _toolbarSegment(
+    String title,
+    bool isSelected, {
+    required bool centered,
+  }) {
+    return Container(
+      alignment: centered ? Alignment.center : null,
+      padding: centered
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: isSelected
+          ? BoxDecoration(
+              color: scheme.primary,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: scheme.primary.withAlphaFactor(0.30),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            )
+          : null,
+      child: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+          color: isSelected
+              ? Colors.white
+              : (isDark ? Colors.white70 : Colors.black87),
         ),
       ),
     );
@@ -1358,7 +1360,7 @@ class _LiveGlassPreview extends StatelessWidget {
               : null,
         ),
         child: Container(
-          height: 78,
+          constraints: const BoxConstraints(minHeight: 78),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Row(
             children: [
@@ -1388,10 +1390,14 @@ class _LiveGlassPreview extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text(
                           finishPref.label,
@@ -1401,7 +1407,6 @@ class _LiveGlassPreview extends StatelessWidget {
                             color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,

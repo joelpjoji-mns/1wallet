@@ -52,6 +52,80 @@ void main() {
   });
 
   group('Reduce Motion respected by launch animations', () {
+    testWidgets('staggered content appears immediately with reduced motion', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
+          home: const Scaffold(
+            body: StaggeredFadeIn(
+              delay: Duration(seconds: 1),
+              child: Text('Ready'),
+            ),
+          ),
+        ),
+      );
+
+      final content = find.byType(StaggeredFadeIn);
+      final fades = tester.widgetList<FadeTransition>(
+        find.descendant(of: content, matching: find.byType(FadeTransition)),
+      );
+      final slides = tester.widgetList<SlideTransition>(
+        find.descendant(of: content, matching: find.byType(SlideTransition)),
+      );
+      expect(find.text('Ready'), findsOneWidget);
+      expect(fades.every((fade) => fade.opacity.value == 1), isTrue);
+      expect(
+        slides.every((slide) => slide.position.value == Offset.zero),
+        isTrue,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(fades.every((fade) => fade.opacity.value == 1), isTrue);
+    });
+
+    testWidgets('enabling reduced motion finishes a pending entrance', (
+      tester,
+    ) async {
+      var reduceMotion = false;
+      late StateSetter update;
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) {
+            update = setState;
+            return MaterialApp(
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(disableAnimations: reduceMotion),
+                child: child!,
+              ),
+              home: const Scaffold(
+                body: StaggeredFadeIn(
+                  delay: Duration(seconds: 1),
+                  child: Text('Ready'),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      final fade = find.descendant(
+        of: find.byType(StaggeredFadeIn),
+        matching: find.byType(FadeTransition),
+      );
+      expect(tester.widget<FadeTransition>(fade).opacity.value, 0);
+      update(() => reduceMotion = true);
+      await tester.pump();
+      expect(tester.widget<FadeTransition>(fade).opacity.value, 1);
+      update(() => reduceMotion = false);
+      await tester.pump(const Duration(seconds: 2));
+      expect(tester.widget<FadeTransition>(fade).opacity.value, 1);
+    });
+
     testWidgets(
       'LaunchBackdrop stops its continuous float animation and its heavy '
       'BackdropFilter blur recompute when Reduce Motion is enabled',

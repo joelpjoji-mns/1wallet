@@ -308,6 +308,39 @@ service cloud.firestore {
       allow create, update: if isOwner(userId) && isValidUserDocument(request.resource.data);
       allow delete: if isOwner(userId);
 
+      match /discovery/{documentId} {
+        allow get: if isOwner(userId) && documentId == 'intro';
+        allow list: if false;
+        function validProgress(data) {
+          return data.updatedAt is timestamp && data.completed is bool &&
+            ((data.keys().hasOnly(['completed', 'updatedAt']) &&
+              data.completed == true) ||
+             (data.keys().hasAll(['completed', 'updatedAt', 'welcomeSeen', 'started',
+               'step', 'completedSteps', 'skippedSteps', 'introduced']) &&
+              data.keys().hasOnly(['completed', 'updatedAt', 'welcomeSeen', 'started',
+               'step', 'completedSteps', 'skippedSteps', 'introduced']) &&
+              data.welcomeSeen is bool && data.started is bool &&
+              data.step is int && data.step >= 0 && data.step < 6 &&
+              data.completedSteps is list && data.completedSteps.size() <= 6 &&
+              data.completedSteps.hasOnly([0, 1, 2, 3, 4, 5]) &&
+              data.skippedSteps is list && data.skippedSteps.size() <= 6 &&
+              data.skippedSteps.hasOnly([0, 1, 2, 3, 4, 5]) &&
+              data.introduced is list && data.introduced.size() <= 32 &&
+              data.introduced.hasOnly(['settings', 'statement-import', 'planned-payments',
+                'review-inbox', 'guide-account', 'guide-record', 'loans',
+                'loan-forecast', 'account-details', 'notification-capture',
+                'calendar-days', 'home-widgets', 'personalization'])));
+        }
+        allow create: if isOwner(userId) && documentId == 'intro' &&
+          validProgress(request.resource.data);
+        allow update: if isOwner(userId) && documentId == 'intro' &&
+          validProgress(request.resource.data) &&
+          (resource.data.completed != true || request.resource.data.completed == true) &&
+          (!resource.data.keys().hasAny(['step']) ||
+           request.resource.data.keys().hasAny(['step']));
+        allow delete: if isOwner(userId) && documentId == 'intro';
+      }
+
       match /metadata/{metadataId} {
         allow read: if isOwner(userId) && metadataId == 'preferences';
         allow create, update: if isOwner(userId) && metadataId == 'preferences';

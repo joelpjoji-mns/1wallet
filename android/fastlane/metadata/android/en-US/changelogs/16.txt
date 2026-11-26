@@ -1,0 +1,7 @@
+- Compact interactive tours with real-screen spotlights and arrows
+- Guides for plans, loans, forecasts, credentials and alert matching
+- Safe sample workflows and replay controls in Settings
+- Fresh offline wallets finish account setup before discovery
+- Existing wallets stay free of unsolicited tour popups
+- Improved small-screen, large-text and navigation layouts
+- Samples never save transactions or credentials

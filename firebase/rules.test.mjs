@@ -95,6 +95,59 @@ test('a different signed-in user cannot read or write another user profile', asy
   );
 });
 
+test('discovery completion is owner-only and validates its schema', async () => {
+  const path = `users/${OWNER_UID}/discovery/intro`;
+  const owner = ownerDb();
+  const other = otherDb();
+  await assertSucceeds(owner.doc(path).set({
+    completed: true,
+    updatedAt: new Date(),
+  }));
+  await assertSucceeds(owner.doc(path).get());
+  await assertFails(other.doc(path).get());
+  await assertFails(other.doc(path).set({
+    completed: true,
+    updatedAt: new Date(),
+  }));
+  await assertFails(owner.collection(`users/${OWNER_UID}/discovery`).get());
+  await assertFails(owner.doc(path).set({
+    completed: false,
+    updatedAt: new Date(),
+  }));
+  await assertFails(owner.doc(path).set({
+    completed: true,
+    updatedAt: new Date(),
+    extra: 'unexpected',
+  }));
+  await assertFails(owner.doc(`users/${OWNER_UID}/discovery/other`).get());
+  await assertSucceeds(owner.doc(path).delete());
+});
+
+test('discovery progress is owner-only, bounded, and cannot undo completion', async () => {
+  const path = `users/${OWNER_UID}/discovery/intro`;
+  const progress = {
+    completed: false, welcomeSeen: true, started: true, step: 2,
+    completedSteps: [0], skippedSteps: [1],
+    introduced: [
+      'settings', 'review-inbox', 'planned-payments', 'loans', 'loan-forecast',
+      'account-details', 'notification-capture', 'calendar-days',
+      'statement-import', 'home-widgets', 'personalization',
+    ],
+    updatedAt: new Date(),
+  };
+  await assertSucceeds(ownerDb().doc(path).set(progress));
+  await assertSucceeds(ownerDb().doc(path).get());
+  await assertFails(otherDb().doc(path).get());
+  await assertFails(otherDb().doc(path).set(progress));
+  await assertFails(ownerDb().doc(path).set({ ...progress, step: 6 }));
+  await assertFails(ownerDb().doc(path).set({ ...progress, skippedSteps: [7] }));
+  await assertFails(ownerDb().doc(path).set({ ...progress, completedSteps: [0, 0, 0, 0, 0, 0, 0] }));
+  await assertFails(ownerDb().doc(path).set({ ...progress, introduced: ['unknown'] }));
+  await assertSucceeds(ownerDb().doc(path).set({ ...progress, completed: true }));
+  await assertFails(ownerDb().doc(path).set(progress));
+  await assertFails(ownerDb().doc(path).set({ completed: true, updatedAt: new Date() }));
+});
+
 test('unauthenticated clients cannot read or write a user profile', async () => {
   const anon = anonDb();
   await assertFails(anon.doc(`users/${OWNER_UID}`).get());

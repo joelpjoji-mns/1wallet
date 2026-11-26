@@ -87,5 +87,31 @@ void main() {
         expect(tester.getSize(find.byWidget(preview)), size);
       }
     });
+
+    testWidgets('balance currency chips wrap without a scrollable', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NativeWidgetSyncService.sizePreviewForRendering(
+            const NativeBalanceWidget(
+              totalBalance: '\$0.00',
+              netWorthLabel: 'Net Worth \$0.00',
+              incomeText: '+\$0.00',
+              expenseText: '-\$0.00',
+              currencyBreakdown: [
+                'USD \$1,234.56',
+                'EUR €1.234,56',
+                'JPY ¥100',
+              ],
+            ),
+            const Size(400, 220),
+          ),
+        ),
+      );
+
+      expect(find.byType(Scrollable), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

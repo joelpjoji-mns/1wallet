@@ -113,16 +113,19 @@ class HomeFlowPanel extends StatelessWidget {
               end: value.amountMinor.toDouble(),
             ),
             builder: (context, amountMinor, child) {
-              return PrivacyText(
-                formatMoney(
-                  value.copyWith(amountMinor: amountMinor.round()),
-                  locale,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w900,
+              return FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: PrivacyText(
+                  formatMoney(
+                    value.copyWith(amountMinor: amountMinor.round()),
+                    locale,
+                  ),
+                  maxLines: 1,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               );
             },

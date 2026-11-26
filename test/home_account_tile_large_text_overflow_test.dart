@@ -8,11 +8,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:one_wallet_flutter/src/data/ledger_codec.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
+import 'package:one_wallet_flutter/src/design/tokens.dart';
+import 'package:one_wallet_flutter/src/features/home/home_components.dart';
 import 'package:one_wallet_flutter/src/features/home/home_screen.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widget_card.dart';
 import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
 
+import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
 
 /// Regression coverage for a fixed-height overflow in the "All accounts"
@@ -25,6 +28,27 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('dashboard cards have room between them on a phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: authenticatedSampleOverrides(ledger: _ledger()),
+        child: MaterialApp(
+          home: HomeScreen(onMenuPressed: () {}, onTabSelected: (_) {}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final balance = tester.getRect(find.byType(BalanceHomeWidget));
+    final accounts = tester.getRect(find.byType(AccountGridHomeWidget));
+    expect(accounts.top - balance.bottom, greaterThanOrEqualTo(AppSpacing.sm));
   });
 
   testWidgets('dashboard card headings wrap beside trailing controls', (
@@ -109,6 +133,89 @@ void main() {
       tester.getRect(scroll).contains(tester.getRect(label).bottomLeft),
       isTrue,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('currency breakdown preserves a negative account balance', (
+    tester,
+  ) async {
+    final state = _ledger().copyWith(
+      preferences: const LedgerPreferences(
+        baseCurrency: 'USD',
+        displayCurrency: 'USD',
+      ),
+      accounts: const [
+        Account(
+          id: 'debt',
+          name: 'Debt',
+          type: 'bank',
+          currency: 'USD',
+          openingBalance: Money(amountMinor: -50025, currency: 'USD'),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: authenticatedSampleOverrides(ledger: state),
+        child: MaterialApp(
+          home: Scaffold(
+            body: BalanceHomeWidget(state: state, onTabSelected: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is PrivacyText && widget.text == 'USD -\$500.25',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('income and expense amounts remain readable at large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final state = sampleLedgerState();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: authenticatedSampleOverrides(ledger: state),
+        child: MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: BalanceHomeWidget(state: state, onTabSelected: (_) {}),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final panels = find.byType(HomeFlowPanel);
+    expect(panels, findsNWidgets(2));
+    final income = tester.getRect(panels.first);
+    final expense = tester.getRect(panels.last);
+    expect(expense.top, greaterThanOrEqualTo(income.bottom));
+    for (final panel in [panels.first, panels.last]) {
+      final amount = find.descendant(
+        of: panel,
+        matching: find.byType(PrivacyText),
+      );
+      final text = find.descendant(of: amount, matching: find.byType(Text));
+      expect(
+        tester.renderObject<RenderParagraph>(text).didExceedMaxLines,
+        isFalse,
+      );
+    }
     expect(tester.takeException(), isNull);
   });
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,14 @@ Future<void> _frames(WidgetTester tester) async {
 }
 
 void main() {
+  setUpAll(() async {
+    final inter = FontLoader('Inter');
+    for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      inter.addFont(rootBundle.load('assets/fonts/Inter-$weight.ttf'));
+    }
+    await inter.load();
+  });
+
   group('AuthUser.initials', () {
     test('offline local user with name returns first letter uppercase', () {
       final user = AuthUser.local(displayName: 'Joel');
@@ -176,4 +185,47 @@ void main() {
       },
     );
   });
+
+  for (final scale in [1.0, 2.0]) {
+    testWidgets('compact Settings profile remains readable at ${scale}x', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      var edits = 0;
+      var signOuts = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(20),
+              child: SettingsProfileSection(
+                user: null,
+                onEditName: () => edits++,
+                onSignOut: () => signOuts++,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (final label in ['1wallet account', 'Not signed in']) {
+        expect(
+          tester
+              .renderObject<RenderParagraph>(find.text(label))
+              .didExceedMaxLines,
+          isFalse,
+          reason: label,
+        );
+      }
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.tap(find.text('Sign out'));
+      expect(edits, 1);
+      expect(signOuts, 1);
+    });
+  }
 }

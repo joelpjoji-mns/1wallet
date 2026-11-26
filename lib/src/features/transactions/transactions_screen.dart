@@ -378,6 +378,7 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   static const _defaultDateFilter = 'all';
 
+  final _commandStripKey = GlobalKey();
   var _query = '';
   final Set<String> _categoryFilters = <String>{};
   var _includeUncategorizedCategory = false;
@@ -415,6 +416,46 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             .toSet()
             .toList()
           ..sort();
+    final commandStrip = TransactionCommandStrip(
+      key: _commandStripKey,
+      query: _query,
+      typeLabel: _typeFilterLabel(typeFilter),
+      typeValue: typeFilter,
+      dateLabel: _dateFilterLabel(dateFilter),
+      dateValue: dateFilter,
+      accountLabel: accountById(state, accountFilter)?.name ?? 'All accounts',
+      categoryLabel: _categoryFilterLabel(state),
+      statusLabel: _statusFilterLabel(statusFilter),
+      statusValue: statusFilter,
+      tagLabel: tagFilter == 'all' ? 'All tags' : tagFilter,
+      tagValue: tagFilter,
+      tagActive: tagFilter != 'all',
+      tagOptions: [
+        const GlassDropdownOption('all', 'All tags'),
+        for (final tag in allLedgerTags)
+          GlassDropdownOption(tag, tag, icon: Icons.label_outline_rounded),
+      ],
+      onTagSelected: (value) =>
+          ref.read(transactionsTagFilterProvider.notifier).state = value,
+      typeActive: typeFilter != 'all',
+      dateActive: dateFilter != _defaultDateFilter,
+      accountActive: accountFilter != null,
+      categoryActive:
+          _categoryFilters.isNotEmpty || _includeUncategorizedCategory,
+      statusActive: statusFilter != 'all',
+      hasActiveFilters: hasActiveFilters,
+      onQueryChanged: (value) => setState(() => _query = value),
+      onClear: _clearFilters,
+      onTypeSelected: (value) =>
+          ref.read(transactionsTypeFilterProvider.notifier).state = value,
+      onDateSelected: _onDateSelected,
+      onPreviousDate: () => _shiftDateFilter(-1),
+      onNextDate: () => _shiftDateFilter(1),
+      onAccountTap: () => _showAccountFilter(state, accountFilter),
+      onCategoryTap: () => _showCategoryFilter(state),
+      onStatusSelected: (value) =>
+          ref.read(transactionsStatusFilterProvider.notifier).state = value,
+    );
 
     return AppScreen(
       title: _selectedTransactionIds.isNotEmpty
@@ -476,116 +517,27 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 semanticLabel: 'Choose display currency',
               ),
             ],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TransactionCommandStrip(
-            query: _query,
-            typeLabel: _typeFilterLabel(typeFilter),
-            typeValue: typeFilter,
-            dateLabel: _dateFilterLabel(dateFilter),
-            dateValue: dateFilter,
-            accountLabel:
-                accountById(state, accountFilter)?.name ?? 'All accounts',
-            categoryLabel: _categoryFilterLabel(state),
-            statusLabel: _statusFilterLabel(statusFilter),
-            statusValue: statusFilter,
-            tagLabel: tagFilter == 'all' ? 'All tags' : tagFilter,
-            tagValue: tagFilter,
-            tagActive: tagFilter != 'all',
-            tagOptions: [
-              const GlassDropdownOption('all', 'All tags'),
-              for (final tag in allLedgerTags)
-                GlassDropdownOption(
-                  tag,
-                  tag,
-                  icon: Icons.label_outline_rounded,
-                ),
-            ],
-            onTagSelected: (value) =>
-                ref.read(transactionsTagFilterProvider.notifier).state = value,
-            typeActive: typeFilter != 'all',
-            dateActive: dateFilter != _defaultDateFilter,
-            accountActive: accountFilter != null,
-            categoryActive:
-                _categoryFilters.isNotEmpty || _includeUncategorizedCategory,
-            statusActive: statusFilter != 'all',
-            hasActiveFilters: hasActiveFilters,
-            onQueryChanged: (value) => setState(() => _query = value),
-            onClear: _clearFilters,
-            onTypeSelected: (value) =>
-                ref.read(transactionsTypeFilterProvider.notifier).state = value,
-            onDateSelected: _onDateSelected,
-            onPreviousDate: () => _shiftDateFilter(-1),
-            onNextDate: () => _shiftDateFilter(1),
-            onAccountTap: () => _showAccountFilter(state, accountFilter),
-            onCategoryTap: () => _showCategoryFilter(state),
-            onStatusSelected: (value) =>
-                ref.read(transactionsStatusFilterProvider.notifier).state =
-                    value,
-          ),
-          if (transactions.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(
-                left: AppSpacing.sm,
-                right: AppSpacing.sm,
-                bottom: AppSpacing.sm,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Text(
-                      'Filtered Total',
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (flow.income.amountMinor > 0)
-                            PrivacyText(
-                              '+${formatMoney(flow.income, state.preferences.locale)}',
-                              style: TextStyle(
-                                color: positiveTone(context),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          if (flow.income.amountMinor > 0 &&
-                              flow.expense.amountMinor > 0)
-                            const SizedBox(width: AppSpacing.md),
-                          if (flow.expense.amountMinor > 0)
-                            PrivacyText(
-                              '-${formatMoney(flow.expense, state.preferences.locale)}',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          Expanded(
-            child: AppTopFadeMask(
-              enabled: transactions.isNotEmpty,
-              child: transactions.isEmpty
-                  ? LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight,
+      child: transactions.isEmpty
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                final bottomClearance = AppResponsiveLayout.isDesktop(context)
+                    ? 0.0
+                    : AppSizes.bottomBarClearance +
+                          AppSizes.islandActionSize +
+                          AppSpacing.xxs +
+                          MediaQuery.paddingOf(context).bottom;
+                final reserved = (constraints.maxHeight - AppSizes.rowLarge)
+                    .clamp(0.0, bottomClearance);
+                return Padding(
+                  padding: EdgeInsets.only(bottom: reserved),
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(child: commandStrip),
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            bottom: bottomClearance - reserved,
                           ),
                           child: EmptyState(
                             icon: Icons.format_list_bulleted_rounded,
@@ -605,8 +557,76 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           ),
                         ),
                       ),
-                    )
-                  : Builder(
+                    ],
+                  ),
+                );
+              },
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                commandStrip,
+                if (transactions.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: AppSpacing.sm,
+                      right: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Filtered Total',
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (flow.income.amountMinor > 0)
+                                  PrivacyText(
+                                    '+${formatMoney(flow.income, state.preferences.locale)}',
+                                    style: TextStyle(
+                                      color: positiveTone(context),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                if (flow.income.amountMinor > 0 &&
+                                    flow.expense.amountMinor > 0)
+                                  const SizedBox(width: AppSpacing.md),
+                                if (flow.expense.amountMinor > 0)
+                                  PrivacyText(
+                                    '-${formatMoney(flow.expense, state.preferences.locale)}',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                Expanded(
+                  child: AppTopFadeMask(
+                    child: Builder(
                       builder: (context) {
                         final stats = ref.watch(
                           _monthlyStatsProvider((
@@ -930,10 +950,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         );
                       },
                     ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1295,8 +1315,8 @@ bool _matchesDateFilter(DateTime date, String dateFilter, {DateTime? now}) {
   return switch (norm) {
     'today' =>
       date.year == current.year &&
-      date.month == current.month &&
-      date.day == current.day,
+          date.month == current.month &&
+          date.day == current.day,
     'thisweek' => () {
       final diff = current.weekday - 1; // 0 for Monday
       final start = DateTime(

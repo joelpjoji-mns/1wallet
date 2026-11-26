@@ -190,6 +190,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final autoScan = state.uri.queryParameters['scan'] == '1';
           return AppGlassPage(
             child: AddRecordScreen(
+              key: ValueKey((
+                state.uri.queryParameters['transactionId'],
+                state.uri.queryParameters['accountId'],
+                state.uri.queryParameters['counterAccountId'],
+                state.uri.queryParameters['plannedId'],
+                state.uri.queryParameters['captureCandidateId'],
+                type,
+                autoScan,
+              )),
               transactionId: state.uri.queryParameters['transactionId'],
               initialAccountId: state.uri.queryParameters['accountId'],
               initialCounterAccountId:

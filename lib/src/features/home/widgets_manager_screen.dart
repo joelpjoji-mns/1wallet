@@ -46,34 +46,50 @@ class WidgetsManagerScreen extends ConsumerWidget {
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${visibleOrder.length} active on Home',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final summary = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${visibleOrder.length} active on Home',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
-                Text(
-                  '${HomeDashboardWidgetId.values.length - visibleOrder.length} available to add',
-                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-          FilledButton.tonalIcon(
+              ),
+              Text(
+                '${HomeDashboardWidgetId.values.length - visibleOrder.length} available to add',
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ],
+          );
+          final reset = FilledButton.tonalIcon(
             onPressed: () {
               ref.read(ledgerProvider.notifier).resetHomeWidgetOrder();
               showAppSnackBar(context, 'Home widgets reset');
             },
             icon: const Icon(Icons.restart_alt_rounded),
             label: const Text('Reset order'),
-          ),
-        ],
+          );
+          final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+          if (constraints.maxWidth < 180 * textScale) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                summary,
+                const SizedBox(height: AppSpacing.sm),
+                reset,
+              ],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: summary),
+              const SizedBox(width: AppSpacing.sm),
+              reset,
+            ],
+          );
+        },
       ),
     );
 
@@ -84,6 +100,7 @@ class WidgetsManagerScreen extends ConsumerWidget {
     // `SliverList.builder` below build only the previews near the viewport
     // rather than all ~16 live dashboard widgets at once.
     return RouteScaffold(
+      discoveryFeature: 'home-widgets',
       title: 'Widgets Gallery',
       actions: [
         HeaderIconButton(

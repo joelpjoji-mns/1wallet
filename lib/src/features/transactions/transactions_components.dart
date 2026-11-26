@@ -451,31 +451,14 @@ class MiniFlowRail extends StatelessWidget {
           color: scheme.outlineVariant.withValues(alpha: 0.55),
         ),
       ),
-      child: Row(
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
         children: [
-          Expanded(
-            child: MiniFlowStat(
-              label: 'INCOME',
-              value: income,
-              color: scheme.positive,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: MiniFlowStat(
-              label: 'EXPENSE',
-              value: expense,
-              color: scheme.error,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: MiniFlowStat(
-              label: 'NET',
-              value: net,
-              color: scheme.primary,
-            ),
-          ),
+          MiniFlowStat(label: 'INCOME', value: income, color: scheme.positive),
+          MiniFlowStat(label: 'EXPENSE', value: expense, color: scheme.error),
+          MiniFlowStat(label: 'NET', value: net, color: scheme.primary),
         ],
       ),
     );

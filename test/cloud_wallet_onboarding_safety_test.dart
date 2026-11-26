@@ -212,7 +212,7 @@ void main() {
   );
 
   test(
-    'startupState routes to onboarding only for genuine fresh users without cloud wallet',
+    'startupState requires setup for fresh users without a cloud wallet',
     () {
       final container = ProviderContainer(
         overrides: [
@@ -261,6 +261,7 @@ void main() {
 
       final startup = container.read(startupStateProvider);
       expect(startup.destination, StartupDestination.onboarding);
+      expect(startup.needsDiscoveryWelcome, isFalse);
     },
   );
 

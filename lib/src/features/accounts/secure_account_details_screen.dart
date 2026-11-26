@@ -11,6 +11,7 @@ import '../../utils/secure_key_store.dart';
 import '../../widgets/app_kit.dart';
 import '../../widgets/credit_card_view.dart';
 import '../common/route_scaffold.dart';
+import '../onboarding/feature_discovery_guide.dart';
 
 class SecureAccountDetailsScreen extends ConsumerStatefulWidget {
   const SecureAccountDetailsScreen({super.key, required this.accountId});
@@ -420,8 +421,14 @@ class _SecureAccountDetailsScreenState
     final isCard = account.type == 'card' || account.type == 'credit_card';
 
     return RouteScaffold(
+      discoveryFeature: 'account-details',
       title: 'Secure Details',
-      actions: [HeaderSaveAction(onPressed: () => _saveSecureDetails(account))],
+      actions: [
+        DiscoveryGuideAnchor(
+          id: 'save',
+          child: HeaderSaveAction(onPressed: () => _saveSecureDetails(account)),
+        ),
+      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -464,9 +471,12 @@ class _SecureAccountDetailsScreenState
             ),
 
           const SizedBox(height: AppSpacing.xxl),
-          const Text(
-            'Edit Details',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          const DiscoveryGuideAnchor(
+            id: 'credentials',
+            child: Text(
+              'Edit Details',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
 

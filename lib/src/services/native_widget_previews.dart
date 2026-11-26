@@ -304,38 +304,30 @@ class NativeBalanceWidget extends StatelessWidget {
             // Currency breakdown chips
             if (currencyBreakdown.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xs),
-              SizedBox(
-                height: 24,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (final chip in currencyBreakdown) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs,
-                            vertical: AppSpacing.xxxs,
-                          ),
-                          decoration: BoxDecoration(
-                            color: scheme.surfaceContainerHigh,
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                            border: Border.all(color: scheme.outlineVariant),
-                          ),
-                          child: Text(
-                            chip,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final chip in currencyBreakdown)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xxxs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Text(
+                        chip,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
                         ),
-                        if (chip != currencyBreakdown.last)
-                          const SizedBox(width: AppSpacing.xs),
-                      ],
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                ],
               ),
             ],
             const SizedBox(height: AppSpacing.xs),

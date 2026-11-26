@@ -328,7 +328,8 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                         ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: maxLabelWidth),
                           child: Text(
-                            label,
+                            displayLabel ?? label,
+                            semanticsLabel: displayLabel != null ? label : null,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.labelMedium
@@ -784,7 +785,11 @@ class IslandFloatingActionButton extends StatelessWidget {
 
     final tooltipMessage = tooltip;
     if (tooltipMessage != null && tooltipMessage.isNotEmpty) {
-      button = Tooltip(message: tooltipMessage, child: button);
+      button = Tooltip(
+        message: tooltipMessage,
+        excludeFromSemantics: true,
+        child: button,
+      );
     }
     return button;
   }
@@ -1006,7 +1011,11 @@ class HeaderIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final message = tooltip;
     if (message != null && message.isNotEmpty) {
-      return Tooltip(message: message, child: _buildButton(context));
+      return Tooltip(
+        message: message,
+        excludeFromSemantics: semanticLabel?.isNotEmpty ?? false,
+        child: _buildButton(context),
+      );
     }
     return _buildButton(context);
   }
@@ -2139,6 +2148,69 @@ class PremiumRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final leading = Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: iconColor ?? scheme.surfaceContainerHighest,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: iconWidget ?? Icon(icon, color: scheme.onSurface, size: 20),
+    );
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: scheme.onSurface,
+          ),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: AppSpacing.xxxs),
+          Text(
+            subtitle!,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
+        if (meta != null || metaSubtitle != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xxxs,
+            children: [
+              if (meta != null)
+                Text(
+                  meta!,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? scheme.primary : scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              if (metaSubtitle != null)
+                Text(
+                  metaSubtitle!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant.withAlphaFactor(0.8),
+                  ),
+                ),
+            ],
+          ),
+        ],
+        if (trailing != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          trailing!,
+        ],
+      ],
+    );
+    final disclosure = selected
+        ? Icon(Icons.check_circle_rounded, color: scheme.primary)
+        : Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant);
+    final stack = MediaQuery.textScalerOf(context).scale(14) > 20;
 
     final content = Material(
       color: Colors.transparent,
@@ -2151,86 +2223,24 @@ class PremiumRow extends StatelessWidget {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.md,
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: iconColor ?? scheme.surfaceContainerHighest,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child:
-                    iconWidget ?? Icon(icon, color: scheme.onSurface, size: 20),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
+          child: stack
+              ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: AppSpacing.xxxs),
-                      Text(
-                        subtitle!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                    if (meta != null || metaSubtitle != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Wrap(
-                        spacing: AppSpacing.xs,
-                        runSpacing: AppSpacing.xxxs,
-                        children: [
-                          if (meta != null)
-                            Text(
-                              meta!,
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(
-                                    color: selected
-                                        ? scheme.primary
-                                        : scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          if (metaSubtitle != null)
-                            Text(
-                              metaSubtitle!,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: scheme.onSurfaceVariant
-                                        .withAlphaFactor(0.8),
-                                  ),
-                            ),
-                        ],
-                      ),
-                    ],
-                    if (trailing != null) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      trailing!,
-                    ],
+                    Row(children: [leading, const Spacer(), disclosure]),
+                    const SizedBox(height: AppSpacing.xs),
+                    details,
+                  ],
+                )
+              : Row(
+                  children: [
+                    leading,
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(child: details),
+                    const SizedBox(width: AppSpacing.xs),
+                    disclosure,
                   ],
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              if (selected)
-                Icon(Icons.check_circle_rounded, color: scheme.primary)
-              else
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: scheme.onSurfaceVariant,
-                ),
-            ],
-          ),
         ),
       ),
     );

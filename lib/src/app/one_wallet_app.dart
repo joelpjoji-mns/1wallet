@@ -68,7 +68,9 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       await ref
           .read(cloudSyncControllerProvider.notifier)
           .checkAndTriggerSync();
-      if (mounted) {
+      if (mounted &&
+          ref.read(startupStateProvider).destination ==
+              StartupDestination.home) {
         NativeWidgetSyncService.syncWidgets(ref.read(ledgerProvider));
       }
     });
