@@ -180,6 +180,32 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.17',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.17',
+    versionCode: 17,
+    runtimeVersion: '1.0.17',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-26T01:30:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Unified interactive story tour with illuminated spotlight beacons',
+        'Interactive Calendar forecast with next month preview and day sheet inspection',
+        'Compact glass coach marks with inline live sample previews',
+      ],
+      bugFixes: const [
+        'Non-optional guided onboarding flow cleanly advances across all core tabs',
+        'Smooth bottom sheet presentation and day transaction breakdown in tour',
+      ],
+      notes: const ['Sample tour workflows are isolated and non-destructive'],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.16',
     platform: 'android',
     channel: 'stable',

@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.17] - 2026-11-26
+
+### Added
+- Complete rewrite of the app tour into an uninterrupted, interactive story flow guiding first-time setup across Dashboard, Logging, History, Calendar, Accounts, and Settings.
+- Compact glass coach marks with illuminated neon spotlight beacons, animated pointers, and inline interactive sample previews on every core screen.
+- Interactive Calendar month-end net forecasting allowing users to jump to the next month to see planned balance projections, plus one-tap day cell inspection opening sample transactions.
+
+### Changed
+- App tour is now a non-optional guided onboarding experience ensuring all users learn core capabilities before managing live finances.
+- Replaced separated "basics" vs "phase 2" flows with a single cohesive narrative.
+
+### Fixed
+- Smooth anchoring and responsive card positioning for coach marks on all device viewport heights.
+- Proper clean-up and navigation handling during sample day transactions sheet dismissal.
+
 ## [1.0.16] - 2026-11-26
 
 ### Added

@@ -1,0 +1,6 @@
+- Unified interactive story tour with illuminated spotlight beacons
+- Interactive Calendar forecast with next month preview and day sheet inspection
+- Compact glass coach marks with inline live sample previews
+- Non-optional guided onboarding flow cleanly advances across all core tabs
+- Smooth bottom sheet presentation and day transaction breakdown in tour
+- Sample tour workflows are isolated and non-destructive

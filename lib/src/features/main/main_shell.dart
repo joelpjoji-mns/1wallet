@@ -27,6 +27,7 @@ import '../home/home_screen.dart'
 import '../notifications/notification_engine.dart';
 import '../onboarding/discovery_controller.dart';
 import '../onboarding/discovery_overlay.dart';
+import '../onboarding/feature_discovery_guide.dart';
 import '../../services/notification_service.dart';
 import '../../theme/theme_controller.dart';
 import '../transactions/transactions_screen.dart';
@@ -49,6 +50,7 @@ class _MainShellState extends ConsumerState<MainShell>
   final _discoveryNavigationKey = GlobalKey();
   final _discoveryActionKey = GlobalKey();
   final _discoveryProfileKey = GlobalKey();
+  final _guideTargets = <String, GlobalKey>{};
   late final PageController _pageController;
   late final ValueNotifier<int> _selectedIndex;
   Timer? _lightBackgroundPeriodicTimer;
@@ -559,92 +561,122 @@ class _MainShellState extends ConsumerState<MainShell>
                         _selectTab(index);
                       },
                     ),
-              body: Stack(
-                children: [
-                  AppResponsiveLayout(mobile: mobileBody, desktop: desktopBody),
-                  if (owner != null &&
-                      discovery != null &&
-                      !discovery.guideActive &&
-                      (discovery.status != DiscoveryStatus.welcome ||
-                          discovery.automaticTourEligible ||
-                          discovery.isReplay))
-                    Positioned.fill(
-                      child: DiscoveryOverlay(
-                        progress: discovery,
-                        dashboardTarget: _discoveryDashboardKey,
-                        navigationTarget: _discoveryNavigationKey,
-                        actionTarget: _discoveryActionKey,
-                        profileTarget: _discoveryProfileKey,
-                        selectedTab: selectedIndex,
-                        hasAccounts: ref.watch(
-                          ledgerProvider.select(
-                            (state) => state.accounts.any(
-                              (account) => !account.isDeleted,
+              body: DiscoveryGuideTargets(
+                targets: _guideTargets,
+                child: Stack(
+                  children: [
+                    AppResponsiveLayout(
+                      mobile: mobileBody,
+                      desktop: desktopBody,
+                    ),
+                    if (owner != null &&
+                        discovery != null &&
+                        !discovery.guideActive &&
+                        (discovery.status != DiscoveryStatus.welcome ||
+                            discovery.automaticTourEligible ||
+                            discovery.isReplay))
+                      Positioned.fill(
+                        child: DiscoveryOverlay(
+                          progress: discovery,
+                          dashboardTarget: _discoveryDashboardKey,
+                          navigationTarget: _discoveryNavigationKey,
+                          actionTarget: _discoveryActionKey,
+                          profileTarget: _discoveryProfileKey,
+                          targets: _guideTargets,
+                          onSwitchMonth: () {
+                            final current =
+                                ref.read(calendarVisibleMonthProvider) ??
+                                DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                );
+                            final next = DateTime(
+                              current.year,
+                              current.month + 1,
+                            );
+                            ref
+                                .read(calendarVisibleMonthProvider.notifier)
+                                .state = next;
+                          },
+                          selectedTab: selectedIndex,
+                          hasAccounts: ref.watch(
+                            ledgerProvider.select(
+                              (state) => state.accounts.any(
+                                (account) => !account.isDeleted,
+                              ),
                             ),
                           ),
-                        ),
-                        onSelectTab: _selectTab,
-                        onExploreWorkflows: () => _runDiscovery(() async {
-                          await ref
-                              .read(discoveryControllerProvider(owner).notifier)
-                              .startWorkflowTour();
-                          if (context.mounted &&
-                              ref.read(authControllerProvider).ownerId ==
-                                  owner) {
-                            unawaited(context.push<void>('/recurring'));
-                          }
-                        }()),
-                        onStart: () => _runDiscovery(
-                          ref
-                              .read(discoveryControllerProvider(owner).notifier)
-                              .start(),
-                        ),
-                        onPause: () => _runDiscovery(
-                          ref
-                              .read(discoveryControllerProvider(owner).notifier)
-                              .pause(),
-                        ),
-                        onFinish: () {
-                          _runDiscovery(
+                          onSelectTab: _selectTab,
+                          onExploreWorkflows: () => _runDiscovery(() async {
+                            await ref
+                                .read(
+                                  discoveryControllerProvider(owner).notifier,
+                                )
+                                .startWorkflowTour();
+                            if (context.mounted &&
+                                ref.read(authControllerProvider).ownerId ==
+                                    owner) {
+                              unawaited(context.push<void>('/recurring'));
+                            }
+                          }()),
+                          onStart: () => _runDiscovery(
                             ref
                                 .read(
                                   discoveryControllerProvider(owner).notifier,
                                 )
-                                .finish(),
-                          );
-                        },
-                        onPrevious: () => _runDiscovery(
-                          ref
-                              .read(discoveryControllerProvider(owner).notifier)
-                              .previous(),
+                                .start(),
+                          ),
+                          onPause: () => _runDiscovery(
+                            ref
+                                .read(
+                                  discoveryControllerProvider(owner).notifier,
+                                )
+                                .pause(),
+                          ),
+                          onFinish: () {
+                            _runDiscovery(
+                              ref
+                                  .read(
+                                    discoveryControllerProvider(owner).notifier,
+                                  )
+                                  .finish(),
+                            );
+                          },
+                          onPrevious: () => _runDiscovery(
+                            ref
+                                .read(
+                                  discoveryControllerProvider(owner).notifier,
+                                )
+                                .previous(),
+                          ),
+                          onNext: () {
+                            _runDiscovery(
+                              ref
+                                  .read(
+                                    discoveryControllerProvider(owner).notifier,
+                                  )
+                                  .advance(),
+                            );
+                            if (discovery.step == discovery.endStep) {
+                              _selectTab(0);
+                            }
+                          },
+                          onSkipStep: () {
+                            _runDiscovery(
+                              ref
+                                  .read(
+                                    discoveryControllerProvider(owner).notifier,
+                                  )
+                                  .advance(skipped: true),
+                            );
+                            if (discovery.step == discovery.endStep) {
+                              _selectTab(0);
+                            }
+                          },
                         ),
-                        onNext: () {
-                          _runDiscovery(
-                            ref
-                                .read(
-                                  discoveryControllerProvider(owner).notifier,
-                                )
-                                .advance(),
-                          );
-                          if (discovery.step == discovery.endStep) {
-                            _selectTab(0);
-                          }
-                        },
-                        onSkipStep: () {
-                          _runDiscovery(
-                            ref
-                                .read(
-                                  discoveryControllerProvider(owner).notifier,
-                                )
-                                .advance(skipped: true),
-                          );
-                          if (discovery.step == discovery.endStep) {
-                            _selectTab(0);
-                          }
-                        },
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           );

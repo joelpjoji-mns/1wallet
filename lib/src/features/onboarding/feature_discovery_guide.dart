@@ -14,18 +14,24 @@ import 'discovery_coach_mark.dart';
 import 'discovery_controller.dart';
 import 'discovery_feature_guides.dart';
 
-class _GuideTargets extends InheritedWidget {
-  const _GuideTargets({required this.targets, required super.child});
+class DiscoveryGuideTargets extends InheritedWidget {
+  const DiscoveryGuideTargets({
+    required this.targets,
+    required super.child,
+    super.key,
+  });
   final Map<String, GlobalKey> targets;
   GlobalKey keyFor(String id) => targets.putIfAbsent(id, () => GlobalKey());
 
-  static _GuideTargets? of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_GuideTargets>();
+  static DiscoveryGuideTargets? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DiscoveryGuideTargets>();
 
   @override
-  bool updateShouldNotify(_GuideTargets oldWidget) =>
+  bool updateShouldNotify(DiscoveryGuideTargets oldWidget) =>
       !identical(targets, oldWidget.targets);
 }
+
+typedef _GuideTargets = DiscoveryGuideTargets;
 
 class DiscoveryGuideAnchor extends StatelessWidget {
   const DiscoveryGuideAnchor({

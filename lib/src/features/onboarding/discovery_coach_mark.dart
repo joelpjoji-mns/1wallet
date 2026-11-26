@@ -14,6 +14,7 @@ class DiscoveryCoachMark extends StatefulWidget {
     required this.actions,
     this.target,
     this.counter,
+    this.sample,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class DiscoveryCoachMark extends StatefulWidget {
   final String? counter;
   final VoidCallback onClose;
   final Widget actions;
+  final Widget? sample;
 
   @override
   State<DiscoveryCoachMark> createState() => _DiscoveryCoachMarkState();
@@ -195,7 +197,7 @@ class _DiscoveryCoachMarkState extends State<DiscoveryCoachMark>
         ),
       );
       final area = areas.isEmpty ? bounds : areas.first;
-      final width = math.min(310.0, area.width);
+      final width = math.min(320.0, area.width);
       final height = math.min(
         area.height,
         math.max(180.0, bounds.height * 0.45),
@@ -223,7 +225,7 @@ class _DiscoveryCoachMarkState extends State<DiscoveryCoachMark>
                       target: target,
                       card: _cardRect ?? card,
                       color: scheme.primary,
-                      scrim: scheme.scrim.withValues(alpha: 0.14),
+                      scrim: scheme.scrim.withValues(alpha: 0.16),
                       pulse: _motion.value,
                     ),
                   ),
@@ -238,13 +240,16 @@ class _DiscoveryCoachMarkState extends State<DiscoveryCoachMark>
               constraints: BoxConstraints(maxHeight: card.height),
               child: Material(
                 key: _cardKey,
-                color: scheme.surfaceContainerHigh,
-                elevation: 6,
-                shadowColor: scheme.shadow.withValues(alpha: 0.18),
+                color: scheme.surfaceContainerHigh.withValues(alpha: 0.96),
+                elevation: 8,
+                shadowColor: scheme.shadow.withValues(alpha: 0.22),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  side: BorderSide(color: scheme.outlineVariant),
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                  side: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.35),
+                  ),
                 ),
+                clipBehavior: Clip.antiAlias,
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.sm),
                   child: Column(
@@ -254,16 +259,40 @@ class _DiscoveryCoachMarkState extends State<DiscoveryCoachMark>
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              widget.counter ?? '1Wallet guide',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: scheme.primary),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: scheme.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadii.pill,
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.counter ?? '1Wallet guide',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: scheme.primary,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 11,
+                                      ),
+                                ),
+                              ),
                             ),
                           ),
                           IconButton(
                             visualDensity: VisualDensity.compact,
+                            constraints: const BoxConstraints(
+                              minWidth: 28,
+                              minHeight: 28,
+                            ),
+                            padding: EdgeInsets.zero,
                             tooltip: 'Close guide',
                             onPressed: widget.onClose,
                             icon: const Icon(Icons.close_rounded, size: 18),
@@ -280,13 +309,24 @@ class _DiscoveryCoachMarkState extends State<DiscoveryCoachMark>
                                 Text(
                                   widget.title,
                                   style: Theme.of(context).textTheme.titleSmall
-                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.2,
+                                      ),
                                 ),
                                 const SizedBox(height: AppSpacing.xxs),
                                 Text(
                                   widget.message,
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                        height: 1.35,
+                                      ),
                                 ),
+                                if (widget.sample != null) ...[
+                                  const SizedBox(height: AppSpacing.xs),
+                                  widget.sample!,
+                                ],
                               ],
                             ),
                           ),
@@ -330,6 +370,20 @@ class _CoachPointer extends CustomPainter {
       )
       ..fillType = PathFillType.evenOdd;
     canvas.drawPath(shade, Paint()..color = scrim);
+
+    // Glowing pulsing spotlight ring around target
+    final pulseOffset = 1.5 + pulse * 2.5;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        target.inflate(pulseOffset),
+        const Radius.circular(AppRadii.md + 2),
+      ),
+      Paint()
+        ..color = color.withValues(alpha: 0.35 + pulse * 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+
     final Offset from;
     final Offset to;
     if (card.bottom <= target.top || card.top >= target.bottom) {

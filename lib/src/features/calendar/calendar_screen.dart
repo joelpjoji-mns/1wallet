@@ -18,6 +18,8 @@ import '../common/full_screen_picker.dart';
 import '../transactions/transaction_row.dart';
 import 'calendar_forecast.dart';
 
+final calendarVisibleMonthProvider = StateProvider<DateTime?>((ref) => null);
+
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({required this.onMenuPressed, super.key});
 
@@ -39,6 +41,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   int _cachedExpense = 0;
   int _cachedNet = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    final externalMonth = ref.read(calendarVisibleMonthProvider);
+    if (externalMonth != null) {
+      _visibleMonth = externalMonth;
+    }
+  }
+
   String _categoryFilterLabel(LedgerState state) {
     final count =
         _categoryFilters.length + (_includeUncategorizedCategory ? 1 : 0);
@@ -53,6 +64,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<DateTime?>(calendarVisibleMonthProvider, (_, next) {
+      if (next != null && next != _visibleMonth) {
+        setState(() => _visibleMonth = next);
+      }
+    });
     final state = ref.watch(ledgerProvider);
     final key = (
       state,
@@ -172,64 +188,69 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         ),
                       ],
                     );
-                    final controls = g1455.GlassButtonGroup(
-                      finish: ref.watch(toolbarsGlassFinishProvider),
-                      items: [
-                        g1455.GlassToolbarItem(
-                          icon: Tooltip(
-                            message: 'Previous month',
-                            excludeFromSemantics: true,
-                            child: Icon(
-                              Icons.chevron_left_rounded,
-                              size: 20,
-                              color: scheme.onSurface,
+                    final controls = DiscoveryGuideAnchor(
+                      id: 'calendar-month-controls',
+                      child: g1455.GlassButtonGroup(
+                        finish: ref.watch(toolbarsGlassFinishProvider),
+                        items: [
+                          g1455.GlassToolbarItem(
+                            icon: Tooltip(
+                              message: 'Previous month',
+                              excludeFromSemantics: true,
+                              child: Icon(
+                                Icons.chevron_left_rounded,
+                                size: 20,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            label: 'Previous month',
+                            onPressed: () => setState(
+                              () => _visibleMonth = DateTime(
+                                _visibleMonth.year,
+                                _visibleMonth.month - 1,
+                              ),
                             ),
                           ),
-                          label: 'Previous month',
-                          onPressed: () => setState(
-                            () => _visibleMonth = DateTime(
-                              _visibleMonth.year,
-                              _visibleMonth.month - 1,
+                          g1455.GlassToolbarItem(
+                            icon: Tooltip(
+                              message: 'Current month',
+                              excludeFromSemantics: true,
+                              child: Icon(
+                                Icons.today_rounded,
+                                size: 18,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            label: 'Current month',
+                            onPressed: () => setState(
+                              () => _visibleMonth = DateTime(
+                                DateTime.now().year,
+                                DateTime.now().month,
+                              ),
                             ),
                           ),
-                        ),
-                        g1455.GlassToolbarItem(
-                          icon: Tooltip(
-                            message: 'Current month',
-                            excludeFromSemantics: true,
-                            child: Icon(
-                              Icons.today_rounded,
-                              size: 18,
-                              color: scheme.onSurface,
+                          g1455.GlassToolbarItem(
+                            icon: Tooltip(
+                              message: 'Next month',
+                              excludeFromSemantics: true,
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: scheme.onSurface,
+                              ),
                             ),
+                            label: 'Next month',
+                            onPressed: () {
+                              final next = DateTime(
+                                _visibleMonth.year,
+                                _visibleMonth.month + 1,
+                              );
+                              setState(() => _visibleMonth = next);
+                              ref.read(calendarVisibleMonthProvider.notifier).state = next;
+                            },
                           ),
-                          label: 'Current month',
-                          onPressed: () => setState(
-                            () => _visibleMonth = DateTime(
-                              DateTime.now().year,
-                              DateTime.now().month,
-                            ),
-                          ),
-                        ),
-                        g1455.GlassToolbarItem(
-                          icon: Tooltip(
-                            message: 'Next month',
-                            excludeFromSemantics: true,
-                            child: Icon(
-                              Icons.chevron_right_rounded,
-                              size: 20,
-                              color: scheme.onSurface,
-                            ),
-                          ),
-                          label: 'Next month',
-                          onPressed: () => setState(
-                            () => _visibleMonth = DateTime(
-                              _visibleMonth.year,
-                              _visibleMonth.month + 1,
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     );
                     final textScale =
                         MediaQuery.textScalerOf(context).scale(14) / 14;
@@ -267,24 +288,27 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       children: [
                         SizedBox(
                           width: width,
-                          child: Tooltip(
-                            message:
-                                'Month-end balance for the selected accounts. '
-                                'Future balances include recurring forecasts; '
-                                'category filters affect income and expense only.',
-                            child: SummaryPill(
-                              label: 'Balance',
-                              money: convertMoneyForDisplay(
-                                state,
-                                Money(
-                                  amountMinor: net,
-                                  currency: state.preferences.baseCurrency,
+                          child: DiscoveryGuideAnchor(
+                            id: 'calendar-net',
+                            child: Tooltip(
+                              message:
+                                  'Month-end balance for the selected accounts. '
+                                  'Future balances include recurring forecasts; '
+                                  'category filters affect income and expense only.',
+                              child: SummaryPill(
+                                label: 'Balance',
+                                money: convertMoneyForDisplay(
+                                  state,
+                                  Money(
+                                    amountMinor: net,
+                                    currency: state.preferences.baseCurrency,
+                                  ),
                                 ),
+                                tone: net >= 0
+                                    ? MetricTone.positive
+                                    : MetricTone.danger,
+                                locale: state.preferences.locale,
                               ),
-                              tone: net >= 0
-                                  ? MetricTone.positive
-                                  : MetricTone.danger,
-                              locale: state.preferences.locale,
                             ),
                           ),
                         ),

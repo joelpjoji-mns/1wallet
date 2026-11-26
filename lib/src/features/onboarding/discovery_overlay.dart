@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../design/tokens.dart';
 import 'discovery_coach_mark.dart';
 import 'discovery_controller.dart';
 
@@ -23,6 +24,9 @@ class DiscoveryOverlay extends StatelessWidget {
     this.customTitle,
     this.customDescription,
     this.onCustomDismiss,
+    this.targets,
+    this.onSwitchMonth,
+    this.onOpenDay,
     super.key,
   });
 
@@ -44,6 +48,72 @@ class DiscoveryOverlay extends StatelessWidget {
   final String? customTitle;
   final String? customDescription;
   final VoidCallback? onCustomDismiss;
+  final Map<String, GlobalKey>? targets;
+  final VoidCallback? onSwitchMonth;
+  final VoidCallback? onOpenDay;
+
+  Widget _buildSampleBadge({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String detail,
+    Widget? trailing,
+  }) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: isDark ? 0.6 : 0.8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.35),
+          width: 0.8,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: scheme.primary),
+              const SizedBox(width: AppSpacing.xxs),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.primary,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            detail,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontSize: 11,
+              height: 1.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,13 +139,18 @@ class DiscoveryOverlay extends StatelessWidget {
         target: dashboardTarget,
         title: 'Your wallet is ready',
         message:
-            'Your first account is set up. Want a quick hands-on look around?',
-        onClose: onFinish,
-        actions: Wrap(
-          children: [
-            FilledButton(onPressed: onStart, child: const Text('Show me')),
-            TextButton(onPressed: onFinish, child: const Text('Not now')),
-          ],
+            'Your first account is set up. Let us take a compact, guided walkthrough of your financial command center — from live balances to automated cash flow forecasts.',
+        onClose: onStart,
+        sample: _buildSampleBadge(
+          context: context,
+          icon: Icons.auto_awesome_rounded,
+          title: 'Interactive 1Wallet Story',
+          detail:
+              'A single continuous flow: live ledger, forward forecasts, and secure alerts.',
+        ),
+        actions: FilledButton(
+          onPressed: onStart,
+          child: const Text('Show me'),
         ),
       );
     }
@@ -84,8 +159,15 @@ class DiscoveryOverlay extends StatelessWidget {
         target: dashboardTarget,
         title: 'The essentials, covered',
         message:
-            'Next: plans, loans, forecasts and how captured alerts find the right account. Or stop here and explore later in Settings.',
+            'You have experienced the full story of 1Wallet — from live balances and forecasts to secure matching.',
         onClose: onFinish,
+        sample: _buildSampleBadge(
+          context: context,
+          icon: Icons.check_circle_outline_rounded,
+          title: 'All Features Unlocked',
+          detail:
+              'Your wallet operates 100% offline-first. Review inbox, forecasts, and backups are ready.',
+        ),
         actions: Wrap(
           children: [
             if (onExploreWorkflows != null)
@@ -93,7 +175,7 @@ class DiscoveryOverlay extends StatelessWidget {
                 onPressed: onExploreWorkflows,
                 child: const Text('Explore workflows'),
               ),
-            TextButton(onPressed: onFinish, child: const Text('Done')),
+            FilledButton(onPressed: onFinish, child: const Text('Done')),
           ],
         ),
       );
@@ -102,7 +184,7 @@ class DiscoveryOverlay extends StatelessWidget {
     final (title, message, tab) = switch (step) {
       0 => (
         'Your money, at a glance',
-        'Balances and recent activity live here. Tap a card to explore it.',
+        'Balances and recent activity live here. Tap a card to explore your liquid assets, monthly cashflow, and total net worth in real time.',
         0,
       ),
       1 when !hasAccounts => (
@@ -122,7 +204,7 @@ class DiscoveryOverlay extends StatelessWidget {
       ),
       3 => (
         'Pick a day',
-        'Tap a calendar date to open its real day sheet: records, planned activity and end-of-day balance.',
+        'Month-end net balance and forward cashflow forecast live here. The Net combines actual balances with scheduled payments. Navigating to next month recalculates the net dynamically, and tapping any day opens its daily transactions sheet!',
         2,
       ),
       4 => (
@@ -140,14 +222,77 @@ class DiscoveryOverlay extends StatelessWidget {
     final target = switch (step) {
       0 => dashboardTarget,
       1 when !needsTab => actionTarget,
+      3 when !needsTab =>
+        targets?['calendar-net'] ??
+            targets?['calendar-month-controls'] ??
+            targets?['calendar-day'] ??
+            navigationTarget,
       5 when !needsTab => profileTarget,
       _ => navigationTarget,
     };
     final tabName = ['Home', 'History', 'Calendar', 'Accounts'][tab];
+
+    final sample = switch (step) {
+      0 => _buildSampleBadge(
+        context: context,
+        icon: Icons.account_balance_wallet_outlined,
+        title: 'Consolidated Wealth',
+        detail:
+            'Liquid: \$1,250.00 · Monthly Net: +\$420.00 · Consolidated in real time',
+      ),
+      1 => _buildSampleBadge(
+        context: context,
+        icon: Icons.flash_on_rounded,
+        title: 'Offline-First Logging',
+        detail:
+            '⚡ Quick Log: Expense \$4.50 (Coffee) · ☕ Food & Dining · Cash account',
+      ),
+      2 => _buildSampleBadge(
+        context: context,
+        icon: Icons.search_rounded,
+        title: 'Instant Search & Filters',
+        detail:
+            '🔍 Filter by account, category, or date range across all transactions',
+      ),
+      3 => _buildSampleBadge(
+        context: context,
+        icon: Icons.calendar_month_rounded,
+        title: 'Projected Net & Forecast',
+        detail:
+            'Net Balance combines actual + planned payments · Tap Next Month to see forecast change',
+        trailing: onSwitchMonth != null
+            ? TextButton(
+                key: const ValueKey('discovery-tour-next-month'),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: onSwitchMonth,
+                child: const Text('Next Month', style: TextStyle(fontSize: 11)),
+              )
+            : null,
+      ),
+      4 => _buildSampleBadge(
+        context: context,
+        icon: Icons.credit_card_outlined,
+        title: 'Suffix Alert Matching',
+        detail:
+            'Suffix 4242 → Auto-matches "Everyday Bank" for SMS / notifications',
+      ),
+      _ => _buildSampleBadge(
+        context: context,
+        icon: Icons.shield_outlined,
+        title: 'Vault & Privacy',
+        detail:
+            '🔐 Biometrics · 🛡️ Local AES-256 Backups · 🌐 100% Offline Ledger',
+      ),
+    };
+
     return DiscoveryCoachMark(
       target: target,
       title: title,
       message: message,
+      sample: sample,
       counter:
           '${step - progress.startStep + 1} / ${progress.endStep - progress.startStep + 1}',
       onClose: onPause,

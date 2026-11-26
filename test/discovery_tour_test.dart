@@ -11,6 +11,7 @@ import 'package:one_wallet_flutter/src/auth/app_mode.dart';
 import 'package:one_wallet_flutter/src/auth/auth_controller.dart';
 import 'package:one_wallet_flutter/src/auth/auth_user.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
+import 'package:one_wallet_flutter/src/features/calendar/calendar_screen.dart';
 import 'package:one_wallet_flutter/src/features/onboarding/discovery_controller.dart';
 import 'package:one_wallet_flutter/src/features/onboarding/discovery_cloud_store.dart';
 import 'package:one_wallet_flutter/src/features/onboarding/discovery_overlay.dart';
@@ -1030,6 +1031,135 @@ void main() {
         container.read(ledgerProvider).transactions.map((r) => r.id),
         recordsBefore,
       );
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('tour welcome is non-optional and does not offer a dismiss action', (
+    tester,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    const user = AuthUser(id: 'non-optional-user', email: 'mandatory@test.com');
+    final container = ProviderContainer(
+      overrides: [
+        ...authenticatedSampleOverrides(prefs: prefs),
+        authRepositoryProvider.overrideWithValue(
+          FakeAuthRepository(currentUser: user),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container
+        .read(discoveryControllerProvider(user.id).notifier)
+        .prepareWelcome();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const OneWalletApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Your wallet is ready'), findsOneWidget);
+    expect(find.text('Not now'), findsNothing);
+    expect(find.text('Interactive 1Wallet Story'), findsOneWidget);
+    await tester.tap(find.text('Show me'));
+    await tester.pumpAndSettle();
+    expect(
+      container.read(discoveryControllerProvider(user.id)).status,
+      DiscoveryStatus.active,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+    'tour displays compact sample cards and interactive calendar forecast',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      const user = AuthUser(id: 'samples-user', email: 'samples@test.com');
+      final container = ProviderContainer(
+        overrides: [
+          ...authenticatedSampleOverrides(prefs: prefs),
+          authRepositoryProvider.overrideWithValue(
+            FakeAuthRepository(currentUser: user),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container
+          .read(discoveryControllerProvider(user.id).notifier)
+          .prepareWelcome();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const OneWalletApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show me'));
+      await tester.pumpAndSettle();
+
+      // Step 0: Consolidated Wealth sample
+      expect(find.text('Consolidated Wealth'), findsOneWidget);
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      // Step 1: Offline-First Logging sample
+      expect(find.text('Offline-First Logging'), findsOneWidget);
+      await tester.tap(find.text('Try later'));
+      await tester.pumpAndSettle();
+
+      // Step 2: Instant Search & Filters sample
+      expect(find.text('Instant Search & Filters'), findsOneWidget);
+      await tester.tap(find.text('Show History'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      // Step 3: Calendar Net & Forecast sample
+      expect(find.text('Projected Net & Forecast'), findsOneWidget);
+      await tester.tap(find.text('Show Calendar'));
+      await tester.pumpAndSettle();
+
+      final nextMonthBtn = find.byKey(
+        const ValueKey('discovery-tour-next-month'),
+      );
+      expect(nextMonthBtn, findsOneWidget);
+
+      final initialMonth = container.read(calendarVisibleMonthProvider);
+      await tester.ensureVisible(nextMonthBtn);
+      await tester.tap(nextMonthBtn);
+      await tester.pumpAndSettle();
+      final nextMonth = container.read(calendarVisibleMonthProvider);
+      expect(nextMonth, isNotNull);
+      if (initialMonth != null) {
+        expect(nextMonth!.isAfter(initialMonth), isTrue);
+      }
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      // Step 4: Suffix Alert Matching sample
+      expect(find.text('Suffix Alert Matching'), findsOneWidget);
+      await tester.tap(find.text('Show Accounts'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      // Step 5: Vault & Privacy sample
+      expect(find.text('Vault & Privacy'), findsOneWidget);
+      await tester.tap(find.text('Show Home'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Finish basics'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('The essentials, covered'), findsOneWidget);
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(discoveryControllerProvider(user.id)).status,
+        DiscoveryStatus.finished,
+      );
+
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
