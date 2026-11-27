@@ -109,6 +109,13 @@ void main() {
             occurredAt: DateTime(2026, 7, 1),
             originalTransactionId: plan.id,
           ),
+          plan.copyWith(
+            id: 'skipped-1',
+            status: 'void',
+            notes: 'Skipped',
+            occurredAt: DateTime(2026, 8, 1),
+            originalTransactionId: plan.id,
+          ),
         ],
       );
       await tester.pumpWidget(

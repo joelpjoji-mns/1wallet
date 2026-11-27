@@ -180,6 +180,34 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.22',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.22',
+    versionCode: 22,
+    runtimeVersion: '1.0.22',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-27T16:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'New update screen with a live download progress bar',
+        'Updates install and restart automatically once downloaded',
+        'Planned payment cards show schedule and account on one line, with notes below',
+      ],
+      bugFixes: const [
+        'Update check runs only once a day, even after days away',
+        'Skip next can no longer skip the same payment twice',
+        'Loan history no longer counts skipped EMIs as repayments',
+        'One-time plans read "One-time" instead of "Every 1 once"',
+      ],
+      notes: const ['Google Play still asks you to confirm an update once'],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.21',
     platform: 'android',
     channel: 'stable',

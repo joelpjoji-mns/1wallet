@@ -343,6 +343,7 @@ LedgerState prototypeSample(DateTime now) {
     DateTime? due,
     DateTime? endsOn,
     bool automatic = false,
+    String? notes,
   }) {
     final next = due ?? today.add(Duration(days: dueInDays));
     final template = record(
@@ -363,6 +364,7 @@ LedgerState prototypeSample(DateTime now) {
         recurrenceInterval: interval,
         recurrenceLimit: limit,
         recurrenceEndDate: endsOn,
+        notes: notes ?? name,
         postMode: automatic ? 'auto' : null,
         recurrenceDaysOfMonth: frequency == 'monthly' ? [next.day] : null,
       ),
@@ -422,6 +424,8 @@ LedgerState prototypeSample(DateTime now) {
     2800000,
     category: 'cat-rent-mortgage',
     paid: 30,
+    notes:
+        'Landlord: Mr Sharma. Includes maintenance; pay before the 5th to avoid the late fee.',
   );
   plan(
     'demo-emi',
@@ -462,6 +466,7 @@ LedgerState prototypeSample(DateTime now) {
     'Electricity bill - overdue',
     280000,
     category: 'cat-electricity',
+    notes: 'Consumer no. 4021-883',
     dueInDays: -3,
     paid: 24,
   );

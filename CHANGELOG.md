@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.22] - 2026-11-27
+
+### Added
+- Google Play updates now use a custom 1Wallet update sheet with a live download progress bar (percentage and MB downloaded). After you tap Update now and confirm Google Play's one-time prompt, the update downloads in the background, then installs and restarts the app automatically, with no Later step. The sheet only appears after the app is unlocked.
+
+### Changed
+- The automatic Google Play update check runs at most once per calendar day when the app opens or returns to the foreground. Several opens on the same day, or returning after days away, trigger only one check. Failed checks retry after 3 hours, sideloaded builds stop checking for the day, and an update that already downloaded installs instead of downloading again.
+- Planned payment cards show the schedule and account on one line (for example "Every 2 months on 17 from HDFC Savings", or "into" for income), spanning the card width. The plan's notes appear underneath across the full card and wrap onto more lines only when needed; notes that just repeat the plan name or were written by the app are hidden.
+
+### Fixed
+- Tapping Skip next on a planned payment more than once no longer records the same skipped occurrence twice.
+- Loan repayment history no longer lists skipped EMIs or counts them as posted repayments.
+- One-time planned payments read "One-time" instead of "Every 1 once".
+
 ## [1.0.21] - 2026-11-27
 
 ### Added

@@ -3214,8 +3214,9 @@ List<TransactionRecord> _loanHistoryRepayments(
   return sortedTransactions(state, includeScheduled: false, hideInterest: true)
       .where(
         (transaction) =>
+            transaction.status != 'void' &&
             (transaction.accountId == loanId ||
-            transaction.counterAccountId == loanId),
+                transaction.counterAccountId == loanId),
       )
       .toList();
 }

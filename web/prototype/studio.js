@@ -53,6 +53,7 @@ export const screens = [
   ['Capture & import', 'Notification capture', '/notification-capture', 'Android notification capture settings'],
   ['Capture & import', 'Notification apps', '/notification-capture/apps', 'Supported notification sources'],
   ['Personalization', 'Settings', '/settings', 'Profile, privacy, appearance and app-tour replays'],
+  ['Personalization', 'Update sheet', '/settings?updatePreview=available', 'Custom Google Play update half sheet with simulated download progress'],
   ['Personalization', 'Glass effects', '/settings/glass', 'Actual glass styling and component controls'],
   ['Personalization', 'Theme', '/settings/theme', 'Light, AMOLED and system appearance'],
   ['Personalization', 'Feedback', '/settings/feedback', 'Feedback form; external submission is not part of the demo'],

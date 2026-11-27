@@ -386,7 +386,6 @@ class _RecurringCompactCard extends StatelessWidget {
     final counter = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
     final scheme = Theme.of(context).colorScheme;
-    final headerTitle = _recurringHeaderTitle(state, transaction);
     final defaultPrimaryTitle = _recurringPrimaryTitle(state, transaction);
     final hasName = transaction.name?.trim().isNotEmpty == true;
     final primaryTitle = hasName
@@ -399,14 +398,11 @@ class _RecurringCompactCard extends StatelessWidget {
       transaction.recurrenceInterval,
       transaction.recurrenceDaysOfMonth,
     );
-    final extraLine = _recurringExtraLine(
-      state,
-      transaction,
-      account,
-      counter,
-      defaultPrimaryTitle,
-      headerTitle,
-    );
+    final accountPhrase = _recurringAccountPhrase(transaction, account);
+    final scheduleLine = accountPhrase == null
+        ? recurrence
+        : '$recurrence $accountPhrase';
+    final notesLine = _recurringCardNotes(transaction);
     final status = _recurringStatus(
       context,
       transaction.occurredAt,
@@ -518,30 +514,43 @@ class _RecurringCompactCard extends StatelessWidget {
                                 ),
                           ),
                         ],
-                        if (categorySubtitle != null)
-                          const SizedBox(height: AppSpacing.xxxs),
-                        Text(
-                          recurrence,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                        if (extraLine != null) ...[
-                          const SizedBox(height: AppSpacing.xxs),
-                          Text(
-                            extraLine,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                          ),
-                        ],
                       ],
                     ),
+                    // Schedule and notes span the card width so the account
+                    // stays on the schedule line whenever it fits.
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: _RoundRecurringIcon.size + AppSpacing.sm,
+                        top: AppSpacing.xxxs,
+                      ),
+                      child: Text(
+                        scheduleLine,
+                        key: const ValueKey('recurring-card-schedule'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    if (notesLine != null)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(
+                          start: _RoundRecurringIcon.size + AppSpacing.sm,
+                          top: AppSpacing.xxs,
+                        ),
+                        child: Text(
+                          notesLine,
+                          key: const ValueKey('recurring-card-notes'),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              ),
+                        ),
+                      ),
                     if (!historyMode &&
                         (account?.loanDetails != null ||
                             counter?.loanDetails != null))
@@ -1823,6 +1832,30 @@ class RecurringDetailView extends ConsumerWidget {
 
   Future<void> _skip(BuildContext context, WidgetRef ref) async {
     final notifier = ref.read(ledgerProvider.notifier);
+    // Work from the latest plan, not the snapshot this screen was built
+    // with, so a repeated tap cannot skip the same occurrence twice.
+    final latest = ref.read(ledgerProvider);
+    final transaction = latest.transactions
+        .where((t) => t.id == this.transaction.id)
+        .firstOrNull;
+    if (transaction == null ||
+        transaction.status != 'scheduled' ||
+        _isOccurrenceSkipped(latest, transaction) ||
+        !_skipsInFlight.add(transaction.id)) {
+      return;
+    }
+    try {
+      await _skipOccurrence(context, notifier, transaction);
+    } finally {
+      _skipsInFlight.remove(transaction.id);
+    }
+  }
+
+  Future<void> _skipOccurrence(
+    BuildContext context,
+    LedgerController notifier,
+    TransactionRecord transaction,
+  ) async {
     final nextDate = advanceTransactionRecurrence(
       transaction.occurredAt,
       transaction,
@@ -2105,22 +2138,6 @@ int _amountMinorFromInput(String value, String currency) {
 void _showRouteMessage(BuildContext context, String message) =>
     showAppSnackBar(context, message);
 
-String _recurringHeaderTitle(LedgerState state, TransactionRecord transaction) {
-  final notes = transaction.notes?.trim();
-  if (notes != null && notes.isNotEmpty) {
-    return notes.replaceFirst(
-      RegExp(r'^Scheduled EMI for\s+', caseSensitive: false),
-      '',
-    );
-  }
-  final counter = accountById(state, transaction.counterAccountId);
-  if (transaction.type == 'loan_repayment' && counter != null) {
-    return counter.name;
-  }
-  final category = categoryById(state, transaction.categoryId);
-  return category?.name ?? transactionTypeLabel(transaction.type);
-}
-
 String _recurringPrimaryTitle(
   LedgerState state,
   TransactionRecord transaction,
@@ -2142,6 +2159,7 @@ String _recurringCadenceLabel(
   List<int>? daysOfMonth,
 ]) {
   final n = interval < 1 ? 1 : interval;
+  if (frequency == 'once') return 'One-time';
   if (frequency == 'monthly' && daysOfMonth != null && daysOfMonth.isNotEmpty) {
     final daysStr = daysOfMonth
         .map((d) => d >= 32 || d == -1 ? 'Last day' : '$d')
@@ -2158,30 +2176,45 @@ String _recurringCadenceLabel(
   return 'Every $n $unit';
 }
 
-String? _recurringExtraLine(
-  LedgerState state,
+/// Account wording that follows the cadence on a plan card, for example
+/// "Every 2 months on 17 from HDFC Savings".
+String? _recurringAccountPhrase(
   TransactionRecord transaction,
   Account? account,
-  Account? counter,
-  String primaryTitle,
-  String headerTitle,
 ) {
-  if (transaction.type == 'loan_repayment' && counter != null) {
-    return '"${counter.name}"';
+  final name = account?.name.trim();
+  if (name == null || name.isEmpty) return null;
+  return transaction.type == 'income' ? 'into $name' : 'from $name';
+}
+
+/// User notes shown under the plan card header. Notes the app writes itself
+/// (EMI schedules and skipped markers) and notes that only repeat the plan
+/// name stay hidden.
+final _skipsInFlight = <String>{};
+
+bool _isOccurrenceSkipped(LedgerState state, TransactionRecord plan) {
+  final due = plan.occurredAt;
+  return state.transactions.any(
+    (t) =>
+        t.status == 'void' &&
+        t.originalTransactionId == plan.id &&
+        t.occurredAt.year == due.year &&
+        t.occurredAt.month == due.month &&
+        t.occurredAt.day == due.day,
+  );
+}
+
+String? _recurringCardNotes(TransactionRecord transaction) {
+  final notes = transaction.notes?.trim();
+  if (notes == null || notes.isEmpty) return null;
+  if (RegExp(r'^Scheduled EMI for\s', caseSensitive: false).hasMatch(notes)) {
+    return null;
   }
-  final accountName = transaction.type == 'transfer'
-      ? [
-          account?.name,
-          if (counter != null) counter.name,
-        ].whereType<String>().join(' → ')
-      : account?.name;
-  if (accountName != null &&
-      accountName.trim().isNotEmpty &&
-      accountName != primaryTitle &&
-      accountName != headerTitle) {
-    return '"$accountName"';
+  if (transaction.status == 'void' && notes == 'Skipped') return null;
+  if (notes.toLowerCase() == transaction.name?.trim().toLowerCase()) {
+    return null;
   }
-  return null;
+  return notes;
 }
 
 ({String label, IconData icon, Color color}) _recurringStatus(

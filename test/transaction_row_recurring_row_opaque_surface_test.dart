@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -424,4 +425,160 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('planned cards join schedule and account, notes span the card', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final now = DateTime.now();
+    TransactionRecord plan(String id, String type, String name, String? notes) {
+      return TransactionRecord(
+        id: id,
+        type: type,
+        status: 'scheduled',
+        source: 'recurring',
+        accountId: 'acc-bank',
+        amount: const Money(amountMinor: 32000, currency: 'USD'),
+        baseAmount: const Money(amountMinor: 32000, currency: 'USD'),
+        occurredAt: now.add(const Duration(days: 4)),
+        recurrenceFrequency: 'monthly',
+        recurrenceInterval: 2,
+        recurrenceDaysOfMonth: const [17],
+        name: name,
+        notes: notes,
+      );
+    }
+
+    const longNote =
+        'Landlord: Mr Sharma. Includes maintenance; pay before the 5th to '
+        'avoid the late fee.';
+    final state = emptyLedgerState().copyWith(
+      accounts: [
+        const Account(
+          id: 'acc-bank',
+          name: 'HDFC Main',
+          type: 'bank',
+          currency: 'USD',
+          openingBalance: Money(amountMinor: 500000, currency: 'USD'),
+        ),
+      ],
+      transactions: [
+        plan('plan-rent', 'expense', 'Rent', longNote),
+        plan('plan-salary', 'income', 'Salary', 'Salary'),
+      ],
+    );
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: state),
+    );
+    addTearDown(container.dispose);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: RecurringScreen(mode: 'overview')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final expense = find.text('Every 2 months on 17 from HDFC Main');
+    expect(expense, findsOneWidget);
+    expect(find.text('Every 2 months on 17 into HDFC Main'), findsOneWidget);
+    // Notes that only repeat the plan name are not shown twice.
+    expect(find.byKey(const ValueKey('recurring-card-notes')), findsOneWidget);
+
+    final schedule = tester.getRect(expense);
+    final notes = tester.getRect(find.text(longNote));
+    final title = tester.getRect(find.text('Rent'));
+    final amount = tester.getRect(
+      find.descendant(
+        of: find.byKey(const ValueKey('recurring-header-plan-rent')),
+        matching: find.byKey(const ValueKey('recurring-header-amount')),
+      ),
+    );
+    expect(schedule.right, greaterThan(amount.left));
+    expect(schedule.left, closeTo(title.left, 0.1));
+    expect(notes.left, closeTo(title.left, 0.1));
+    expect(notes.top, greaterThanOrEqualTo(schedule.bottom));
+    // Notes use the full card width and wrap only past the right edge.
+    expect(notes.right, greaterThan(amount.left));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tapping Skip next twice skips one occurrence', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final due = DateTime.now().add(const Duration(days: 4));
+    final state = emptyLedgerState().copyWith(
+      accounts: [
+        const Account(
+          id: 'acc-bank',
+          name: 'HDFC Main',
+          type: 'bank',
+          currency: 'USD',
+          openingBalance: Money(amountMinor: 500000, currency: 'USD'),
+        ),
+      ],
+      transactions: [
+        TransactionRecord(
+          id: 'plan-rent',
+          type: 'expense',
+          status: 'scheduled',
+          source: 'recurring',
+          accountId: 'acc-bank',
+          amount: const Money(amountMinor: 32000, currency: 'USD'),
+          baseAmount: const Money(amountMinor: 32000, currency: 'USD'),
+          occurredAt: due,
+          recurrenceFrequency: 'monthly',
+          name: 'Rent',
+        ),
+      ],
+    );
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: state),
+    );
+    addTearDown(container.dispose);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: GoRouter(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (context, state) => const Scaffold(
+                  body: RecurringScreen(recordId: 'plan-rent'),
+                ),
+              ),
+              GoRoute(
+                path: '/recurring',
+                builder: (context, state) => const SizedBox(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Skip next'));
+    await tester.tap(find.text('Skip next'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    final ledger = container.read(ledgerProvider);
+    final skipped = ledger.transactions.where(
+      (t) => t.status == 'void' && t.originalTransactionId == 'plan-rent',
+    );
+    expect(skipped, hasLength(1));
+    final next = ledger.transactions.firstWhere((t) => t.id == 'plan-rent');
+    expect(next.occurredAt.isAfter(due), isTrue);
+    expect(next.occurredAt.difference(due).inDays, lessThan(32));
+  });
 }

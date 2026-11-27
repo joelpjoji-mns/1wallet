@@ -1,0 +1,8 @@
+- New update screen with a live download progress bar
+- Updates install and restart automatically once downloaded
+- Planned payment cards show schedule and account on one line, with notes below
+- Update check runs only once a day, even after days away
+- Skip next can no longer skip the same payment twice
+- Loan history no longer counts skipped EMIs as repayments
+- One-time plans read "One-time" instead of "Every 1 once"
+- Google Play still asks you to confirm an update once

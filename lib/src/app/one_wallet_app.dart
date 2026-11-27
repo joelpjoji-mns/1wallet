@@ -16,6 +16,7 @@ import '../services/native_widget_sync_service.dart';
 import '../startup/startup_state.dart';
 import '../security/app_lock.dart';
 import '../features/updates/play_store_update_service.dart';
+import '../features/updates/play_update_sheet.dart';
 
 class OneWalletApp extends ConsumerStatefulWidget {
   const OneWalletApp({super.key});
@@ -168,6 +169,12 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
       ref
           .read(cloudSyncControllerProvider.notifier)
           .checkAndTriggerSync(fromResume: true);
+      // Coming back to a backgrounded app on a new day counts as an open.
+      final startup = ref.read(startupStateProvider);
+      if (!startup.isPending &&
+          startup.destination == StartupDestination.home) {
+        ref.read(playStoreUpdateProvider.notifier).checkOnAppOpen();
+      }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.inactive) {
@@ -211,7 +218,7 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
           ref.read(ledgerProvider),
           theme: activeTheme,
         );
-        ref.read(playStoreUpdateProvider.notifier).checkForUpdate();
+        ref.read(playStoreUpdateProvider.notifier).checkOnAppOpen();
       }
     });
 
@@ -370,7 +377,9 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
             final isTest = WidgetsBinding.instance.runtimeType
                 .toString()
                 .contains('Test');
-            final appLock = AppLockGate(child: child);
+            final appLock = AppLockGate(
+              child: PlayUpdatePromptHost(child: child),
+            );
             final isDark =
                 themeState.themeMode == ThemeMode.dark ||
                 (themeState.themeMode == ThemeMode.system &&
@@ -391,7 +400,9 @@ class _OneWalletAppState extends ConsumerState<OneWalletApp> {
               content: g1455.GlassContentDeclaration.undeclared,
               finish: glassFinish,
               appearance: isDark ? Brightness.dark : Brightness.light,
-              backdrop: isDark ? const Color(0xFF000000) : const Color(0xFFF8FAFC),
+              backdrop: isDark
+                  ? const Color(0xFF000000)
+                  : const Color(0xFFF8FAFC),
               richBackdrop: false,
               child: appLock,
             );

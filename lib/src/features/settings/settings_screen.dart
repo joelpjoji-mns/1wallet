@@ -26,6 +26,7 @@ import 'glass_effect_screen.dart';
 import 'theme_mode_screen.dart';
 import '../updates/app_update_provider.dart';
 import '../updates/play_store_update_service.dart';
+import '../updates/play_update_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -1061,12 +1062,25 @@ class _AppUpdatesSection extends ConsumerWidget {
         onUpdateTap = null;
         break;
       case PlayStoreUpdateStatus.downloading:
+        final fraction = updateState.progress?.fraction;
+        leadingIcon = SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, value: fraction),
+        );
+        statusSubtitle = fraction == null
+            ? 'Downloading update from Google Play...'
+            : 'Downloading update... ${(fraction * 100).floor()}%';
+        trailingWidget = null;
+        onUpdateTap = () => showPlayUpdateSheet(context);
+        break;
+      case PlayStoreUpdateStatus.installing:
         leadingIcon = const SizedBox(
           width: 20,
           height: 20,
           child: CircularProgressIndicator(strokeWidth: 2),
         );
-        statusSubtitle = 'Downloading update from Google Play...';
+        statusSubtitle = 'Installing update...';
         trailingWidget = null;
         onUpdateTap = null;
         break;
@@ -1082,8 +1096,7 @@ class _AppUpdatesSection extends ConsumerWidget {
               .completeFlexibleUpdate(),
           child: const Text('Restart'),
         );
-        onUpdateTap = () =>
-            ref.read(playStoreUpdateProvider.notifier).completeFlexibleUpdate();
+        onUpdateTap = () => showPlayUpdateSheet(context);
         break;
       case PlayStoreUpdateStatus.updateAvailable:
         leadingIcon = Icon(
@@ -1092,12 +1105,10 @@ class _AppUpdatesSection extends ConsumerWidget {
         );
         statusSubtitle = 'New update available on Google Play';
         trailingWidget = FilledButton(
-          onPressed: () =>
-              ref.read(playStoreUpdateProvider.notifier).startFlexibleUpdate(),
+          onPressed: () => showPlayUpdateSheet(context),
           child: const Text('Update'),
         );
-        onUpdateTap = () =>
-            ref.read(playStoreUpdateProvider.notifier).startFlexibleUpdate();
+        onUpdateTap = () => showPlayUpdateSheet(context);
         break;
       case PlayStoreUpdateStatus.upToDate:
         leadingIcon = Icon(
@@ -1110,12 +1121,12 @@ class _AppUpdatesSection extends ConsumerWidget {
         trailingWidget = TextButton(
           onPressed: () => ref
               .read(playStoreUpdateProvider.notifier)
-              .checkForUpdate(autoTrigger: true),
+              .checkForUpdate(showPrompt: true),
           child: const Text('Check'),
         );
         onUpdateTap = () => ref
             .read(playStoreUpdateProvider.notifier)
-            .checkForUpdate(autoTrigger: true);
+            .checkForUpdate(showPrompt: true);
         break;
       case PlayStoreUpdateStatus.failed:
         leadingIcon = Icon(
@@ -1126,12 +1137,12 @@ class _AppUpdatesSection extends ConsumerWidget {
         trailingWidget = TextButton(
           onPressed: () => ref
               .read(playStoreUpdateProvider.notifier)
-              .checkForUpdate(autoTrigger: true),
+              .checkForUpdate(showPrompt: true),
           child: const Text('Retry'),
         );
         onUpdateTap = () => ref
             .read(playStoreUpdateProvider.notifier)
-            .checkForUpdate(autoTrigger: true);
+            .checkForUpdate(showPrompt: true);
         break;
       case PlayStoreUpdateStatus.notSupported:
         leadingIcon = const Icon(Icons.info_outline_rounded);
@@ -1145,12 +1156,12 @@ class _AppUpdatesSection extends ConsumerWidget {
         trailingWidget = TextButton(
           onPressed: () => ref
               .read(playStoreUpdateProvider.notifier)
-              .checkForUpdate(autoTrigger: true),
+              .checkForUpdate(showPrompt: true),
           child: const Text('Check'),
         );
         onUpdateTap = () => ref
             .read(playStoreUpdateProvider.notifier)
-            .checkForUpdate(autoTrigger: true);
+            .checkForUpdate(showPrompt: true);
         break;
     }
 

@@ -4,6 +4,9 @@ import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugins.firebase.firestore.FlutterFirebaseFirestorePlugin
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.install.InstallStateUpdatedListener
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -126,6 +129,37 @@ class MainActivity : FlutterFragmentActivity() {
                 }
             }
         }
+		EventChannel(flutterEngine.dartExecutor.binaryMessenger,
+			"com.joelpjoji.one.wallet/play_update_progress").setStreamHandler(
+			object : EventChannel.StreamHandler {
+				private var listener: InstallStateUpdatedListener? = null
+				private val manager by lazy { AppUpdateManagerFactory.create(applicationContext) }
+
+				override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+					val sink = events ?: return
+					val update = InstallStateUpdatedListener { state ->
+						val payload = mapOf(
+							"status" to state.installStatus(),
+							"bytesDownloaded" to state.bytesDownloaded(),
+							"totalBytes" to state.totalBytesToDownload(),
+							"errorCode" to state.installErrorCode()
+						)
+						runOnUiThread { sink.success(payload) }
+					}
+					listener = update
+					try {
+						manager.registerListener(update)
+					} catch (error: Exception) {
+						sink.error("PLAY_UPDATE_UNAVAILABLE", error.message, null)
+					}
+				}
+
+				override fun onCancel(arguments: Any?) {
+					listener?.let { runCatching { manager.unregisterListener(it) } }
+					listener = null
+				}
+			}
+		)
 		if (!flutterEngine.plugins.has(FlutterFirebaseFirestorePlugin::class.java)) {
 			flutterEngine.plugins.add(FlutterFirebaseFirestorePlugin())
 		}
