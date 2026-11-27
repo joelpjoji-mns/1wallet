@@ -2854,6 +2854,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     required DateTime receivedAt,
     required String? matchedAccountId,
     Iterable<CaptureCandidate> additionalCandidates = const [],
+    bool skipReviewed = false,
   }) {
     bool sameRawText(CaptureCandidate c) =>
         c.rawText == parsed.rawText &&
@@ -2876,6 +2877,19 @@ class LedgerController extends StateNotifier<LedgerState> {
           matchedId: c.id,
           matchedType: 'candidate',
         );
+      }
+    }
+    // Rescans of messages that were already confirmed or dismissed must not
+    // bring them back into Review.
+    if (skipReviewed) {
+      for (final c in state.captureCandidates) {
+        if (c.status != 'pending' && sameRawText(c)) {
+          return (
+            kind: _CaptureDuplicateKind.reviewedText,
+            matchedId: c.id,
+            matchedType: 'candidate',
+          );
+        }
       }
     }
 
@@ -3200,6 +3214,7 @@ class LedgerController extends StateNotifier<LedgerState> {
     Iterable<CaptureCandidate> additionalCandidates = const [],
     String? nativeMatchedAmount,
     String? nativeMatchedTriggerWord,
+    bool skipReviewed = false,
   }) {
     final rawTxDate = extractTransactionDateTime(rawText);
     final actualReceivedAt = (rawTxDate ?? receivedAt ?? DateTime.now())
@@ -3317,6 +3332,7 @@ class LedgerController extends StateNotifier<LedgerState> {
       receivedAt: actualReceivedAt,
       matchedAccountId: matchedAccountId,
       additionalCandidates: additionalCandidates,
+      skipReviewed: skipReviewed,
     );
     if (duplicateMatch != null &&
         !(forceQueue &&
@@ -3375,8 +3391,9 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<List<CaptureImportResult>> importSmsMessagesBatchDetailed(
-    List<({String text, DateTime receivedAt})> messages,
-  ) => _runMutation(() async {
+    List<({String text, DateTime receivedAt})> messages, {
+    bool skipReviewed = false,
+  }) => _runMutation(() async {
     final results = <CaptureImportResult>[];
     final newCandidates = <CaptureCandidate>[];
     final updatedAccounts = <String, Account>{};
@@ -3406,6 +3423,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         ignoreWords: state.preferences.smsIgnoreWords,
         receivedAt: message.receivedAt,
         additionalCandidates: newCandidates,
+        skipReviewed: skipReviewed,
       );
       if (result.queued && result.candidate != null) {
         newCandidates.add(result.candidate!);
@@ -3445,8 +3463,9 @@ class LedgerController extends StateNotifier<LedgerState> {
   }
 
   Future<List<CaptureImportResult>> importNotificationsBatchDetailed(
-    List<({String text, DateTime receivedAt, String? sender})> notifications,
-  ) => _runMutation(() async {
+    List<({String text, DateTime receivedAt, String? sender})> notifications, {
+    bool skipReviewed = false,
+  }) => _runMutation(() async {
     final results = <CaptureImportResult>[];
     final newCandidates = <CaptureCandidate>[];
     final updatedAccounts = <String, Account>{};
@@ -3476,6 +3495,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         ignoreWords: state.preferences.notificationIgnoreWords,
         receivedAt: notification.receivedAt,
         additionalCandidates: newCandidates,
+        skipReviewed: skipReviewed,
       );
       if (result.queued && result.candidate != null) {
         newCandidates.add(result.candidate!);
@@ -4772,6 +4792,7 @@ enum _CaptureDuplicateKind {
   pendingAmount,
   postedTransaction,
   batch,
+  reviewedText,
 }
 
 CaptureBlockReason _reasonForDuplicate(_CaptureDuplicateKind kind) {
@@ -4781,5 +4802,6 @@ CaptureBlockReason _reasonForDuplicate(_CaptureDuplicateKind kind) {
     _CaptureDuplicateKind.postedTransaction =>
       CaptureBlockReason.duplicatePosted,
     _CaptureDuplicateKind.batch => CaptureBlockReason.duplicateBatch,
+    _CaptureDuplicateKind.reviewedText => CaptureBlockReason.duplicatePosted,
   };
 }

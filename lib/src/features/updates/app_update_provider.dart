@@ -180,6 +180,29 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.21',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.21',
+    versionCode: 21,
+    runtimeVersion: '1.0.21',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-27T14:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Pull down in Review to scan the last day of SMS and notifications',
+      ],
+      bugFixes: const [
+        'Confirmed or dismissed messages never return to Review on rescan',
+      ],
+      notes: const ['Only scans capture sources you have switched on'],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.20',
     platform: 'android',
     channel: 'stable',

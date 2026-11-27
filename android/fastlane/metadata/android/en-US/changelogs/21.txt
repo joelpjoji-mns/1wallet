@@ -1,0 +1,3 @@
+- Pull down in Review to scan the last day of SMS and notifications
+- Confirmed or dismissed messages never return to Review on rescan
+- Only scans capture sources you have switched on

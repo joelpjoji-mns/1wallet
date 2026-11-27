@@ -7,6 +7,7 @@ import 'package:one_wallet_flutter/src/capture/capture_pipeline.dart';
 import 'package:one_wallet_flutter/src/capture/message_parser.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/capture/capture_diagnostics.dart';
+import 'package:one_wallet_flutter/src/features/capture/device_capture_rescan.dart';
 import 'package:one_wallet_flutter/src/features/capture/sms_inbox_reader.dart';
 
 void main() {
@@ -346,4 +347,150 @@ A/c no. XX0655
       );
     },
   );
+
+  group('Review pull-to-refresh rescan', () {
+    const sms = 'HDFC Bank: INR 890.00 debited from card XX1234 at SWIGGY.';
+    const notification = 'Google Pay: Paid INR 250.00 to Starbucks on UPI';
+
+    DeviceCaptureSources fakeSources({
+      required List<int?> smsMinDates,
+      required List<List<String>?> notificationPackages,
+      bool smsGranted = true,
+      bool notificationGranted = true,
+    }) {
+      final at = DateTime.now().toIso8601String();
+      return DeviceCaptureSources(
+        smsAvailable: () async => true,
+        smsPermission: () async => AndroidSmsPermissionState(
+          read: AndroidSmsPermissionStatus.granted,
+          receive: AndroidSmsPermissionStatus.granted,
+          overall: smsGranted ? 'granted' : 'denied',
+        ),
+        readSms: ({int maxCount = 200, int? minDate, int? maxDate}) async {
+          smsMinDates.add(minDate);
+          return [AndroidSmsInboxMessage(id: '1', body: sms, receivedAt: at)];
+        },
+        notificationAccess: () async => notificationGranted,
+        readNotifications: ({List<String>? packageNames}) async {
+          notificationPackages.add(packageNames);
+          return [
+            AndroidActiveNotification(
+              id: 'n1',
+              packageName: 'com.google.android.apps.nbu.paisa.user',
+              appName: 'Google Pay',
+              title: 'Google Pay',
+              text: notification,
+              body: notification,
+              receivedAt: at,
+            ),
+          ];
+        },
+      );
+    }
+
+    test(
+      'adds the last day of SMS and active notifications once, and never brings back dismissed items',
+      () async {
+        final controller = await controllerWithAccount();
+        addTearDown(controller.dispose);
+        final minDates = <int?>[];
+        final packages = <List<String>?>[];
+        final sources = fakeSources(
+          smsMinDates: minDates,
+          notificationPackages: packages,
+        );
+        final now = DateTime(2026, 11, 27, 12);
+
+        final added = await rescanRecentDeviceCaptures(
+          controller,
+          controller.state.preferences,
+          sources: sources,
+          now: now,
+        );
+        expect(added, 2);
+        expect(
+          minDates.single,
+          now.subtract(const Duration(days: 1)).millisecondsSinceEpoch,
+        );
+        expect(
+          packages.single,
+          controller.state.preferences.notificationTargetPackages,
+        );
+
+        expect(
+          await rescanRecentDeviceCaptures(
+            controller,
+            controller.state.preferences,
+            sources: sources,
+          ),
+          0,
+        );
+        for (final candidate in controller.state.captureCandidates) {
+          await controller.updateCaptureCandidateStatus(
+            candidate.id,
+            'rejected',
+          );
+        }
+        expect(
+          await rescanRecentDeviceCaptures(
+            controller,
+            controller.state.preferences,
+            sources: sources,
+          ),
+          0,
+        );
+        expect(controller.state.captureCandidates, hasLength(2));
+        expect(
+          controller.state.captureCandidates.where(
+            (c) => c.status == 'pending',
+          ),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
+      'skips sources that are switched off or not permitted without prompting',
+      () async {
+        final controller = await controllerWithAccount();
+        addTearDown(controller.dispose);
+        final minDates = <int?>[];
+        final packages = <List<String>?>[];
+
+        expect(
+          await rescanRecentDeviceCaptures(
+            controller,
+            controller.state.preferences,
+            sources: fakeSources(
+              smsMinDates: minDates,
+              notificationPackages: packages,
+              smsGranted: false,
+              notificationGranted: false,
+            ),
+          ),
+          0,
+        );
+        await controller.updatePreferencesWith(
+          (p) => p.copyWith(
+            smsCaptureEnabled: false,
+            notificationCaptureEnabled: false,
+          ),
+        );
+        expect(
+          await rescanRecentDeviceCaptures(
+            controller,
+            controller.state.preferences,
+            sources: fakeSources(
+              smsMinDates: minDates,
+              notificationPackages: packages,
+            ),
+          ),
+          0,
+        );
+        expect(minDates, isEmpty);
+        expect(packages, isEmpty);
+        expect(controller.state.captureCandidates, isEmpty);
+      },
+    );
+  });
 }

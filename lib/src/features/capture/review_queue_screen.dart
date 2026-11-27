@@ -17,6 +17,7 @@ import '../notifications/notification_engine.dart';
 import '../onboarding/contextual_discovery_hint.dart';
 import '../onboarding/feature_discovery_guide.dart';
 import 'capture_queue.dart';
+import 'device_capture_rescan.dart';
 
 class TransferCandidatePair {
   const TransferCandidatePair({
@@ -64,6 +65,15 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  Future<void> _pullToRefresh() async {
+    await _refreshSpooled();
+    if (!mounted) return;
+    await rescanRecentDeviceCaptures(
+      ref.read(ledgerProvider.notifier),
+      ref.read(ledgerProvider).preferences,
+    );
   }
 
   Future<void> _refreshSpooled() async {
@@ -170,7 +180,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           ),
         ],
         scrollView: RefreshIndicator(
-          onRefresh: _refreshSpooled,
+          onRefresh: _pullToRefresh,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [

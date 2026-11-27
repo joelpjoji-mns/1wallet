@@ -10,7 +10,8 @@ Provides UI for capturing expenses from paper receipts (via camera/gallery OCR),
 | File | Responsibilities |
 | :--- | :--- |
 | `receipt_ocr.dart` | Camera/gallery image picker and Google ML Kit Text Recognition integration. Extracts merchant, date, and grand total. |
-| `review_queue_screen.dart` | Interactive queue where pending candidates can be accepted (converting into a `TransactionRecord`), edited, or discarded. |
+| `review_queue_screen.dart` | Interactive queue where pending candidates can be accepted (converting into a `TransactionRecord`), edited, or discarded. Pull-to-refresh also runs `rescanRecentDeviceCaptures`. |
+| `device_capture_rescan.dart` | Silent Review pull-to-refresh rescan: last 1 day of SMS plus active notifications from monitored apps, only when the capture switch is on and permission is already granted (never prompts). Uses `skipReviewed` so confirmed/dismissed messages never return. |
 | `capture_detail_screen.dart` | Deep-dive screen to inspect a single capture candidate's extracted fields and raw source text. |
 | `sms_capture_screen.dart` | UI for scanning device SMS inbox and reviewing detected banking texts. |
 | `sms_inbox_reader.dart` | Platform integration to read Android SMS inbox with permission handling. |

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.21] - 2026-11-27
+
+### Added
+- Pulling down to refresh the Review inbox now also scans the last day of SMS and the active notifications from monitored apps, adding any new transactions. It runs silently, only for capture sources that are switched on and already permitted, and never brings back items that were already confirmed or dismissed.
+
 ## [1.0.20] - 2026-11-27
 
 ### Fixed
