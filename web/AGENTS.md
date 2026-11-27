@@ -11,6 +11,8 @@ Houses the web shell for running 1Wallet as a Flutter Web application: HTML entr
   - Web entrypoint configuring Flutter Web bootstrap script (`flutter.js`), meta viewport, theme color, and splash screen HTML/CSS.
 - **`manifest.json`**:
   - Web App Manifest specifying app name (`1Wallet`), icons, start URL, display mode (`standalone`), and theme colors.
+- **`prototype/`**:
+  - Screen Studio shell (`index.html`, `studio.js`). It hosts the real app, built from `lib/src/app/prototype_main.dart`, at phone sizes for visual testing. It is local-only and never deployed. See `prototype/README.md`.
 - **`splash/`**:
   - Native CSS splash assets ensuring a smooth loading screen while the WebAssembly / JavaScript engine downloads.
 
@@ -29,3 +31,5 @@ Houses the web shell for running 1Wallet as a Flutter Web application: HTML entr
 
 - [ ] Check responsive meta tags and viewport definitions to ensure mobile browser bars don't clip content.
 - [ ] Confirm web builds run cleanly via `flutter build web --release`.
+- [ ] For UI changes, rebuild and check Screen Studio (`.\scripts\build-prototype.ps1`, `node scripts\serve-prototype.mjs`) following `prototype/README.md`.
+- [ ] Add new app routes to the `screens` list in `prototype/studio.js`.

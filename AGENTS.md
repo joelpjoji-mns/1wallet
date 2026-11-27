@@ -57,6 +57,7 @@ Every functional directory in this codebase maintains its own dedicated `AGENTS.
 | `lib/src/theme/` | Theme controller, Material 3 color palettes | [theme/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/theme/AGENTS.md) |
 | `lib/src/utils/` | Security key store, currency math, formatting | [utils/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/utils/AGENTS.md) |
 | `lib/src/widgets/` | Reusable UI widgets, navigation chrome, dialogs | [widgets/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/lib/src/widgets/AGENTS.md) |
+| `web/prototype/` | Screen Studio: the real app rendered in the browser at phone sizes for visual testing | [web/prototype/README.md](file:///c:/Users/Joel/Documents/Github/1wallet/web/prototype/README.md) |
 | `pwa/` | Web companion Progressive Web App (React + TS) | [pwa/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/pwa/AGENTS.md) |
 | `firebase/` | Firestore security rules & automated rules tests | [firebase/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/firebase/AGENTS.md) |
 | `scripts/` | Release manifest & update publishing scripts | [scripts/AGENTS.md](file:///c:/Users/Joel/Documents/Github/1wallet/scripts/AGENTS.md) |
@@ -93,6 +94,11 @@ When modifying any part of this repository, you must observe these strict system
    - Every deployment pipeline automatically packages and publishes localized release notes (`whatsNewDirectory`) to Google Play Store and Fastlane metadata (`distribution/whatsnew/whatsnew-en-US` and `android/fastlane/metadata/android/en-US/changelogs/`).
    - Releases must never be published without release notes.
 
+7. **Visual Verification for Every UI Change**:
+   - Any change to screens, widgets, design tokens, themes, layout or user-visible behaviour must be checked in **Screen Studio** (`web/prototype/`) before the task is done. Passing `flutter test` alone is not enough.
+   - Keep Screen Studio running during UI development and rebuild after the final edit. Check each touched screen at 390, 360 and 320 widths, in AMOLED and Light, with the sample and empty wallets.
+   - Keep Screen Studio complete: register new routes in `web/prototype/studio.js` and add fictitious sample data for new scenarios in `lib/src/app/prototype_sample.dart`.
+
 ---
 
 ## 🧪 Testing and Verification Protocol
@@ -108,3 +114,22 @@ flutter test test/<test_file_name>_test.dart
 # Run Firebase security rules tests
 cd firebase && npm test
 ```
+
+Before finishing any task, complete every step that applies:
+
+1. **Static checks:** `flutter analyze` must report no issues. Run `dart format` on changed Dart files.
+2. **Focused tests:** run the test files that cover the changed code, and add tests for new behaviour or fixed bugs.
+3. **Shared UI tests:** for any UI change, also run `test/ui_route_matrix_test.dart`, `test/ui_design_system_guard_test.dart` and `test/app_kit_helpers_test.dart`.
+4. **Visual verification in Screen Studio (required for UI changes):**
+   ```powershell
+   .\scripts\build-prototype.ps1      # rebuild after your final edit
+   node scripts\serve-prototype.mjs   # reuse it if http://127.0.0.1:4173 already responds
+   ```
+   - Open every changed screen and every screen that uses a changed shared widget.
+   - Check 390, 360 and 320 widths, AMOLED and Light, and the sample and empty wallets.
+   - Scroll to the bottom, open the affected dialogs and sheets, and tap through the flow.
+   - Look for overflow, clipped or wrapped labels, misalignment, uneven spacing and regressions on neighbouring screens.
+   - The full checklist is in [web/prototype/README.md](file:///c:/Users/Joel/Documents/Github/1wallet/web/prototype/README.md).
+5. **Close the loop:** for every visual bug, write a widget test that fails because of it, fix the bug, then rebuild and check again.
+6. **Full suite** before a release or a broad change: `flutter test`. Report failures that existed before your change instead of hiding them.
+7. **Evidence:** report each command run with its result, and the screens, sizes, themes and wallet states checked visually.

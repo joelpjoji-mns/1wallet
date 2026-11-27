@@ -22,6 +22,24 @@ uninstall the app and delete its local data. Always specify the device explicitl
 `flutter test` defaults to uninstalling unless `--no-uninstall` is passed;
 `flutter drive` defaults to uninstalling unless `--keep-app-running` is passed.
 
+### Visual verification (required for UI changes)
+
+Automated tests are necessary but not sufficient for UI work. Every UI change
+must also be checked visually in **Screen Studio**, the real Flutter app
+rendered in the browser at phone sizes with sample data:
+
+```powershell
+.\scripts\build-prototype.ps1      # rebuild after the final edit
+node scripts\serve-prototype.mjs   # http://127.0.0.1:4173 (reuse if already running)
+```
+
+Check each touched screen, and the screens that share a changed widget, at
+390, 360 and 320 widths, in AMOLED and Light, with the sample and empty
+wallets. Scroll through each screen, open its dialogs and sheets, and tap
+through the flow. When the visual pass finds a bug, add a widget test that
+reproduces it before fixing it. The full checklist and automation tips are in
+`web/prototype/README.md`.
+
 ---
 
 ## 🏗️ Organization & Key Helpers
@@ -51,6 +69,7 @@ uninstall the app and delete its local data. Always specify the device explicitl
 | `ui_route_matrix_test.dart` | Renders inventoried populated, empty-wallet, and gated routes across selected phone, landscape, tablet, theme, and text-scale variants. Scrolls available vertical viewports and checks rendered button labels; also samples dialogs, a keyboard, and offline consent. It filters the known `semantics.parentDataDirty` harness error and is not exhaustive interaction coverage. |
 | `ui_design_system_guard_test.dart` | Lint-style guard: feature screens may not use raw radii, font sizes or families, hex/named colours, inline `SnackBar`s, raw bottom sheets, Material `Card`/`ListTile`/`Switch`/`AppBar`, or extra `Scaffold`s. |
 | `app_kit_helpers_test.dart` | Canonical helpers: `showAppSnackBar`, `showAppConfirmDialog`, `showAppSheet`, `AppLoadingState`, `EmptyState`, `AppGroupedSection`/`AppGroupedTile`. |
+| `prototype_runtime_test.dart` | Screen Studio safety and coverage: prototype keys stay in memory, sample references resolve, the demo inbox covers every alert type, and gated UI opens without changing production startup. |
 | `accessibility/a11y_guidelines_test.dart` | Automated WCAG contrast (`textContrastGuideline`) and tap target (`androidTapTargetGuideline`) audits. |
 
 ---

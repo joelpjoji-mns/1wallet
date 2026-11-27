@@ -56,6 +56,13 @@ Flutter may install or uninstall the app and delete local data; `flutter test`
 defaults to uninstalling unless `--no-uninstall` is passed, and `flutter drive`
 does so unless `--keep-app-running` is passed.
 
+**Visual verification is part of every UI change.** In addition to the tiers
+above, build and run Screen Studio (`.\scripts\build-prototype.ps1`, then
+`node scripts\serve-prototype.mjs`). Check each changed screen at 390, 360 and
+320 widths, in AMOLED and Light themes, with the sample and empty wallets.
+Every visual bug becomes a regression test. See `web/prototype/README.md` for
+the full checklist.
+
 ---
 
 ## 🔒 Security & Invariant Protocols

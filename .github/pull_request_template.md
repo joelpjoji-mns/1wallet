@@ -30,7 +30,10 @@ Fill at least one item below unless this PR is labeled `skip-release`. These ent
 - [ ] Offline Guarantee: Offline mode verified with zero network calls or Firestore operations.
 - [ ] Observability: No unredacted monetary figures, tokens, or PII in logs or analytics.
 - [ ] Test Pyramid: Unit, widget, BDD executable specs (`flutter test test/bdd_suite_test.dart`), and a11y tests pass cleanly.
+- [ ] Visual Verification: UI changes checked in Screen Studio (`web/prototype/README.md`) at 390, 360 and 320 widths, in AMOLED and Light, with the sample and empty wallets. New routes are added to `web/prototype/studio.js`.
 
 ## Verification Evidence
+
+<!-- List each command with its result. For UI changes, list the screens, sizes, themes and wallet states checked in Screen Studio, with screenshots. -->
 
 -

@@ -14,6 +14,8 @@ Contains Node.js automation scripts supporting CI/CD, in-app update manifest gen
 | `mobile-release-notes.mjs` | Formats and cleans markdown changelogs for GitHub releases. |
 | `validate-pr-release-notes.mjs` | CI check verifying that pull requests contain appropriate changelog entries. |
 | `validate-android-notification-resources.mjs` | Validates Android APK icons and notification resources. |
+| `build-prototype.ps1` | Builds Screen Studio into `build/prototype`: the real app from `lib/src/app/prototype_main.dart` built for the browser, without the environment asset, plus the studio shell. Rerun after every UI edit. |
+| `serve-prototype.mjs` | Serves `build/prototype` at `http://127.0.0.1:4173` (optional port argument) for visual testing. Local only. |
 | `android-apk-tools.mjs` | Utilities for inspecting and parsing Android APK badging and build tools. |
 
 ---

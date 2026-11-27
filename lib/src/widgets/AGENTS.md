@@ -57,4 +57,5 @@ Contains shared visual widgets designed around 1Wallet's signature frosted glass
 
 - [ ] Run `test/app_kit_helpers_test.dart`, `test/ui_design_system_guard_test.dart`, `test/ui_route_matrix_test.dart`, `test/brand_frosted_panel_test.dart`, `test/home_dashboard_tiles_opaque_surface_test.dart`, and `test/main_shell_privacy_toggle_semantics_test.dart`.
 - [ ] Ensure `BottomIslandNav` hit testing does not capture touches outside its floating pill boundaries.
+- [ ] Check every screen that uses the changed widget in Screen Studio (`web/prototype/README.md`) at 390, 360 and 320 widths, in AMOLED and Light. A shared widget change affects many screens at once.
 - [ ] A new shared widget belongs in `app_kit.dart` only if at least two screens need it; wrap existing glass/Material primitives instead of building a parallel style.
