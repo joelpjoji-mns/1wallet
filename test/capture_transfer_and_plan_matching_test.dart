@@ -373,10 +373,18 @@ A/c no. XX0655
           parsedAmount: const Money(amountMinor: 3000000, currency: 'INR'),
           transactionType: 'expense',
           suggestedAccountId: 'acc-groww',
+          suggestedCategoryId: 'cat-investments',
         );
 
         final seedState = emptyLedgerState().copyWith(
           accounts: [checking],
+          categories: const [
+            Category(
+              id: 'cat-investments',
+              name: 'Investments',
+              kind: 'expense',
+            ),
+          ],
           transactions: [plannedTx],
           captureCandidates: [candidate],
           preferences: const LedgerPreferences(
@@ -420,7 +428,7 @@ A/c no. XX0655
         expect(find.text('Dismiss'), findsNWidgets(2));
         expect(find.text('Pay Plan'), findsOneWidget);
         expect(find.text('Confirm'), findsOneWidget);
-        expect(find.byIcon(Icons.block_rounded), findsOneWidget);
+        expect(find.text('Block'), findsOneWidget);
 
         final actionGroup = find.byKey(
           const ValueKey('capture-candidate-actions'),
@@ -465,6 +473,28 @@ A/c no. XX0655
             1,
           ),
           reason: 'Confirm should share a row instead of wrapping by itself',
+        );
+        final chipRow = find.byKey(
+          const ValueKey('capture-candidate-chip-row'),
+        );
+        expect(
+          tester
+              .getCenter(
+                find.descendant(of: chipRow, matching: find.text('Axis Bank')),
+              )
+              .dy,
+          closeTo(
+            tester
+                .getCenter(
+                  find.descendant(
+                    of: chipRow,
+                    matching: find.textContaining('Investments'),
+                  ),
+                )
+                .dy,
+            1,
+          ),
+          reason: 'Account and category chips should sit side by side',
         );
 
         // Verify no Flutter exceptions / overflows occurred

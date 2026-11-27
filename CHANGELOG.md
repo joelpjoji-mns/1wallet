@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The account editor's "Show on home" switch is now a "Hide from All accounts" tick box, which keeps the account off the All accounts home tile.
 - Close account and Delete account sit side by side on one line. On narrow phones the labels shorten to Close and Delete.
+- Review inbox cards are about a third shorter with the same details: one-line titles, no divider, and an equal-width action row (Dismiss/Confirm/View) along the bottom instead of small pills at the edges.
+- Captured transactions in the Review inbox show the account and suggested category side by side on one line.
 
 ## [1.0.18] - 2026-11-27
 

@@ -278,7 +278,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     // liquid_glass_widgets guidance); scrolling list rows stay opaque.
     return AppPanel(
       onTap: () => context.push('/capture/${candidate.id}'),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -300,7 +300,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     candidate,
                     matchedPlan: matchedPlan,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
@@ -339,46 +339,74 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               matchedPlan != null ||
               candidate.suggestedCategoryId != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: [
-                if (candidate.suggestedAccountId != null)
-                  _ReviewQueueChip(
-                    label:
-                        state.accounts
-                            .where((a) => a.id == candidate.suggestedAccountId)
-                            .firstOrNull
-                            ?.name ??
-                        'Account',
-                    icon: const Icon(Icons.account_balance_wallet_rounded),
-                    iconColor: scheme.primary,
-                    semanticLabel:
-                        'Account: ${state.accounts.where((a) => a.id == candidate.suggestedAccountId).firstOrNull?.name ?? 'Account'}',
-                  ),
-                if (matchedPlan != null)
-                  _ReviewQueueChip(
-                    label: matchedPlan.name?.isNotEmpty == true
-                        ? 'Planned: ${matchedPlan.name}'
-                        : 'Planned payment detected',
-                    icon: const Icon(Icons.event_repeat_rounded),
-                    iconColor: scheme.tertiary,
-                    labelStyle: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.tertiary,
-                    ),
-                    semanticLabel:
-                        'Planned payment detected: ${matchedPlan.name ?? ''}',
-                  ),
-                if (candidate.suggestedCategoryId != null)
-                  _ReviewQueueChip(
-                    label: _categoryChipText(state, candidate),
-                    icon: const Icon(Icons.category_rounded),
-                    iconColor: scheme.secondary,
-                    semanticLabel:
-                        'Category: ${_categoryChipText(state, candidate)}',
-                  ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final accountName =
+                    state.accounts
+                        .where((a) => a.id == candidate.suggestedAccountId)
+                        .firstOrNull
+                        ?.name ??
+                    'Account';
+                final accountChip = candidate.suggestedAccountId == null
+                    ? null
+                    : _ReviewQueueChip(
+                        label: accountName,
+                        icon: const Icon(Icons.account_balance_wallet_rounded),
+                        iconColor: scheme.primary,
+                        semanticLabel: 'Account: $accountName',
+                      );
+                final categoryChip = candidate.suggestedCategoryId == null
+                    ? null
+                    : _ReviewQueueChip(
+                        label: _categoryChipText(state, candidate),
+                        icon: const Icon(Icons.category_rounded),
+                        iconColor: scheme.secondary,
+                        semanticLabel:
+                            'Category: ${_categoryChipText(state, candidate)}',
+                      );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (accountChip != null || categoryChip != null)
+                      Row(
+                        key: const ValueKey('capture-candidate-chip-row'),
+                        children: [
+                          if (accountChip != null)
+                            // Keep room for the category chip on the same line.
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: categoryChip == null
+                                    ? constraints.maxWidth
+                                    : constraints.maxWidth * 0.45,
+                              ),
+                              child: accountChip,
+                            ),
+                          if (accountChip != null && categoryChip != null)
+                            const SizedBox(width: AppSpacing.xs),
+                          if (categoryChip != null)
+                            Flexible(child: categoryChip),
+                        ],
+                      ),
+                    if (matchedPlan != null) ...[
+                      if (accountChip != null || categoryChip != null)
+                        const SizedBox(height: AppSpacing.xs),
+                      _ReviewQueueChip(
+                        label: matchedPlan.name?.isNotEmpty == true
+                            ? 'Planned: ${matchedPlan.name}'
+                            : 'Planned payment detected',
+                        icon: const Icon(Icons.event_repeat_rounded),
+                        iconColor: scheme.tertiary,
+                        labelStyle: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: scheme.tertiary,
+                        ),
+                        semanticLabel:
+                            'Planned payment detected: ${matchedPlan.name ?? ''}',
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ],
 
@@ -394,7 +422,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               ),
               child: PrivacyText(
                 candidate.rawText!,
-                maxLines: 3,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
@@ -405,74 +433,56 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             ),
           ],
 
-          // ── Divider between content and action buttons ──────────────
+          // ── Actions ─────────────────────────────────────────────────
           if (candidate.status == 'pending') ...[
-            const SizedBox(height: AppSpacing.md),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: scheme.outlineVariant.withValues(alpha: 0.4),
-            ),
             const SizedBox(height: AppSpacing.sm),
-
-            SizedBox(
+            _ReviewCardActions(
               key: const ValueKey('capture-candidate-actions'),
-              width: double.infinity,
-              child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _showBlockDialog(context, ref, candidate),
-                    icon: const Icon(Icons.block_rounded, size: 16),
-                    label: const Text('Block', softWrap: false),
-                    style: AppButtonStyles.destructiveText(
+              actions: [
+                _ReviewAction(
+                  label: 'Block',
+                  icon: Icons.block_rounded,
+                  onPressed: () => _showBlockDialog(context, ref, candidate),
+                  style: AppButtonStyles.destructiveText(context),
+                ),
+                if (matchedPlan != null)
+                  _ReviewAction(
+                    label: 'Pay Plan',
+                    icon: Icons.event_repeat_rounded,
+                    onPressed: () async {
+                      final router = GoRouter.of(context);
+                      await router.push(
+                        '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
+                      );
+                    },
+                    style: AppButtonStyles.accentGlass(
                       context,
-                    ).merge(AppButtonStyles.compact(context)),
-                  ),
-                  if (matchedPlan != null)
-                    FilledButton.tonalIcon(
-                      onPressed: () async {
-                        final router = GoRouter.of(context);
-                        await router.push(
-                          '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
-                        );
-                      },
-                      icon: const Icon(Icons.event_repeat_rounded, size: 16),
-                      label: const Text('Pay Plan', softWrap: false),
-                      style: AppButtonStyles.accentGlass(
-                        context,
-                        scheme.tertiary,
-                      ).merge(AppButtonStyles.compact(context)),
+                      scheme.tertiary,
                     ),
-                  TextButton.icon(
-                    onPressed: () => _updateCandidateStatus(
-                      context,
-                      ref,
-                      candidate.id,
-                      'rejected',
-                    ),
-                    icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('Dismiss', softWrap: false),
-                    style: AppButtonStyles.destructiveText(
-                      context,
-                    ).merge(AppButtonStyles.compact(context)),
                   ),
-                  FilledButton.icon(
-                    onPressed: () => _updateCandidateStatus(
-                      context,
-                      ref,
-                      candidate.id,
-                      'approved',
-                    ),
-                    icon: const Icon(Icons.check_rounded, size: 16),
-                    label: const Text('Confirm', softWrap: false),
-                    style: AppButtonStyles.compact(context),
+                _ReviewAction(
+                  label: 'Dismiss',
+                  icon: Icons.close_rounded,
+                  onPressed: () => _updateCandidateStatus(
+                    context,
+                    ref,
+                    candidate.id,
+                    'rejected',
                   ),
-                ],
-              ),
+                  style: AppButtonStyles.destructiveText(context),
+                ),
+                _ReviewAction(
+                  label: 'Confirm',
+                  icon: Icons.check_rounded,
+                  onPressed: () => _updateCandidateStatus(
+                    context,
+                    ref,
+                    candidate.id,
+                    'approved',
+                  ),
+                  filled: true,
+                ),
+              ],
             ),
           ],
         ],
@@ -519,145 +529,138 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   tone.withValues(alpha: 0.12),
                   scheme.surfaceContainerLow,
                 ),
-          padding: EdgeInsets.zero,
+          padding: const EdgeInsets.all(AppSpacing.md),
           onTap: () => _openNotification(context, ref, notification),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: accountColor.withValues(alpha: 0.18),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        accountIcon(account),
-                        size: 22,
-                        color: accountColor,
-                      ),
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: accountColor.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            account.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+                    child: Icon(
+                      accountIcon(account),
+                      size: 18,
+                      color: accountColor,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          account.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
                           ),
-                          const SizedBox(height: AppSpacing.xxxs),
-                          Text(
-                            [
-                              if (account.institution?.isNotEmpty == true)
-                                account.institution!,
-                              if (notification.dueAt != null)
-                                'Due ${_shortDate(state, notification.dueAt!)}',
-                            ].join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (notification.badgeLabel != null) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      _NotificationBadge(
-                        label: notification.badgeLabel!,
-                        color: tone,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (notification.amount != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.xs,
-                    AppSpacing.lg,
-                    AppSpacing.xxs,
-                  ),
-                  child: PrivacyText(
-                    formatMoney(
-                      convertMoneyForDisplay(state, notification.amount!),
-                      state.preferences.locale,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: notification.isOverdue
-                          ? scheme.error
-                          : scheme.onSurface,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: Text(
-                  notification.body,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: scheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-              _ReviewCardActions(
-                secondary: TextButton.icon(
-                  onPressed: () => _dismiss(ref, notification.id),
-                  icon: const Icon(Icons.close_rounded, size: 16),
-                  label: const Text('Dismiss', softWrap: false),
-                  style: AppButtonStyles.compact(context),
-                ),
-                primary: FilledButton.icon(
-                  onPressed: () async {
-                    final cycle = notification.cycleKey ?? dueStatus?.cycleKey;
-                    await ref
-                        .read(ledgerProvider.notifier)
-                        .markCardBillPaid(account.id, cycle);
-                    await _dismiss(ref, notification.id);
-                    if (context.mounted) {
-                      showAppSnackBar(
-                        context,
-                        'Marked ${account.name} bill as paid',
-                        action: SnackBarAction(
-                          label: 'Undo',
-                          onPressed: () {
-                            ref
-                                .read(ledgerProvider.notifier)
-                                .markCardBillPaid(account.id, null);
-                          },
                         ),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.check_rounded, size: 16),
-                  label: const Text('Confirm Paid', softWrap: false),
-                  style: AppButtonStyles.compact(context),
-                ),
+                        Text(
+                          [
+                            if (account.institution?.isNotEmpty == true)
+                              account.institution!,
+                            if (notification.dueAt != null)
+                              'Due ${_shortDate(state, notification.dueAt!)}',
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (notification.badgeLabel != null) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    _NotificationBadge(
+                      label: notification.badgeLabel!,
+                      color: tone,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      notification.body,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (notification.amount != null) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: PrivacyText(
+                          formatMoney(
+                            convertMoneyForDisplay(state, notification.amount!),
+                            state.preferences.locale,
+                          ),
+                          maxLines: 1,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: notification.isOverdue
+                                ? scheme.error
+                                : scheme.onSurface,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _ReviewCardActions(
+                actions: [
+                  _ReviewAction(
+                    label: 'Dismiss',
+                    icon: Icons.close_rounded,
+                    onPressed: () => _dismiss(ref, notification.id),
+                  ),
+                  _ReviewAction(
+                    label: 'Confirm Paid',
+                    icon: Icons.check_rounded,
+                    filled: true,
+                    onPressed: () async {
+                      final cycle =
+                          notification.cycleKey ?? dueStatus?.cycleKey;
+                      await ref
+                          .read(ledgerProvider.notifier)
+                          .markCardBillPaid(account.id, cycle);
+                      await _dismiss(ref, notification.id);
+                      if (context.mounted) {
+                        showAppSnackBar(
+                          context,
+                          'Marked ${account.name} bill as paid',
+                          action: SnackBarAction(
+                            label: 'Undo',
+                            onPressed: () {
+                              ref
+                                  .read(ledgerProvider.notifier)
+                                  .markCardBillPaid(account.id, null);
+                            },
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -700,12 +703,12 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         onTap: () => _openNotification(context, ref, notification),
         child: Stack(
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Row(
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       IconBubble(
@@ -715,95 +718,99 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                             : tone,
                         compact: true,
                       ),
-                      const SizedBox(width: AppSpacing.md),
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              notification.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: notification.read
-                                    ? FontWeight.w600
-                                    : FontWeight.w800,
-                                color: scheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.xxxs),
-                            Text(
-                              notification.body,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: notification.isOverdue
-                                    ? scheme.error
-                                    : scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
                             Row(
                               children: [
-                                Icon(
-                                  Icons.calendar_today_rounded,
-                                  size: 12,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: AppSpacing.xxs),
-                                Flexible(
+                                Expanded(
                                   child: Text(
-                                    metaLabel,
+                                    notification.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodySmall?.copyWith(
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: notification.read
+                                              ? FontWeight.w600
+                                              : FontWeight.w800,
+                                          color: scheme.onSurface,
+                                        ),
+                                  ),
+                                ),
+                                if (!notification.read) ...[
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Icon(
+                                    Icons.fiber_manual_record_rounded,
+                                    size: 10,
+                                    color: tone,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.xxxs),
+                            Wrap(
+                              spacing: AppSpacing.sm,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  notification.body,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: notification.isOverdue
+                                        ? scheme.error
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_today_rounded,
+                                      size: 12,
                                       color: scheme.onSurfaceVariant,
                                     ),
-                                  ),
+                                    const SizedBox(width: AppSpacing.xxs),
+                                    Flexible(
+                                      child: Text(
+                                        metaLabel,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      if (!notification.read) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xs),
-                          child: Icon(
-                            Icons.fiber_manual_record_rounded,
-                            size: 10,
-                            color: tone,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
-                ),
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: scheme.outlineVariant.withValues(alpha: 0.3),
-                ),
-                _ReviewCardActions(
-                  secondary: TextButton.icon(
-                    onPressed: () => _dismiss(ref, notification.id),
-                    icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('Dismiss', softWrap: false),
-                    style: AppButtonStyles.compact(context),
-                  ),
-                  primary: notification.actionRoute == null
-                      ? null
-                      : TextButton.icon(
+                  const SizedBox(height: AppSpacing.sm),
+                  _ReviewCardActions(
+                    actions: [
+                      _ReviewAction(
+                        label: 'Dismiss',
+                        icon: Icons.close_rounded,
+                        onPressed: () => _dismiss(ref, notification.id),
+                      ),
+                      if (notification.actionRoute != null)
+                        _ReviewAction(
+                          label: 'View',
+                          icon: Icons.arrow_forward_rounded,
+                          filled: true,
                           onPressed: () =>
                               _openNotification(context, ref, notification),
-                          icon: const Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 16,
-                          ),
-                          label: const Text('View', softWrap: false),
-                          style: AppButtonStyles.compact(context),
                         ),
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
             // Unread accent spans the full card height without shifting
             // content, so read and unread cards stay aligned.
@@ -1209,7 +1216,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
 
     return AppPanel(
       onTap: () => _confirmTransferPair(context, ref, pair),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1225,7 +1232,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               children: [
                 Text(
                   'Transfer detected',
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
@@ -1319,31 +1326,24 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             ),
           ],
 
-          // ── Divider ─────────────────────────────────────────────────
-          const SizedBox(height: AppSpacing.md),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: scheme.outlineVariant.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
           // ── Actions ─────────────────────────────────────────────────
+          const SizedBox(height: AppSpacing.sm),
           _ReviewCardActions(
-            secondary: TextButton.icon(
-              onPressed: () => _dismissTransferPair(context, ref, pair),
-              icon: const Icon(Icons.close_rounded, size: 16),
-              label: const Text('Dismiss', softWrap: false),
-              style: AppButtonStyles.destructiveText(
-                context,
-              ).merge(AppButtonStyles.compact(context)),
-            ),
-            primary: FilledButton.icon(
-              onPressed: () => _confirmTransferPair(context, ref, pair),
-              icon: const Icon(Icons.check_rounded, size: 16),
-              label: const Text('Confirm', semanticsLabel: 'Confirm transfer'),
-              style: AppButtonStyles.compact(context),
-            ),
+            actions: [
+              _ReviewAction(
+                label: 'Dismiss',
+                icon: Icons.close_rounded,
+                onPressed: () => _dismissTransferPair(context, ref, pair),
+                style: AppButtonStyles.destructiveText(context),
+              ),
+              _ReviewAction(
+                label: 'Confirm',
+                icon: Icons.check_rounded,
+                onPressed: () => _confirmTransferPair(context, ref, pair),
+                filled: true,
+                semanticsLabel: 'Confirm transfer',
+              ),
+            ],
           ),
         ],
       ),
@@ -1461,32 +1461,84 @@ class _ReviewCardHeader extends StatelessWidget {
   }
 }
 
-/// Secondary action at the start, primary action at the end; wraps on
-/// narrow screens or large text.
-class _ReviewCardActions extends StatelessWidget {
-  const _ReviewCardActions({required this.secondary, this.primary});
+class _ReviewAction {
+  const _ReviewAction({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.style,
+    this.filled = false,
+    this.semanticsLabel,
+  });
 
-  final Widget secondary;
-  final Widget? primary;
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final ButtonStyle? style;
+  final bool filled;
+  final String? semanticsLabel;
+}
+
+/// Card actions as one row of equal-width buttons. Icons are dropped when a
+/// button gets too narrow, and labels shrink rather than wrap.
+class _ReviewCardActions extends StatelessWidget {
+  const _ReviewCardActions({required this.actions, super.key});
+
+  final List<_ReviewAction> actions;
+
+  static const double _gap = AppSpacing.xs;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final each =
+            (constraints.maxWidth - _gap * (actions.length - 1)) /
+            actions.length;
+        final showIcons = each >= 96;
+        return Row(
+          children: [
+            for (var i = 0; i < actions.length; i++) ...[
+              if (i > 0) const SizedBox(width: _gap),
+              Expanded(child: _button(context, actions[i], showIcons)),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _button(BuildContext context, _ReviewAction action, bool showIcon) {
+    final style = ButtonStyle(
+      visualDensity: VisualDensity.compact,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      minimumSize: const WidgetStatePropertyAll(Size(0, 38)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       ),
-      child: SizedBox(
-        width: double.infinity,
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSpacing.xs,
-          runSpacing: AppSpacing.xs,
-          children: [secondary, ?primary],
-        ),
+      textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.labelLarge),
+    ).merge(action.style);
+    final child = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showIcon) ...[
+            Icon(action.icon, size: 16),
+            const SizedBox(width: AppSpacing.xxs),
+          ],
+          Text(
+            action.label,
+            maxLines: 1,
+            softWrap: false,
+            semanticsLabel: action.semanticsLabel,
+          ),
+        ],
       ),
     );
+    return action.filled
+        ? FilledButton(onPressed: action.onPressed, style: style, child: child)
+        : TextButton(onPressed: action.onPressed, style: style, child: child);
   }
 }
 
