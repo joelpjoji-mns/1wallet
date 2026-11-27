@@ -560,10 +560,13 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                       setState(() => _includeInNetWorth = value),
                   title: const Text('Include in net worth'),
                 ),
-                AppSwitchListTile(
-                  value: _showOnHome,
-                  onChanged: (value) => setState(() => _showOnHome = value),
-                  title: const Text('Show on home'),
+                AppCheckboxListTile(
+                  value: !_showOnHome,
+                  onChanged: (hidden) => setState(() => _showOnHome = !hidden),
+                  title: const Text('Hide from All accounts'),
+                  subtitle: const Text(
+                    'Keep this account off the All accounts home tile.',
+                  ),
                 ),
               ],
             ),
@@ -574,32 +577,44 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
             SectionCard(
               title: 'Danger Zone',
               subtitle: 'Manage account closure or permanent deletion.',
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: AppSpacing.md,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    if (account.isArchived)
-                      OutlinedButton.icon(
-                        onPressed: () => _reopenAccount(state, account),
-                        icon: const Icon(Icons.unarchive_outlined),
-                        label: const Text('Reopen account'),
-                      )
-                    else
-                      OutlinedButton.icon(
-                        onPressed: () => _closeAccount(state, account),
-                        icon: const Icon(Icons.archive_outlined),
-                        label: const Text('Close account'),
-                      ),
-                    OutlinedButton.icon(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: account.isArchived
+                        ? OutlinedButton.icon(
+                            onPressed: () => _reopenAccount(state, account),
+                            icon: const Icon(Icons.unarchive_outlined),
+                            label: const _OneLineLabel(
+                              'Reopen account',
+                              short: 'Reopen',
+                            ),
+                            style: _dangerZoneButtonStyle,
+                          )
+                        : OutlinedButton.icon(
+                            onPressed: () => _closeAccount(state, account),
+                            icon: const Icon(Icons.archive_outlined),
+                            label: const _OneLineLabel(
+                              'Close account',
+                              short: 'Close',
+                            ),
+                            style: _dangerZoneButtonStyle,
+                          ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: OutlinedButton.icon(
                       onPressed: () => _confirmDeleteAccount(state, account),
                       icon: const Icon(Icons.delete_outline_rounded),
-                      label: const Text('Delete account'),
-                      style: AppButtonStyles.destructiveOutlined(context),
+                      label: const _OneLineLabel(
+                        'Delete account',
+                        short: 'Delete',
+                      ),
+                      style: _dangerZoneButtonStyle.merge(
+                        AppButtonStyles.destructiveOutlined(context),
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1471,4 +1486,45 @@ Future<int?> showDayOfMonthPicker({
       ),
     ),
   );
+}
+
+const _dangerZoneButtonStyle = ButtonStyle(
+  padding: WidgetStatePropertyAll(
+    EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+  ),
+);
+
+/// Single-line button label that falls back to [short] when [text] would not
+/// fit, and only then scales down (e.g. at very large text sizes).
+class _OneLineLabel extends StatelessWidget {
+  const _OneLineLabel(this.text, {required this.short});
+
+  final String text;
+  final String short;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = DefaultTextStyle.of(context).style;
+    final scaler = MediaQuery.textScalerOf(context);
+    return Semantics(
+      label: text,
+      excludeSemantics: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final painter = TextPainter(
+            text: TextSpan(text: text, style: style),
+            textDirection: Directionality.of(context),
+            textScaler: scaler,
+            maxLines: 1,
+          )..layout();
+          final fits = painter.width <= constraints.maxWidth;
+          painter.dispose();
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(fits ? text : short, maxLines: 1, softWrap: false),
+          );
+        },
+      ),
+    );
+  }
 }

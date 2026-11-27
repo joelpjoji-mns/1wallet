@@ -7,6 +7,7 @@ import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/accounts/account_editor_screen.dart';
 import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
@@ -18,6 +19,99 @@ void main() {
   });
 
   group('Account Deletion Behavior', () {
+    testWidgets(
+      'hide checkbox keeps the account off All accounts and danger actions share a row',
+      (tester) async {
+        final base = sampleLedgerState();
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: authenticatedSampleOverrides(ledger: base, prefs: prefs),
+        );
+        addTearDown(container.dispose);
+        await container.read(ledgerProvider.notifier).restoreLedgerState(base);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: AccountEditorScreen(accountId: 'acc-bank'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final close = find.widgetWithText(OutlinedButton, 'Close account');
+        final delete = find.widgetWithText(OutlinedButton, 'Delete account');
+        await tester.ensureVisible(delete);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getTopLeft(close).dy,
+          closeTo(tester.getTopLeft(delete).dy, 0.5),
+        );
+        expect(
+          tester.getTopLeft(close).dx,
+          lessThan(tester.getTopLeft(delete).dx),
+        );
+
+        final hide = find.text('Hide from All accounts');
+        await tester.ensureVisible(hide);
+        await tester.pumpAndSettle();
+        await tester.tap(hide);
+        await tester.pumpAndSettle();
+        expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+
+        await tester.tap(find.byType(HeaderSaveAction));
+        await tester.pumpAndSettle();
+
+        final saved = container
+            .read(ledgerProvider)
+            .accounts
+            .firstWhere((a) => a.id == 'acc-bank');
+        expect(saved.showOnHome, isFalse);
+      },
+    );
+
+    testWidgets('danger actions use short one-line labels on narrow phones', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(320, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final base = sampleLedgerState();
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: base, prefs: prefs),
+      );
+      addTearDown(container.dispose);
+      await container.read(ledgerProvider.notifier).restoreLedgerState(base);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: AccountEditorScreen(accountId: 'acc-bank'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final close = find.widgetWithText(OutlinedButton, 'Close');
+      final delete = find.widgetWithText(OutlinedButton, 'Delete');
+      await tester.ensureVisible(delete);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(close).dy,
+        closeTo(tester.getTopLeft(delete).dy, 0.5),
+      );
+      expect(
+        find.descendant(
+          of: delete,
+          matching: find.bySemanticsLabel('Delete account'),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets(
       'blocks deletion if account is linked to active planned recurring payments',
       (tester) async {

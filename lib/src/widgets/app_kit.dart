@@ -2353,6 +2353,79 @@ class InfoRow extends StatelessWidget {
   }
 }
 
+class AppCheckboxListTile extends StatelessWidget {
+  const AppCheckboxListTile({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+    super.key,
+    this.subtitle,
+    this.contentPadding,
+  });
+
+  final Widget title;
+  final Widget? subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final EdgeInsetsGeometry? contentPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return MergeSemantics(
+      child: InkWell(
+        onTap: onChanged == null ? null : () => onChanged!(!value),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: Padding(
+          padding:
+              contentPadding ??
+              const EdgeInsets.symmetric(
+                vertical: AppSpacing.xs,
+                horizontal: AppSpacing.xs,
+              ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DefaultTextStyle(
+                      style: theme.textTheme.titleMedium!.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
+                      ),
+                      child: title,
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: AppSpacing.xxxs),
+                      DefaultTextStyle(
+                        style: theme.textTheme.bodySmall!.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        child: subtitle!,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              ExcludeFocus(
+                child: Checkbox(
+                  value: value,
+                  onChanged: onChanged == null
+                      ? null
+                      : (checked) => onChanged!(checked ?? false),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AppSwitchListTile extends StatelessWidget {
   const AppSwitchListTile({
     required this.title,
