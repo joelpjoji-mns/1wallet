@@ -2187,9 +2187,6 @@ String? _recurringAccountPhrase(
   return transaction.type == 'income' ? 'into $name' : 'from $name';
 }
 
-/// User notes shown under the plan card header. Notes the app writes itself
-/// (EMI schedules and skipped markers) and notes that only repeat the plan
-/// name stay hidden.
 final _skipsInFlight = <String>{};
 
 bool _isOccurrenceSkipped(LedgerState state, TransactionRecord plan) {
@@ -2204,6 +2201,9 @@ bool _isOccurrenceSkipped(LedgerState state, TransactionRecord plan) {
   );
 }
 
+/// User notes shown under the plan card header. Notes the app writes itself
+/// (EMI schedules and skipped markers) and notes that only repeat the plan
+/// name stay hidden.
 String? _recurringCardNotes(TransactionRecord transaction) {
   final notes = transaction.notes?.trim();
   if (notes == null || notes.isEmpty) return null;
