@@ -13,6 +13,7 @@ import 'package:one_wallet_flutter/src/features/home/home_components.dart';
 import 'package:one_wallet_flutter/src/features/home/home_screen.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widget_card.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
 
 import 'fixtures/sample_ledger.dart';
@@ -88,6 +89,47 @@ void main() {
           .renderObject<RenderParagraph>(find.text('Recent records'))
           .didExceedMaxLines,
       isFalse,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact cards move the date pill below the title', (
+    tester,
+  ) async {
+    Future<void> pumpCard(double width) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: authenticatedSampleOverrides(ledger: _ledger()),
+          child: MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: width,
+                  child: HomeWidgetCard(
+                    title: 'Tag breakdown',
+                    icon: Icons.label_outline_rounded,
+                    dateFilter: 'This month',
+                    onDateFilterChanged: (_) {},
+                    child: const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpCard(288); // 320 phone minus page margins.
+    final title = tester.getRect(find.text('Tag breakdown'));
+    final pill = tester.getRect(find.byType(GlassDropdownPill<String>));
+    expect(pill.top, greaterThanOrEqualTo(title.bottom));
+
+    await pumpCard(358); // 390 phone keeps the pill beside the title.
+    expect(
+      tester.getRect(find.byType(GlassDropdownPill<String>)).top,
+      lessThan(tester.getRect(find.text('Tag breakdown')).bottom),
     );
     expect(tester.takeException(), isNull);
   });

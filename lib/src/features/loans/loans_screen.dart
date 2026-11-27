@@ -919,14 +919,11 @@ class LoanDetailView extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               Builder(
                 builder: (context) {
-                  final principal = details.principal!.amountMinor.abs();
                   final remaining = balance.amountMinor < 0
                       ? -balance.amountMinor
                       : 0;
-                  final paid = (principal - remaining).clamp(0, principal);
-                  final progress = principal > 0
-                      ? (paid / principal).clamp(0.0, 1.0)
-                      : 0.0;
+                  final paid = loanRepaidMinor(state, loan);
+                  final progress = loanRepaidProgress(paid, remaining);
                   final paidText = PrivacyText(
                     'Paid: ${formatMoney(Money(amountMinor: paid, currency: loan.currency), state.preferences.locale)}',
                     maxLines: 1,
@@ -1368,14 +1365,11 @@ class _LoanCompactCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             Builder(
               builder: (context) {
-                final principal = details.principal!.amountMinor.abs();
                 final remaining = balance.amountMinor < 0
                     ? -balance.amountMinor
                     : 0;
-                final paid = (principal - remaining).clamp(0, principal);
-                final progress = principal > 0
-                    ? (paid / principal).clamp(0.0, 1.0)
-                    : 0.0;
+                final paid = loanRepaidMinor(state, loan);
+                final progress = loanRepaidProgress(paid, remaining);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

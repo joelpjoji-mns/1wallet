@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.24] - 2026-11-27
+
+### Changed
+- Home widget currency and date-range dropdowns are taller, with larger text and icons; on compact phones the date pill moves below the title.
+- Tag breakdown shows the net amount per tag (income minus expenses), signed and coloured.
+- All accounts tiles are shorter, and single-currency balances sit centred in the space under the name.
+- Active History filter buttons are shown in the accent colour.
+- Hide from All accounts in account details is now a switch matching the other toggles.
+
+### Fixed
+- Planned payment cards no longer truncate titles while space is free, keep "Skipped" labels on one line beside their icon, and place the due-soon badge on the status line instead of an extra row.
+- Loan details and loan cards showed "Paid: 0" despite posted repayments; paid now sums actual repayments.
+
 ## [1.0.23] - 2026-11-27
 
 ### Changed

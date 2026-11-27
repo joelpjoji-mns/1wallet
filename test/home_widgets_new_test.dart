@@ -240,8 +240,17 @@ void main() {
           occurredAt: now,
         );
 
+        final txRefund = sampleTx.copyWith(
+          id: 'tx-tag-3',
+          type: 'income',
+          status: 'cleared',
+          amount: usd(10000),
+          tags: ['weekend'],
+          occurredAt: now,
+        );
+
         final state = base.copyWith(
-          transactions: [txTagged1, txTagged2],
+          transactions: [txTagged1, txTagged2, txRefund],
           preferences: base.preferences.copyWith(
             displayCurrency: 'USD',
             locale: 'en_US',
@@ -254,6 +263,9 @@ void main() {
         expect(find.text('Tag breakdown'), findsOneWidget);
         expect(find.text('#dining'), findsOneWidget);
         expect(find.text('#weekend'), findsOneWidget);
+        // Tags show net income minus expense, not only expense.
+        expect(find.text('-\$50.00'), findsOneWidget);
+        expect(find.text('+\$65.00'), findsOneWidget);
       },
     );
 

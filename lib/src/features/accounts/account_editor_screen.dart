@@ -560,7 +560,7 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                       setState(() => _includeInNetWorth = value),
                   title: const Text('Include in net worth'),
                 ),
-                AppCheckboxListTile(
+                AppSwitchListTile(
                   value: !_showOnHome,
                   onChanged: (hidden) => setState(() => _showOnHome = !hidden),
                   title: const Text('Hide from All accounts'),

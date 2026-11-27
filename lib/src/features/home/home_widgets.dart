@@ -3055,6 +3055,17 @@ class _AccountTile extends ConsumerWidget {
     );
 
     final isSelected = ref.watch(homeSelectedAccountProvider) == account.id;
+    final amountStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: foreground == Colors.white ? Colors.white : foreground,
+      height: 1.1,
+      letterSpacing: -0.3,
+      fontWeight: FontWeight.w900,
+    );
+    Widget amount() => FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: PrivacyText(primaryLabel, maxLines: 1, style: amountStyle),
+    );
 
     return Material(
       color: Colors.transparent,
@@ -3075,11 +3086,14 @@ class _AccountTile extends ConsumerWidget {
         },
         child: Container(
           // A fixed `height` clips/overflows once accessibility text scaling
-          // makes the name/balance/currency rows taller than 60 logical
-          // pixels; a `minHeight` lets the tile grow instead (each grid row
-          // stretches its tiles to the tallest one, so this is safe here).
-          constraints: const BoxConstraints(minHeight: 60),
-          padding: const EdgeInsets.all(AppSpacing.xs),
+          // makes the name/balance/currency rows taller than the tile; a
+          // `minHeight` lets the tile grow instead (each grid row stretches
+          // its tiles to the tallest one, so this is safe here).
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xs,
+            vertical: AppSpacing.xxs,
+          ),
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(AppRadii.md),
@@ -3173,33 +3187,38 @@ class _AccountTile extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xxxs),
               // Amounts are never ellipsized; an unusually long figure scales
               // down slightly so the tile stays on one line.
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: PrivacyText(
-                  primaryLabel,
-                  maxLines: 1,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: foreground == Colors.white
-                        ? Colors.white
-                        : foreground,
-                    height: 1.1,
-                    letterSpacing: -0.3,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              if (secondaryLabel != null)
+              if (secondaryLabel != null) ...[
+                amount(),
                 PrivacyText(
                   secondaryLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: secondaryStyle,
-                )
-              else if (reserveSecondaryLine)
-                ExcludeSemantics(
-                  child: Text(' ', maxLines: 1, style: secondaryStyle),
                 ),
+              ] else if (reserveSecondaryLine)
+                // Single-currency tiles centre their amount in the space the
+                // secondary line reserves so it doesn't hug the name.
+                Stack(
+                  alignment: AlignmentDirectional.centerStart,
+                  children: [
+                    ExcludeSemantics(
+                      child: Opacity(
+                        opacity: 0,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(' ', maxLines: 1, style: amountStyle),
+                            Text(' ', maxLines: 1, style: secondaryStyle),
+                          ],
+                        ),
+                      ),
+                    ),
+                    amount(),
+                  ],
+                )
+              else
+                amount(),
             ],
           ),
         ),

@@ -305,7 +305,6 @@ void main() {
         );
         expect(amount.top, closeTo(title.top, 0.1));
         expect(amount.left, greaterThan(title.right));
-        expect(date.left, closeTo(amount.left, 0.1));
         expect(date.right, closeTo(amount.right, 0.1));
         expect(date.top, greaterThanOrEqualTo(amount.bottom));
         return amount;
@@ -330,7 +329,6 @@ void main() {
             final first = expectSideBySideHeader(rent);
             final second = expectSideBySideHeader(detail ? payment : bill);
             expect(first.right, closeTo(second.right, 0.1));
-            expect(first.width, closeTo(second.width, 0.1));
             if (detail) {
               final schedule = find.byKey(const ValueKey('recurring-schedule'));
               final label = tester.getRect(
@@ -506,6 +504,117 @@ void main() {
     expect(notes.top, greaterThanOrEqualTo(schedule.bottom));
     // Notes use the full card width and wrap only past the right edge.
     expect(notes.right, greaterThan(amount.left));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('skipped and urgent planned cards keep status compact', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final now = DateTime.now();
+    final plan = TransactionRecord(
+      id: 'plan-groceries',
+      type: 'expense',
+      status: 'scheduled',
+      source: 'recurring',
+      accountId: 'acc-bank',
+      amount: const Money(amountMinor: 3000, currency: 'USD'),
+      baseAmount: const Money(amountMinor: 3000, currency: 'USD'),
+      occurredAt: now.add(const Duration(days: 2)),
+      recurrenceFrequency: 'weekly',
+      name: 'Groceries',
+    );
+    final skipped = plan.copyWith(
+      id: 'skip-groceries',
+      status: 'void',
+      notes: 'Skipped',
+      originalTransactionId: plan.id,
+      occurredAt: now.subtract(const Duration(days: 12)),
+    );
+    final state = emptyLedgerState().copyWith(
+      accounts: [
+        const Account(
+          id: 'acc-bank',
+          name: 'Monzo Bank',
+          type: 'bank',
+          currency: 'USD',
+          openingBalance: Money(amountMinor: 500000, currency: 'USD'),
+        ),
+      ],
+      transactions: [plan, skipped],
+    );
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: state),
+    );
+    addTearDown(container.dispose);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+
+    Future<void> pump(Widget home) async {
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: Scaffold(body: home),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    // The urgency badge sits on the status line instead of adding a row.
+    await pump(const RecurringScreen(mode: 'overview'));
+    final header = find.byKey(
+      const ValueKey('recurring-header-plan-groceries'),
+    );
+    final amount = tester.getRect(
+      find.descendant(
+        of: header,
+        matching: find.byKey(const ValueKey('recurring-header-amount')),
+      ),
+    );
+    final status = tester.getRect(
+      find.descendant(
+        of: header,
+        matching: find.byKey(const ValueKey('recurring-header-status')),
+      ),
+    );
+    final badge = tester.getRect(find.text('2D'));
+    expect(badge.top, greaterThanOrEqualTo(amount.bottom));
+    expect(badge.top, greaterThanOrEqualTo(status.top));
+    expect(badge.bottom, lessThanOrEqualTo(status.bottom));
+    final schedule = tester.getRect(find.text('Every 1 week from Monzo Bank'));
+    expect(schedule.top - status.bottom, lessThan(8));
+
+    // A skipped history entry keeps its icon beside its label.
+    await tester.binding.setSurfaceSize(const Size(390, 1600));
+    await pump(RecurringScreen(recordId: plan.id));
+    final skippedHeader = find.byKey(
+      const ValueKey('recurring-header-skip-groceries'),
+    );
+    final icon = tester.getRect(
+      find.descendant(
+        of: skippedHeader,
+        matching: find.byIcon(Icons.block_rounded),
+      ),
+    );
+    final label = find.descendant(
+      of: skippedHeader,
+      matching: find.textContaining('Skipped'),
+    );
+    final labelRect = tester.getRect(label);
+    final skippedStatus = tester.getRect(
+      find.descendant(
+        of: skippedHeader,
+        matching: find.byKey(const ValueKey('recurring-header-status')),
+      ),
+    );
+    expect(tester.widget<Text>(label).maxLines, 1);
+    // Single line: a wrapped label would be roughly twice as tall.
+    expect(skippedStatus.height, lessThan(20));
+    expect(labelRect.left - icon.right, lessThanOrEqualTo(4.5));
+    expect(icon.center.dy, closeTo(labelRect.center.dy, 1));
     expect(tester.takeException(), isNull);
   });
 

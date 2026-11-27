@@ -58,7 +58,17 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(hide);
         await tester.pumpAndSettle();
-        expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+        expect(
+          tester
+              .widget<AppSwitchListTile>(
+                find.ancestor(
+                  of: hide,
+                  matching: find.byType(AppSwitchListTile),
+                ),
+              )
+              .value,
+          isTrue,
+        );
 
         await tester.tap(find.byType(HeaderSaveAction));
         await tester.pumpAndSettle();

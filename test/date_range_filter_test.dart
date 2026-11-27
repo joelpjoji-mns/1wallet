@@ -166,6 +166,67 @@ void main() {
     }
   });
 
+  testWidgets('active history filters use the accent colour', (tester) async {
+    final theme = AppTheme.light();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ledgerProvider.overrideWith(
+            (ref) => _FakeLedgerNotifier(sampleLedgerState()),
+          ),
+        ],
+        child: MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: TransactionCommandStrip(
+              query: '',
+              typeLabel: 'Expense',
+              typeValue: 'expense',
+              dateLabel: 'This month',
+              dateValue: 'this_month',
+              accountLabel: 'All accounts',
+              categoryLabel: 'All categories',
+              statusLabel: 'All statuses',
+              statusValue: 'all',
+              tagOptions: const [GlassDropdownOption('all', 'All tags')],
+              onTagSelected: (_) {},
+              typeActive: true,
+              dateActive: false,
+              accountActive: false,
+              categoryActive: false,
+              statusActive: false,
+              hasActiveFilters: true,
+              onQueryChanged: (_) {},
+              onClear: () {},
+              onTypeSelected: (_) {},
+              onDateSelected: (_) {},
+              onPreviousDate: () {},
+              onNextDate: () {},
+              onAccountTap: () {},
+              onCategoryTap: () {},
+              onStatusSelected: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Color? colorOf(int index) => tester
+        .widget<Text>(
+          find
+              .descendant(
+                of: find.byType(FilterPill).at(index),
+                matching: find.byType(Text),
+              )
+              .first,
+        )
+        .style
+        ?.color;
+    final primary = theme.colorScheme.primary;
+    expect(colorOf(0), primary);
+    expect(colorOf(1), isNot(primary));
+  });
+
   group('Date Range Filter & Custom Range', () {
     test('Standard options list matches required specification', () {
       expect(standardHomeDateFilterOptions, [

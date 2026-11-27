@@ -37,19 +37,19 @@ class HomeBalancePill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: scheme.primary),
+            Icon(icon, size: 16, color: scheme.primary),
             const SizedBox(width: AppSpacing.xxs),
           ],
           Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: scheme.primary,
               fontWeight: FontWeight.w900,
             ),
           ),
           if (showChevron) ...[
             const SizedBox(width: AppSpacing.xxxs),
-            Icon(Icons.expand_more_rounded, size: 15, color: scheme.primary),
+            Icon(Icons.expand_more_rounded, size: 16, color: scheme.primary),
           ],
         ],
       ),

@@ -337,6 +337,7 @@ class FilterPill extends StatelessWidget {
         onNext: onNext,
         compact: compact,
         displayLabel: displayLabel,
+        active: active,
       );
     }
 

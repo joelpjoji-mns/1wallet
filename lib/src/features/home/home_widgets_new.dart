@@ -363,7 +363,9 @@ class TagCloudHomeWidget extends ConsumerWidget {
           t.status == 'paused') {
         continue;
       }
-      if (!expenseTypes.contains(t.type)) continue;
+      if (!expenseTypes.contains(t.type) && !incomeTypes.contains(t.type)) {
+        continue;
+      }
       if (t.occurredAt.isBefore(range.start) ||
           !t.occurredAt.isBefore(range.end)) {
         continue;
@@ -377,15 +379,18 @@ class TagCloudHomeWidget extends ConsumerWidget {
         t.amount,
         displayCurrency,
       );
+      final signedMinor = incomeTypes.contains(t.type)
+          ? converted.amountMinor.abs()
+          : -converted.amountMinor.abs();
       for (final rawTag in tags) {
         final tag = rawTag.trim();
         if (tag.isEmpty) continue;
-        tagTotals[tag] = (tagTotals[tag] ?? 0) + converted.amountMinor;
+        tagTotals[tag] = (tagTotals[tag] ?? 0) + signedMinor;
       }
     }
 
     final sorted = tagTotals.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
     final topTags = sorted.take(8).toList();
 
     return HomeWidgetCard(
@@ -410,9 +415,9 @@ class TagCloudHomeWidget extends ConsumerWidget {
       child: topTags.isEmpty
           ? const EmptyState(
               icon: Icons.label_off_outlined,
-              title: 'No tagged expenses',
+              title: 'No tagged records',
               body:
-                  'Tag your transactions with #dining, #work, etc. to view tag insights here.',
+                  'Tag your transactions with #dining, #work, etc. to see the net amount per tag here.',
             )
           : Wrap(
               spacing: AppSpacing.xs,
@@ -446,17 +451,17 @@ class TagCloudHomeWidget extends ConsumerWidget {
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         PrivacyText(
-                          formatMoney(
-                            Money(
-                              amountMinor: tagEntry.value,
-                              currency: displayCurrency,
-                            ),
+                          _signedMoneyLabel(
+                            tagEntry.value,
+                            displayCurrency,
                             state.preferences.locale,
                           ),
                           style: Theme.of(context).textTheme.labelMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.w800,
-                                color: scheme.onSurface,
+                                color: _signedTone(
+                                  tagEntry.value,
+                                ).resolve(scheme, standard: scheme.onSurface),
                               ),
                         ),
                       ],
@@ -467,6 +472,28 @@ class TagCloudHomeWidget extends ConsumerWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Signed net amount helpers (tag breakdown)
+// ─────────────────────────────────────────────────────────────────────────────
+String _signedMoneyLabel(int amountMinor, String currency, String locale) {
+  final sign = amountMinor > 0
+      ? '+'
+      : amountMinor < 0
+      ? '-'
+      : '';
+  final formatted = formatMoney(
+    Money(amountMinor: amountMinor.abs(), currency: currency),
+    locale,
+  );
+  return '$sign$formatted';
+}
+
+MetricTone _signedTone(int amountMinor) => amountMinor > 0
+    ? MetricTone.positive
+    : amountMinor < 0
+    ? MetricTone.danger
+    : MetricTone.standard;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. Daily Safe-to-Spend Widget

@@ -119,10 +119,18 @@ class HomeWidgetCard extends StatelessWidget {
         children: [
           LayoutBuilder(
             builder: (context, constraints) {
+              // On compact phones the date pill leaves the title too little
+              // room and it breaks mid-word, so move the pill below it.
+              final compactDateHeader =
+                  dateFilter != null &&
+                  onDateFilterChanged != null &&
+                  !(reorderScope?.reorderMode ?? false) &&
+                  constraints.maxWidth < 300;
               final stackActions =
                   headerActions.isNotEmpty &&
-                  constraints.maxWidth < 360 &&
-                  MediaQuery.textScalerOf(context).scale(14) > 20;
+                  (compactDateHeader ||
+                      (constraints.maxWidth < 360 &&
+                          MediaQuery.textScalerOf(context).scale(14) > 20));
               if (!stackActions) return headerRow(includeActions: true);
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

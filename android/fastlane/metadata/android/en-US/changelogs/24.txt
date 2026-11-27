@@ -1,0 +1,7 @@
+- Tag breakdown shows the net amount per tag, not just spending
+- Home widget currency and date dropdowns are larger and easier to tap
+- Active History filters are highlighted in the accent colour
+- Hide from All accounts is now a toggle switch
+- All accounts tiles are more compact and centre single balances
+- Planned payment cards fit long names, skipped and due-soon labels neatly
+- Loan details show the amount you\'ve actually repaid

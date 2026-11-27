@@ -136,6 +136,7 @@ class GlassDropdownPill<T> extends ConsumerWidget {
     this.displayLabel,
     this.onPrevious,
     this.onNext,
+    this.active = false,
     super.key,
   });
 
@@ -150,10 +151,26 @@ class GlassDropdownPill<T> extends ConsumerWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
 
+  /// Highlights the pill in the accent colour, e.g. when it holds a
+  /// non-default filter value.
+  final bool active;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final pillColor = active
+        ? scheme.primary.withValues(alpha: isDark ? 0.22 : 0.15)
+        : isDark
+        ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
+        : scheme.surfaceContainerHigh.withValues(alpha: 0.85);
+    final pillBorder = Border.all(
+      color: active
+          ? scheme.primary.withValues(alpha: isDark ? 0.35 : 0.25)
+          : scheme.outlineVariant.withValues(alpha: 0.4),
+      width: 0.5,
+    );
+    final pillForeground = active ? scheme.primary : scheme.onSurface;
     final matching = options.where((option) => option.value == value);
     final selected = matching.isEmpty ? null : matching.first;
     final label =
@@ -215,14 +232,9 @@ class GlassDropdownPill<T> extends ConsumerWidget {
             excludeFromSemantics: true,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: isDark
-                    ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
-                    : scheme.surfaceContainerHigh.withValues(alpha: 0.85),
+                color: pillColor,
                 borderRadius: BorderRadius.circular(AppRadii.pill),
-                border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.4),
-                  width: 0.5,
-                ),
+                border: pillBorder,
               ),
               child: Material(
                 type: MaterialType.transparency,
@@ -239,7 +251,7 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                         ? Icon(
                             icon,
                             size: 24,
-                            color: scheme.onSurface,
+                            color: pillForeground,
                             semanticLabel: semanticLabel ?? label,
                           )
                         : Text(
@@ -249,7 +261,7 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
-                                  color: scheme.onSurface,
+                                  color: pillForeground,
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
@@ -268,14 +280,9 @@ class GlassDropdownPill<T> extends ConsumerWidget {
         }
         final content = DecoratedBox(
           decoration: BoxDecoration(
-            color: isDark
-                ? scheme.surfaceContainerHigh.withValues(alpha: 0.6)
-                : scheme.surfaceContainerHigh.withValues(alpha: 0.85),
+            color: pillColor,
             borderRadius: BorderRadius.circular(AppRadii.pill),
-            border: Border.all(
-              color: scheme.outlineVariant.withValues(alpha: 0.4),
-              width: 0.5,
-            ),
+            border: pillBorder,
           ),
           child: Material(
             type: MaterialType.transparency,
@@ -295,14 +302,13 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                       },
                       child: Padding(
                         padding: const EdgeInsets.only(
-                          left: AppSpacing.xs,
-                          right: 2,
-                          top: AppSpacing.xxs,
-                          bottom: AppSpacing.xxs,
+                          left: 6,
+                          top: AppSpacing.xs,
+                          bottom: AppSpacing.xs,
                         ),
                         child: Icon(
                           Icons.chevron_left_rounded,
-                          size: 15,
+                          size: 16,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),
@@ -313,16 +319,16 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                   onTap: toggleMenu,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                      onPrevious != null ? 2 : AppSpacing.sm,
-                      AppSpacing.xxs,
-                      onNext != null ? 2 : AppSpacing.sm,
-                      AppSpacing.xxs,
+                      onPrevious != null ? 0 : AppSpacing.sm,
+                      AppSpacing.xs,
+                      onNext != null ? 0 : AppSpacing.sm,
+                      AppSpacing.xs,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (icon != null) ...[
-                          Icon(icon, size: 14, color: scheme.primary),
+                          Icon(icon, size: 16, color: scheme.primary),
                           const SizedBox(width: AppSpacing.xxs),
                         ],
                         ConstrainedBox(
@@ -332,9 +338,9 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                             semanticsLabel: displayLabel != null ? label : null,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium
+                            style: Theme.of(context).textTheme.labelLarge
                                 ?.copyWith(
-                                  color: scheme.onSurface,
+                                  color: pillForeground,
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
@@ -343,7 +349,7 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                         Icon(
                           Icons.expand_more_rounded,
                           size: 16,
-                          color: scheme.onSurface,
+                          color: pillForeground,
                         ),
                       ],
                     ),
@@ -362,14 +368,13 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                       },
                       child: Padding(
                         padding: const EdgeInsets.only(
-                          left: 2,
-                          right: AppSpacing.xs,
-                          top: AppSpacing.xxs,
-                          bottom: AppSpacing.xxs,
+                          right: 6,
+                          top: AppSpacing.xs,
+                          bottom: AppSpacing.xs,
                         ),
                         child: Icon(
                           Icons.chevron_right_rounded,
-                          size: 15,
+                          size: 16,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),

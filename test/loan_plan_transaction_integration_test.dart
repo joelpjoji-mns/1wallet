@@ -86,6 +86,35 @@ void main() {
   }
 
   group('Loan, Plan & Transaction Integration', () {
+    test('loan Paid counts posted repayments even when principal is stale', () {
+      // Principal equals the outstanding balance (e.g. principal was edited
+      // after payments), so principal - remaining would show Paid: 0.
+      final loan = makeLoan(principal: 100000, balance: -130000);
+      final plan = makeEmiPlan(emi: 10000);
+      final state = emptyLedgerState().copyWith(
+        accounts: [makeBank(), loan],
+        transactions: [
+          plan,
+          for (var i = 0; i < 3; i++)
+            plan.copyWith(
+              id: 'paid-$i',
+              status: 'cleared',
+              originalTransactionId: plan.id,
+            ),
+          plan.copyWith(
+            id: 'skipped',
+            status: 'void',
+            originalTransactionId: plan.id,
+          ),
+        ],
+      );
+      final repaid = loanRepaidMinor(state, loan);
+      expect(repaid, 30000);
+      expect(accountBalance(state, loan).amountMinor, -100000);
+      expect(loanRepaidProgress(repaid, 100000), closeTo(30000 / 130000, 1e-9));
+      expect(loanRepaidProgress(0, 0), 0);
+    });
+
     testWidgets('finished and paused EMI plans are not posted repayments', (
       tester,
     ) async {

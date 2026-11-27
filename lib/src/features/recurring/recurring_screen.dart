@@ -441,196 +441,183 @@ class _RecurringCompactCard extends StatelessWidget {
       glass: true,
       padding: EdgeInsets.zero,
       onTap: onTap,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (isUrgent) Container(width: 4, color: urgentBorderColor),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  isUrgent ? AppSpacing.sm : AppSpacing.md,
-                  AppSpacing.sm,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _RecurringCardHeader(
-                      key: ValueKey('recurring-header-${transaction.id}'),
-                      leading: _RoundRecurringIcon(
-                        icon: category != null
-                            ? categoryIcon(category)
-                            : transactionIcon(transaction),
-                        color: categoryColor(category, context),
-                      ),
-                      title: primaryTitle,
-                      amount: PrivacyText(
-                        amountText,
-                        maxLines: 1,
-                        style: amountStyle,
-                      ),
-                      status: status,
-                      badge: urgencyLabel == null
-                          ? null
-                          : Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.xs,
-                                vertical: AppSpacing.xxxs,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDueToday || isOverdue
-                                    ? scheme.errorContainer
-                                    : scheme.errorContainer.withAlphaFactor(
-                                        0.6,
-                                      ),
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.pill,
-                                ),
-                              ),
-                              child: Text(
-                                urgencyLabel,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: isDueToday || isOverdue
-                                          ? 0.8
-                                          : 0.5,
-                                      color: scheme.onErrorContainer,
-                                    ),
-                              ),
-                            ),
-                      details: [
-                        if (categorySubtitle != null) ...[
-                          Text(
-                            categorySubtitle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
+      child: Stack(
+        children: [
+          if (isUrgent)
+            PositionedDirectional(
+              start: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              child: ColoredBox(color: urgentBorderColor),
+            ),
+          Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              isUrgent ? 4 + AppSpacing.sm : AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _RecurringCardHeader(
+                  key: ValueKey('recurring-header-${transaction.id}'),
+                  leading: _RoundRecurringIcon(
+                    icon: category != null
+                        ? categoryIcon(category)
+                        : transactionIcon(transaction),
+                    color: categoryColor(category, context),
+                  ),
+                  title: primaryTitle,
+                  amount: PrivacyText(
+                    amountText,
+                    maxLines: 1,
+                    style: amountStyle,
+                  ),
+                  status: status,
+                  badge: urgencyLabel == null
+                      ? null
+                      : Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                            vertical: AppSpacing.xxxs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDueToday || isOverdue
+                                ? scheme.errorContainer
+                                : scheme.errorContainer.withAlphaFactor(0.6),
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          ),
+                          child: Text(
+                            urgencyLabel,
+                            style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: isDueToday || isOverdue
+                                      ? 0.8
+                                      : 0.5,
+                                  color: scheme.onErrorContainer,
                                 ),
                           ),
-                        ],
-                      ],
-                    ),
-                    // Schedule and notes span the card width so the account
-                    // stays on the schedule line whenever it fits.
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(
-                        start: _RoundRecurringIcon.size + AppSpacing.sm,
-                        top: AppSpacing.xxxs,
-                      ),
-                      child: Text(
-                        scheduleLine,
-                        key: const ValueKey('recurring-card-schedule'),
+                        ),
+                  details: [
+                    if (categorySubtitle != null) ...[
+                      Text(
+                        categorySubtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                    if (notesLine != null)
-                      Padding(
-                        padding: const EdgeInsetsDirectional.only(
-                          start: _RoundRecurringIcon.size + AppSpacing.sm,
-                          top: AppSpacing.xxs,
-                        ),
-                        child: Text(
-                          notesLine,
-                          key: const ValueKey('recurring-card-notes'),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
-                        ),
-                      ),
-                    if (!historyMode &&
-                        (account?.loanDetails != null ||
-                            counter?.loanDetails != null))
-                      Builder(
-                        builder: (context) {
-                          final loanAccount = account?.loanDetails != null
-                              ? account
-                              : counter;
-                          final total =
-                              loanAccount?.loanDetails?.repaymentCount;
-                          if (total == null || total <= 0) {
-                            return const SizedBox();
-                          }
-                          final postedCount = state.transactions
-                              .where(
-                                (t) =>
-                                    (t.status == 'posted' ||
-                                        t.status == 'cleared') &&
-                                    (t.accountId == loanAccount!.id ||
-                                        t.counterAccountId == loanAccount.id) &&
-                                    (t.type == 'loan_repayment' ||
-                                        t.type == 'transfer'),
-                              )
-                              .length;
-                          final progress = (postedCount / total).clamp(
-                            0.0,
-                            1.0,
-                          );
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const SizedBox(height: AppSpacing.md),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      'Payment $postedCount of $total',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: scheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.sm),
-                                  Flexible(
-                                    child: Text(
-                                      '${total - postedCount} left',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.end,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: scheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppSpacing.xs),
-                              AppProgressBar(value: progress),
-                            ],
-                          );
-                        },
-                      ),
+                    ],
                   ],
                 ),
-              ),
+                // Schedule and notes span the card width so the account
+                // stays on the schedule line whenever it fits.
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(
+                    start: _RoundRecurringIcon.size + AppSpacing.sm,
+                    top: AppSpacing.xxxs,
+                  ),
+                  child: Text(
+                    scheduleLine,
+                    key: const ValueKey('recurring-card-schedule'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                if (notesLine != null)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(
+                      start: _RoundRecurringIcon.size + AppSpacing.sm,
+                      top: AppSpacing.xxs,
+                    ),
+                    child: Text(
+                      notesLine,
+                      key: const ValueKey('recurring-card-notes'),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                if (!historyMode &&
+                    (account?.loanDetails != null ||
+                        counter?.loanDetails != null))
+                  Builder(
+                    builder: (context) {
+                      final loanAccount = account?.loanDetails != null
+                          ? account
+                          : counter;
+                      final total = loanAccount?.loanDetails?.repaymentCount;
+                      if (total == null || total <= 0) {
+                        return const SizedBox();
+                      }
+                      final postedCount = state.transactions
+                          .where(
+                            (t) =>
+                                (t.status == 'posted' ||
+                                    t.status == 'cleared') &&
+                                (t.accountId == loanAccount!.id ||
+                                    t.counterAccountId == loanAccount.id) &&
+                                (t.type == 'loan_repayment' ||
+                                    t.type == 'transfer'),
+                          )
+                          .length;
+                      final progress = (postedCount / total).clamp(0.0, 1.0);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'Payment $postedCount of $total',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Flexible(
+                                child: Text(
+                                  '${total - postedCount} left',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          AppProgressBar(value: progress),
+                        ],
+                      );
+                    },
+                  ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -662,66 +649,102 @@ class _RecurringCardHeader extends StatelessWidget {
       children: [
         leading,
         const SizedBox(width: AppSpacing.sm),
+        // The title shares its line only with the amount, and the details
+        // share theirs only with the status, so neither is truncated while
+        // the other line still has free space.
         Expanded(
-          flex: 6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                key: const ValueKey('recurring-header-title'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxxs),
-              ...details,
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          flex: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              FittedBox(
-                key: const ValueKey('recurring-header-amount'),
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerEnd,
-                child: amount,
-              ),
-              const SizedBox(height: AppSpacing.xxs),
-              Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final sideMaxWidth = constraints.maxWidth * 0.6;
+              final statusRow = Row(
                 key: const ValueKey('recurring-header-status'),
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(status.icon, color: status.color, size: 14),
-                  const SizedBox(width: AppSpacing.xxs),
+                  // The urgency badge already signals timing, so its status
+                  // icon would only crowd the details beside it.
+                  if (badge != null) ...[
+                    badge!,
+                    const SizedBox(width: AppSpacing.xxs),
+                  ] else ...[
+                    Icon(status.icon, color: status.color, size: 14),
+                    const SizedBox(width: AppSpacing.xxs),
+                  ],
+                  // One line keeps every status (including "Skipped <date>")
+                  // the same height; a long label shrinks instead of wrapping.
                   Flexible(
-                    child: Text(
-                      status.label,
-                      textAlign: TextAlign.end,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: status.color,
-                        fontWeight: FontWeight.w700,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: Text(
+                        status.label,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: status.color,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
                 ],
-              ),
-              if (badge != null) ...[
-                const SizedBox(height: AppSpacing.xxs),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: badge!,
-                ),
-              ],
-            ],
+              );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          key: const ValueKey('recurring-header-title'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: sideMaxWidth),
+                        child: FittedBox(
+                          key: const ValueKey('recurring-header-amount'),
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: amount,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxxs),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (details.isEmpty)
+                        const Spacer()
+                      else ...[
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: details,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                      ],
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: details.isEmpty
+                              ? constraints.maxWidth
+                              : sideMaxWidth,
+                        ),
+                        child: statusRow,
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -1684,14 +1707,11 @@ class RecurringDetailView extends ConsumerWidget {
                         final remainingMinor = balance.amountMinor < 0
                             ? -balance.amountMinor
                             : 0;
-                        final paid = (principal - remainingMinor).clamp(
-                          0,
-                          principal,
+                        final paid = loanRepaidMinor(state, loanAccount);
+                        final progress = loanRepaidProgress(
+                          paid,
+                          remainingMinor,
                         );
-
-                        final progress = principal > 0
-                            ? (paid / principal).clamp(0.0, 1.0)
-                            : 0.0;
 
                         final remaining = remainingMinor;
 
@@ -2229,7 +2249,8 @@ String? _recurringCardNotes(TransactionRecord transaction) {
   if (historyMode) {
     if (isVoid) {
       return (
-        label: 'Skipped ${formatLedgerDate(date, locale)}',
+        // Short month keeps "Skipped <date>" on one line beside its icon.
+        label: 'Skipped ${formatLedgerDate(date, locale, abbreviated: true)}',
         icon: Icons.block_rounded,
         color: scheme.outline,
       );

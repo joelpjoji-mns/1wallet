@@ -1090,7 +1090,11 @@ String formatCompactMoney(Money money, String locale) {
   return '$sign$symbol${amount.round()}';
 }
 
-String formatLedgerDate(DateTime date, String locale) {
+String formatLedgerDate(
+  DateTime date,
+  String locale, {
+  bool abbreviated = false,
+}) {
   final localDate = date.toLocal();
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -1102,7 +1106,9 @@ String formatLedgerDate(DateTime date, String locale) {
   if (diff == 1) return 'Tomorrow';
 
   final normalizedLocale = locale.replaceAll('_', '-');
-  final formatStr = localDate.year == now.year ? 'MMMM d' : 'MMMM d, yyyy';
+  final formatStr = abbreviated
+      ? (localDate.year == now.year ? 'MMM d' : 'MMM d, yyyy')
+      : (localDate.year == now.year ? 'MMMM d' : 'MMMM d, yyyy');
   try {
     return _cachedDateFormat(formatStr, normalizedLocale).format(localDate);
   } catch (_) {
@@ -1545,6 +1551,35 @@ TransactionRecord? existingLoanEmi(LedgerState state, String? loanId) {
     }
   }
   return earliest;
+}
+
+/// Total posted repayments credited to [loan] (EMIs, custom repayments and
+/// transfers into it) in the loan's currency. Skipped, scheduled and paused
+/// entries are excluded, so this matches the count of posted payments.
+int loanRepaidMinor(LedgerState state, Account loan) {
+  var total = 0;
+  for (final transaction in state.transactions) {
+    if (transaction.counterAccountId != loan.id) continue;
+    if (transaction.status == 'scheduled' ||
+        transaction.status == 'paused' ||
+        transaction.status == 'void' ||
+        transaction.status == 'finished') {
+      continue;
+    }
+    if (transaction.type != 'loan_repayment' &&
+        !transferTypes.contains(transaction.type)) {
+      continue;
+    }
+    total += counterDelta(transaction);
+  }
+  return total;
+}
+
+/// Share of the loan cleared so far: repaid / (repaid + outstanding).
+double loanRepaidProgress(int repaidMinor, int remainingMinor) {
+  final total = repaidMinor + remainingMinor;
+  if (total <= 0) return 0;
+  return (repaidMinor / total).clamp(0.0, 1.0);
 }
 
 LoanProjection loanProjection(LedgerState state, Account loan) {

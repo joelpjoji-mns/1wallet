@@ -180,6 +180,34 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.24',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.24',
+    versionCode: 24,
+    runtimeVersion: '1.0.24',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-27T21:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Tag breakdown shows the net amount per tag, not just spending',
+        'Home widget currency and date dropdowns are larger and easier to tap',
+        'Active History filters are highlighted in the accent colour',
+        'Hide from All accounts is now a toggle switch',
+      ],
+      bugFixes: const [
+        'All accounts tiles are more compact and centre single balances',
+        'Planned payment cards fit long names, skipped and due-soon labels neatly',
+        'Loan details show the amount you\'ve actually repaid',
+      ],
+      notes: const [],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.23',
     platform: 'android',
     channel: 'stable',
@@ -202,7 +230,8 @@ final List<AppUpdateRelease> kBuiltInReleaseHistory = [
       ],
       notes: const [],
     ),
-  ),  AppUpdateRelease(
+  ),
+  AppUpdateRelease(
     id: '1.0.22',
     platform: 'android',
     channel: 'stable',
