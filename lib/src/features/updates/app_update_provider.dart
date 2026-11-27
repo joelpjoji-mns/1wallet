@@ -180,6 +180,32 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.19',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.19',
+    versionCode: 19,
+    runtimeVersion: '1.0.19',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-27T13:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Hide an account from the All accounts tile with a tick box',
+        'More compact Review inbox cards with side-by-side chips',
+      ],
+      bugFixes: const [
+        'Button labels always stay on one line',
+        'Close and Delete account buttons sit side by side',
+        'Balance tile date range and currency sit on the right',
+      ],
+      notes: const ['Confirm no longer wraps on narrow phones'],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.18',
     platform: 'android',
     channel: 'stable',

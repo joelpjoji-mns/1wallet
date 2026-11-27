@@ -1,7 +1,6 @@
-- Payday countdown, Next card bill and Unusual spending home widgets
-- Compact calendar popup for custom date ranges
-- Glass-styled buttons across the app
-- Deleted accounts no longer reappear or get blocked by hidden plans
-- Cleaner, aligned planned payment lists, details and summary
-- Review and inbox notification card layout fixes
-- New widgets appear at the bottom of the dashboard
+- Hide an account from the All accounts tile with a tick box
+- More compact Review inbox cards with side-by-side chips
+- Button labels always stay on one line
+- Close and Delete account buttons sit side by side
+- Balance tile date range and currency sit on the right
+- Confirm no longer wraps on narrow phones

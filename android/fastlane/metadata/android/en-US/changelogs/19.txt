@@ -1,0 +1,6 @@
+- Hide an account from the All accounts tile with a tick box
+- More compact Review inbox cards with side-by-side chips
+- Button labels always stay on one line
+- Close and Delete account buttons sit side by side
+- Balance tile date range and currency sit on the right
+- Confirm no longer wraps on narrow phones

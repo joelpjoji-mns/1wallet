@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.19] - 2026-11-27
+
 ### Changed
 - The account editor's "Show on home" switch is now a "Hide from All accounts" tick box, which keeps the account off the All accounts home tile.
 - Close account and Delete account sit side by side on one line. On narrow phones the labels shorten to Close and Delete.
