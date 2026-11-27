@@ -2496,11 +2496,24 @@ class AccountGroupsHomeWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final groups = _accountGroupSummaries(state).take(5).toList();
+    final allGroups = _accountGroupSummaries(state);
+    final groups = allGroups.take(5).toList();
+    final scheme = Theme.of(context).colorScheme;
+    final totalAccounts = allGroups.fold<int>(0, (sum, g) => sum + g.count);
+    final largest = groups.fold<int>(
+      0,
+      (max, g) =>
+          g.balance.amountMinor.abs() > max ? g.balance.amountMinor.abs() : max,
+    );
     return HomeWidgetCard(
       title: 'Account groups',
+      subtitle: groups.isEmpty
+          ? null
+          : '$totalAccounts ${totalAccounts == 1 ? 'account' : 'accounts'} '
+                'in ${allGroups.length} '
+                '${allGroups.length == 1 ? 'group' : 'groups'}',
       icon: Icons.account_tree_outlined,
-      iconColor: Theme.of(context).colorScheme.secondary,
+      iconColor: scheme.secondary,
       child: groups.isEmpty
           ? const EmptyState(
               icon: Icons.account_tree_outlined,
@@ -2509,26 +2522,114 @@ class AccountGroupsHomeWidget extends StatelessWidget {
             )
           : Column(
               children: [
-                for (final group in groups) ...[
-                  HomeDetailRow(
-                    icon: Icons.folder_outlined,
-                    title: '${group.label} · ${group.count}',
-                    trailing: maskMoneyIfPrivate(
-                      state,
-                      formatMoney(group.balance, state.preferences.locale),
+                for (final (index, group) in groups.indexed)
+                  Padding(
+                    padding: EdgeInsets.only(
+                      top: index == 0 ? 0 : AppSpacing.md,
                     ),
-                    iconColor: group.balance.amountMinor < 0
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.primary,
-                    tone: group.balance.amountMinor < 0
-                        ? MetricTone.danger
-                        : MetricTone.standard,
+                    child: _AccountGroupRow(
+                      group: group,
+                      share: largest == 0
+                          ? 0
+                          : group.balance.amountMinor.abs() / largest,
+                      amountLabel: maskMoneyIfPrivate(
+                        state,
+                        formatMoney(group.balance, state.preferences.locale),
+                      ),
+                    ),
                   ),
-                  if (group != groups.last)
-                    const Divider(height: AppSpacing.md),
-                ],
               ],
             ),
+    );
+  }
+}
+
+class _AccountGroupRow extends StatelessWidget {
+  const _AccountGroupRow({
+    required this.group,
+    required this.share,
+    required this.amountLabel,
+  });
+
+  final _AccountGroupSummary group;
+  final double share;
+  final String amountLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final negative = group.balance.amountMinor < 0;
+    final tone = negative ? scheme.error : scheme.primary;
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: tone.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+          ),
+          child: Icon(accountTypeIcon(group.type), size: 20, color: tone),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      group.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        amountLabel,
+                        maxLines: 1,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: negative ? scheme.error : scheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Row(
+                children: [
+                  Text(
+                    group.count == 1 ? '1 account' : '${group.count} accounts',
+                    maxLines: 1,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: HomeLiveProgressBar(
+                      progress: share.clamp(0.0, 1.0),
+                      color: tone,
+                      height: 4,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -3241,6 +3342,7 @@ List<_AccountGroupSummary> _accountGroupSummaries(LedgerState state) {
   final groups = byType.entries
       .map(
         (entry) => _AccountGroupSummary(
+          type: entry.key,
           label: accountTypeLabel(entry.key),
           count: entry.value.count,
           balance: Money(
@@ -3406,11 +3508,13 @@ String _shortDate(DateTime date, String locale) {
 
 class _AccountGroupSummary {
   const _AccountGroupSummary({
+    required this.type,
     required this.label,
     required this.count,
     required this.balance,
   });
 
+  final String type;
   final String label;
   final int count;
   final Money balance;
@@ -3531,6 +3635,29 @@ class CreditUtilizationWidget extends ConsumerWidget {
             return a.account.name.compareTo(b.account.name);
           });
 
+    var totalLimit = 0;
+    var totalUsed = 0;
+    for (final acc in creditAccounts) {
+      if (acc.creditLimit == null) continue;
+      final limit = convertMoneyForDisplay(
+        state,
+        acc.creditLimit!,
+        state.preferences.displayCurrency,
+      ).amountMinor;
+      if (limit <= 0) continue;
+      final raw = convertMoneyForDisplay(
+        state,
+        accountBalanceFromMap(balances, acc),
+        state.preferences.displayCurrency,
+      ).amountMinor;
+      totalLimit += limit;
+      totalUsed += raw < 0 ? -raw : 0;
+    }
+    String money(int minor) => formatMoney(
+      Money(amountMinor: minor, currency: state.preferences.displayCurrency),
+      state.preferences.locale,
+    );
+
     return RepaintBoundary(
       child: HomeWidgetCard(
         title: 'Credit utilization',
@@ -3542,7 +3669,18 @@ class CreditUtilizationWidget extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (accountMetrics.isEmpty)
+            if (totalLimit > 0)
+              _TotalCreditSummary(
+                used: totalUsed,
+                limit: totalLimit,
+                usedLabel: money(totalUsed),
+                limitLabel: money(totalLimit),
+                availableLabel: money(
+                  (totalLimit - totalUsed).clamp(0, totalLimit),
+                ),
+              ),
+            if (accountMetrics.isEmpty) ...[
+              if (totalLimit > 0) const SizedBox(height: AppSpacing.md),
               EmptyState(
                 icon: Icons.credit_card_outlined,
                 title: creditAccounts.isEmpty
@@ -3552,79 +3690,201 @@ class CreditUtilizationWidget extends ConsumerWidget {
                     ? 'Credit cards you add will appear here.'
                     : 'Cards with zero utilization are hidden.',
               ),
-            ...accountMetrics.map((metric) {
-              final acc = metric.account;
-              final balForDisplay = metric.balForDisplay;
-              final limit = metric.limit;
-              final util = metric.util;
+            ],
+            for (final (index, metric) in accountMetrics.indexed)
+              Padding(
+                padding: EdgeInsets.only(
+                  top: index > 0 || totalLimit > 0 ? AppSpacing.lg : 0,
+                ),
+                child: _CreditCardUtilizationRow(
+                  name: metric.account.name,
+                  util: metric.util,
+                  hasLimit: metric.hasLimit,
+                  color: metric.account.color ?? scheme.primary,
+                  balanceLabel: 'Balance ${money(metric.balForDisplay)}',
+                  limitLabel:
+                      'Limit ${metric.hasLimit ? money(metric.limit) : 'Not set'}',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+Color _utilizationColor(ColorScheme scheme, double util) {
+  if (util >= 0.7) return scheme.error;
+  if (util >= 0.3) return scheme.tertiary;
+  return scheme.primary;
+}
+
+class _CreditCardUtilizationRow extends StatelessWidget {
+  const _CreditCardUtilizationRow({
+    required this.name,
+    required this.util,
+    required this.hasLimit,
+    required this.color,
+    required this.balanceLabel,
+    required this.limitLabel,
+  });
+
+  final String name;
+  final double util;
+  final bool hasLimit;
+  final Color color;
+  final String balanceLabel;
+  final String limitLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final meta = textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              hasLimit ? '${(util * 100).round()}%' : 'N/A',
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: hasLimit ? _utilizationColor(scheme, util) : null,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        HomeLiveProgressBar(
+          progress: hasLimit ? util.clamp(0.0, 1.0) : 0.0,
+          color: color,
+          height: 6,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Row(
+          children: [
+            Expanded(
+              child: PrivacyText(
+                balanceLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: meta,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: PrivacyText(
+                limitLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: meta,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Combined utilisation across every credit card that has a limit.
+class _TotalCreditSummary extends StatelessWidget {
+  const _TotalCreditSummary({
+    required this.used,
+    required this.limit,
+    required this.usedLabel,
+    required this.limitLabel,
+    required this.availableLabel,
+  });
+
+  final int used;
+  final int limit;
+  final String usedLabel;
+  final String limitLabel;
+  final String availableLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final util = limit > 0 ? used / limit : 0.0;
+    final color = _utilizationColor(scheme, util);
+    return Container(
+      key: const ValueKey('credit-utilization-total'),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            acc.name,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        if (limit > 0)
-                          Text(
-                            '${(util * 100).round()}%',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          )
-                        else
-                          Text(
-                            'N/A',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                      ],
+                    Text(
+                      'Total credit used',
+                      style: textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    HomeLiveProgressBar(
-                      progress: limit > 0 ? util.clamp(0.0, 1.0) : 0.0,
-                      color: acc.color ?? scheme.primary,
-                      height: 8,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: PrivacyText(
-                            'Balance ${formatMoney(Money(amountMinor: balForDisplay, currency: state.preferences.displayCurrency), state.preferences.locale)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Flexible(
-                          child: PrivacyText(
-                            'Limit ${limit > 0 ? formatMoney(Money(amountMinor: limit, currency: state.preferences.displayCurrency), state.preferences.locale) : 'Not Set'}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.end,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: AppSpacing.xxs),
+                    PrivacyText(
+                      '$usedLabel of $limitLabel',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
-              );
-            }),
-          ],
-        ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                '${(util * 100).round()}%',
+                style: textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          HomeLiveProgressBar(
+            progress: util.clamp(0.0, 1.0),
+            color: color,
+            height: 10,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          PrivacyText(
+            '$availableLabel available across all cards',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

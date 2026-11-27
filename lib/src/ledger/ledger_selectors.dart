@@ -1250,12 +1250,17 @@ Color positiveTone(BuildContext context) {
   return Theme.of(context).colorScheme.positive;
 }
 
-IconData accountIcon(Account account) {
-  return switch (account.type) {
+IconData accountIcon(Account account) => accountTypeIcon(account.type);
+
+IconData accountTypeIcon(String type) {
+  return switch (type) {
     'cash' => Icons.payments_outlined,
     'bank' => Icons.account_balance_outlined,
     'credit_card' || 'card' => Icons.credit_card_outlined,
-    'loan' || 'overdraft' => Icons.account_balance_outlined,
+    'savings' => Icons.savings_outlined,
+    'investment' => Icons.trending_up_rounded,
+    'digital' => Icons.account_balance_wallet_outlined,
+    'loan' || 'overdraft' => Icons.request_quote_outlined,
     'wallet' => Icons.account_balance_wallet_outlined,
     _ => Icons.wallet_outlined,
   };

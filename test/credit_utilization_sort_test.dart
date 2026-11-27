@@ -95,6 +95,23 @@ void main() {
         lessThan(lowTop),
         reason: '80% card should appear before 10% card',
       );
+
+      // The total summary combines every card with a limit, including the
+      // unused one: $900 of $2,500 = 36%, shown above the per-card list.
+      final total = find.byKey(const ValueKey('credit-utilization-total'));
+      expect(total, findsOneWidget);
+      expect(
+        find.descendant(of: total, matching: find.text('36%')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: total,
+          matching: find.text(r'$900.00 of $2,500.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.getTopLeft(total).dy, lessThan(highTop));
     },
   );
 

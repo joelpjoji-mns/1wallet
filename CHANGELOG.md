@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.23] - 2026-11-27
+
+### Changed
+- Credit utilization now opens with a total credit summary: the combined percentage used across all credit cards with a limit, a progress bar, the amount used out of the total limit and the credit still available. The per-card list underneath has even spacing.
+- The Account groups widget was redesigned: each group shows its account-type icon, the number of accounts and a bar comparing its size with the largest group. The header counts all accounts and groups, and rows are evenly spaced without dividers. Savings, investment and loan accounts get their own icons.
+- The account deletion screen was redesigned with a status header, a step checklist (cloud data, sign-in credentials, this device) showing waiting, in-progress, done or failed for each step, a separate privacy note and a full-width action button.
+
 ## [1.0.22] - 2026-11-27
 
 ### Added

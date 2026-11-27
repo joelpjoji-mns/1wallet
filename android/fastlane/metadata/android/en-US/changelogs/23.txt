@@ -1,0 +1,3 @@
+- Credit utilization shows total credit used across all cards
+- Account groups widget redesigned with clearer spacing and icons
+- Account deletion screen redesigned with step-by-step progress

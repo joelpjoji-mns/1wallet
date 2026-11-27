@@ -180,6 +180,29 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.23',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.23',
+    versionCode: 23,
+    runtimeVersion: '1.0.23',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-27T18:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Credit utilization shows total credit used across all cards',
+      ],
+      bugFixes: const [
+        'Account groups widget redesigned with clearer spacing and icons',
+        'Account deletion screen redesigned with step-by-step progress',
+      ],
+      notes: const [],
+    ),
+  ),  AppUpdateRelease(
     id: '1.0.22',
     platform: 'android',
     channel: 'stable',
