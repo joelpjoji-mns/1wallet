@@ -300,7 +300,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                     candidate,
                     matchedPlan: matchedPlan,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
@@ -422,7 +422,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               ),
               child: PrivacyText(
                 candidate.rawText!,
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
@@ -556,7 +556,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       children: [
                         Text(
                           account.name,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
@@ -593,8 +593,6 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   Expanded(
                     child: Text(
                       notification.body,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -602,24 +600,18 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                   ),
                   if (notification.amount != null) ...[
                     const SizedBox(width: AppSpacing.sm),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: PrivacyText(
-                          formatMoney(
-                            convertMoneyForDisplay(state, notification.amount!),
-                            state.preferences.locale,
-                          ),
-                          maxLines: 1,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: notification.isOverdue
-                                ? scheme.error
-                                : scheme.onSurface,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
+                    PrivacyText(
+                      formatMoney(
+                        convertMoneyForDisplay(state, notification.amount!),
+                        state.preferences.locale,
+                      ),
+                      maxLines: 1,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: notification.isOverdue
+                            ? scheme.error
+                            : scheme.onSurface,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ],
@@ -728,7 +720,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                                 Expanded(
                                   child: Text(
                                     notification.title,
-                                    maxLines: 1,
+                                    maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: theme.textTheme.titleMedium
                                         ?.copyWith(
@@ -1232,7 +1224,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
               children: [
                 Text(
                   'Transfer detected',
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
@@ -1479,62 +1471,32 @@ class _ReviewAction {
   final String? semanticsLabel;
 }
 
-/// Card actions as one row of equal-width buttons. Icons are dropped when a
-/// button gets too narrow, and labels shrink rather than wrap.
+/// Card actions as the standard [AppButtonRow]: equal-width buttons with
+/// one-line labels that share a row whenever every label fits.
 class _ReviewCardActions extends StatelessWidget {
   const _ReviewCardActions({required this.actions, super.key});
 
   final List<_ReviewAction> actions;
 
-  static const double _gap = AppSpacing.xs;
-
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final each =
-            (constraints.maxWidth - _gap * (actions.length - 1)) /
-            actions.length;
-        final showIcons = each >= 96;
-        return Row(
-          children: [
-            for (var i = 0; i < actions.length; i++) ...[
-              if (i > 0) const SizedBox(width: _gap),
-              Expanded(child: _button(context, actions[i], showIcons)),
-            ],
-          ],
-        );
-      },
+    return AppButtonRow(
+      children: [for (final action in actions) _button(context, action)],
     );
   }
 
-  Widget _button(BuildContext context, _ReviewAction action, bool showIcon) {
+  Widget _button(BuildContext context, _ReviewAction action) {
     final style = ButtonStyle(
-      visualDensity: VisualDensity.compact,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      minimumSize: const WidgetStatePropertyAll(Size(0, 38)),
+      minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
       padding: const WidgetStatePropertyAll(
         EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       ),
       textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.labelLarge),
     ).merge(action.style);
-    final child = FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showIcon) ...[
-            Icon(action.icon, size: 16),
-            const SizedBox(width: AppSpacing.xxs),
-          ],
-          Text(
-            action.label,
-            maxLines: 1,
-            softWrap: false,
-            semanticsLabel: action.semanticsLabel,
-          ),
-        ],
-      ),
+    final child = AppButtonLabel(
+      label: action.label,
+      icon: action.icon,
+      semanticsLabel: action.semanticsLabel,
     );
     return action.filled
         ? FilledButton(onPressed: action.onPressed, style: style, child: child)

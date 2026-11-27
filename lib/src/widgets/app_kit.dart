@@ -3153,6 +3153,432 @@ class _RenderActionGrid extends RenderBox
       defaultPaint(context, offset);
 }
 
+/// Standard button content: an optional [icon] and a [label] that always stays
+/// on one line. When the button is too narrow for both, the icon is dropped
+/// before the label would ever wrap.
+///
+/// Its minimum intrinsic width is the label's one-line width, which
+/// [AppButtonRow] uses to decide how many buttons fit per row.
+class AppButtonLabel extends MultiChildRenderObjectWidget {
+  AppButtonLabel({
+    required String label,
+    IconData? icon,
+    String? semanticsLabel,
+    double iconSize = 18,
+    super.key,
+  }) : super(
+         children: [
+           Text(
+             label,
+             maxLines: 1,
+             softWrap: false,
+             overflow: TextOverflow.ellipsis,
+             textAlign: TextAlign.center,
+             semanticsLabel: semanticsLabel,
+           ),
+           if (icon != null)
+             ExcludeSemantics(child: Icon(icon, size: iconSize)),
+         ],
+       );
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderButtonLabel();
+}
+
+class _ButtonLabelParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderButtonLabel extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _ButtonLabelParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _ButtonLabelParentData> {
+  static const double _gap = AppSpacing.xxs;
+  bool _showIcon = true;
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _ButtonLabelParentData) {
+      child.parentData = _ButtonLabelParentData();
+    }
+  }
+
+  RenderBox get _label => firstChild!;
+  RenderBox? get _icon => childAfter(firstChild!);
+
+  double _labelWidth() => _label.getMaxIntrinsicWidth(double.infinity);
+  double _fullWidth() {
+    final icon = _icon;
+    if (icon == null) return _labelWidth();
+    return icon.getMaxIntrinsicWidth(double.infinity) + _gap + _labelWidth();
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _labelWidth();
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => _fullWidth();
+
+  @override
+  double computeMinIntrinsicHeight(double width) => math.max(
+    _label.getMinIntrinsicHeight(double.infinity),
+    _icon?.getMinIntrinsicHeight(double.infinity) ?? 0,
+  );
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      computeMinIntrinsicHeight(width);
+
+  Size _layout(BoxConstraints constraints, {required bool dry}) {
+    final icon = _icon;
+    final showIcon = icon != null && _fullWidth() <= constraints.maxWidth;
+    final iconSize = showIcon
+        ? (dry
+              ? icon.getDryLayout(const BoxConstraints())
+              : (icon..layout(const BoxConstraints(), parentUsesSize: true))
+                    .size)
+        : Size.zero;
+    final labelMax = math.max(
+      0.0,
+      constraints.maxWidth - (showIcon ? iconSize.width + _gap : 0),
+    );
+    final labelConstraints = BoxConstraints(maxWidth: labelMax);
+    final labelSize = dry
+        ? _label.getDryLayout(labelConstraints)
+        : (_label..layout(labelConstraints, parentUsesSize: true)).size;
+    final height = math.max(labelSize.height, iconSize.height);
+    if (!dry) {
+      _showIcon = showIcon;
+      if (icon != null && !showIcon) {
+        icon.layout(BoxConstraints.tight(Size.zero));
+      }
+      var x = 0.0;
+      if (showIcon) {
+        (icon.parentData! as _ButtonLabelParentData).offset = Offset(
+          0,
+          (height - iconSize.height) / 2,
+        );
+        x = iconSize.width + _gap;
+      }
+      (_label.parentData! as _ButtonLabelParentData).offset = Offset(
+        x,
+        (height - labelSize.height) / 2,
+      );
+    }
+    final width = labelSize.width + (showIcon ? iconSize.width + _gap : 0);
+    return constraints.constrain(Size(width, height));
+  }
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      _layout(constraints, dry: true);
+
+  @override
+  void performLayout() => size = _layout(constraints, dry: false);
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    context.paintChild(
+      _label,
+      (_label.parentData! as _ButtonLabelParentData).offset + offset,
+    );
+    final icon = _icon;
+    if (icon != null && _showIcon) {
+      context.paintChild(
+        icon,
+        (icon.parentData! as _ButtonLabelParentData).offset + offset,
+      );
+    }
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
+}
+
+/// Standard row of equal-width action buttons. Every button shares one row
+/// when each label fits on one line (see [AppButtonLabel]); otherwise the
+/// buttons flow into balanced rows (4 -> 2 x 2 -> 1 per row). Labels are
+/// never scaled down or wrapped. Buttons in a row share its height.
+class AppButtonRow extends MultiChildRenderObjectWidget {
+  const AppButtonRow({
+    required super.children,
+    this.gap = AppSpacing.xs,
+    super.key,
+  });
+
+  final double gap;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderButtonRow(gap);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) {
+    (renderObject as _RenderButtonRow).gap = gap;
+  }
+}
+
+class _ButtonRowParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderButtonRow extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _ButtonRowParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _ButtonRowParentData> {
+  _RenderButtonRow(this._gap);
+
+  double _gap;
+  set gap(double value) {
+    if (value == _gap) return;
+    _gap = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _ButtonRowParentData) {
+      child.parentData = _ButtonRowParentData();
+    }
+  }
+
+  List<RenderBox> get _children {
+    final result = <RenderBox>[];
+    var child = firstChild;
+    while (child != null) {
+      result.add(child);
+      child = childAfter(child);
+    }
+    return result;
+  }
+
+  double _cell(double width, int perRow) =>
+      (width - _gap * (perRow - 1)) / perRow;
+
+  int _perRow(double width) {
+    final children = _children;
+    var perRow = children.length;
+    while (perRow > 1) {
+      final cell = _cell(width, perRow);
+      if (children.every(
+        (child) => child.getMinIntrinsicWidth(double.infinity) <= cell + 0.01,
+      )) {
+        return perRow;
+      }
+      perRow = perRow > 2 ? (perRow / 2).ceil() : perRow - 1;
+    }
+    return 1;
+  }
+
+  Size _layout(BoxConstraints constraints, {required bool dry}) {
+    final children = _children;
+    if (children.isEmpty) return constraints.smallest;
+    final width = constraints.maxWidth.isFinite
+        ? constraints.maxWidth
+        : computeMaxIntrinsicWidth(double.infinity);
+    final perRow = _perRow(width);
+    var y = 0.0;
+    for (var start = 0; start < children.length; start += perRow) {
+      final row = children.sublist(
+        start,
+        math.min(start + perRow, children.length),
+      );
+      final cell = _cell(width, row.length);
+      var height = 0.0;
+      for (final child in row) {
+        final loose = BoxConstraints.tightFor(width: cell);
+        height = math.max(
+          height,
+          dry
+              ? child.getDryLayout(loose).height
+              : (child..layout(loose, parentUsesSize: true)).size.height,
+        );
+      }
+      if (!dry) {
+        for (var c = 0; c < row.length; c++) {
+          row[c].layout(
+            BoxConstraints.tightFor(width: cell, height: height),
+            parentUsesSize: true,
+          );
+          (row[c].parentData! as _ButtonRowParentData).offset = Offset(
+            c * (cell + _gap),
+            y,
+          );
+        }
+      }
+      y += height;
+      if (start + perRow < children.length) y += _gap;
+    }
+    return constraints.constrain(Size(width, y));
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _children.fold<double>(
+    0,
+    (max, child) => math.max(max, child.getMinIntrinsicWidth(double.infinity)),
+  );
+
+  @override
+  double computeMaxIntrinsicWidth(double height) {
+    final children = _children;
+    return children.fold<double>(
+          0,
+          (sum, child) => sum + child.getMaxIntrinsicWidth(double.infinity),
+        ) +
+        _gap * math.max(0, children.length - 1);
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      _layout(BoxConstraints(maxWidth: width), dry: true).height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      computeMinIntrinsicHeight(width);
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      _layout(constraints, dry: true);
+
+  @override
+  void performLayout() => size = _layout(constraints, dry: false);
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
+}
+
+/// Header layout with a [leading] title and [trailing] controls (pills,
+/// chips). The controls sit at the right edge of the title row when they fit;
+/// otherwise they move to the next line, still right-aligned, so they never
+/// overflow or drift to the left. Wrap several controls in a
+/// `Wrap(alignment: WrapAlignment.end)`.
+class AppTrailingHeader extends MultiChildRenderObjectWidget {
+  AppTrailingHeader({
+    required Widget leading,
+    required Widget trailing,
+    this.gap = AppSpacing.xs,
+    super.key,
+  }) : super(children: [leading, trailing]);
+
+  final double gap;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderTrailingHeader(gap);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) {
+    (renderObject as _RenderTrailingHeader).gap = gap;
+  }
+}
+
+class _TrailingHeaderParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderTrailingHeader extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _TrailingHeaderParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _TrailingHeaderParentData> {
+  _RenderTrailingHeader(this._gap);
+
+  double _gap;
+  set gap(double value) {
+    if (value == _gap) return;
+    _gap = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _TrailingHeaderParentData) {
+      child.parentData = _TrailingHeaderParentData();
+    }
+  }
+
+  RenderBox get _leading => firstChild!;
+  RenderBox get _trailing => lastChild!;
+
+  @override
+  double computeMinIntrinsicWidth(double height) => math.max(
+    _leading.getMinIntrinsicWidth(height),
+    _trailing.getMinIntrinsicWidth(height),
+  );
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      _leading.getMaxIntrinsicWidth(height) +
+      _gap +
+      _trailing.getMaxIntrinsicWidth(height);
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      _measure(BoxConstraints(maxWidth: width), dry: true).height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      computeMinIntrinsicHeight(width);
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      _measure(constraints, dry: true);
+
+  @override
+  void performLayout() {
+    size = _measure(constraints, dry: false);
+  }
+
+  Size _measure(BoxConstraints constraints, {required bool dry}) {
+    final maxWidth = constraints.maxWidth;
+    final leadingSize = dry
+        ? _leading.getDryLayout(BoxConstraints(maxWidth: maxWidth))
+        : (_leading..layout(
+                BoxConstraints(maxWidth: maxWidth),
+                parentUsesSize: true,
+              ))
+              .size;
+    final roomBeside = maxWidth - leadingSize.width - _gap;
+    final inline =
+        roomBeside > 0 &&
+        _trailing.getMaxIntrinsicWidth(double.infinity) <= roomBeside;
+    final trailingConstraints = BoxConstraints(
+      maxWidth: inline ? roomBeside : maxWidth,
+    );
+    final trailingSize = dry
+        ? _trailing.getDryLayout(trailingConstraints)
+        : (_trailing..layout(trailingConstraints, parentUsesSize: true)).size;
+    final width = maxWidth.isFinite
+        ? maxWidth
+        : leadingSize.width +
+              (inline ? _gap + trailingSize.width : 0) +
+              (inline
+                  ? 0
+                  : math.max(0, trailingSize.width - leadingSize.width));
+    final height = inline
+        ? math.max(leadingSize.height, trailingSize.height)
+        : leadingSize.height + _gap + trailingSize.height;
+    if (!dry) {
+      (_leading.parentData! as _TrailingHeaderParentData).offset = Offset(
+        0,
+        inline ? (height - leadingSize.height) / 2 : 0,
+      );
+      (_trailing.parentData! as _TrailingHeaderParentData).offset = Offset(
+        width - trailingSize.width,
+        inline ? (height - trailingSize.height) / 2 : leadingSize.height + _gap,
+      );
+    }
+    return constraints.constrain(Size(width, height));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
+}
+
 /// Canonical confirmation dialog: title, message, a `TextButton` cancel and a
 /// `FilledButton` confirm (error-coloured when [destructive]).
 class AppConfirmDialog extends StatelessWidget {

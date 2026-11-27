@@ -474,6 +474,20 @@ A/c no. XX0655
           ),
           reason: 'Confirm should share a row instead of wrapping by itself',
         );
+        expect(
+          find.descendant(of: actionGroup, matching: find.byType(FittedBox)),
+          findsNothing,
+          reason: 'Action labels must render at full size, never scaled down',
+        );
+        for (final label in ['Block', 'Pay Plan', 'Dismiss', 'Confirm']) {
+          final button = find.ancestor(
+            of: find.descendant(of: actionGroup, matching: find.text(label)),
+            matching: find.byWidgetPredicate(
+              (w) => w is TextButton || w is FilledButton,
+            ),
+          );
+          expect(tester.getSize(button).height, greaterThanOrEqualTo(44));
+        }
         final chipRow = find.byKey(
           const ValueKey('capture-candidate-chip-row'),
         );

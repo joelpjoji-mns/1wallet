@@ -796,4 +796,108 @@ void main() {
     expect(find.bySemanticsLabel('Add record'), findsOneWidget);
     handle.dispose();
   });
+
+  testWidgets('AppButtonRow keeps every label on one line', (tester) async {
+    Future<void> pumpAt(double width, List<String> labels) => tester.pumpWidget(
+      _host(
+        Center(
+          child: SizedBox(
+            width: width,
+            child: AppButtonRow(
+              children: [
+                for (final label in labels)
+                  FilledButton(
+                    onPressed: () {},
+                    child: AppButtonLabel(
+                      label: label,
+                      icon: Icons.check_rounded,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    void expectOneLine(String label) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(paragraph.didExceedMaxLines, isFalse, reason: label);
+      expect(
+        paragraph.getMaxIntrinsicWidth(double.infinity),
+        lessThanOrEqualTo(paragraph.size.width + 0.5),
+        reason: '$label should not be truncated or wrapped',
+      );
+    }
+
+    await pumpAt(320, const ['Confirm', 'Dismiss']);
+    expectOneLine('Confirm');
+    expectOneLine('Dismiss');
+    expect(
+      tester.getTopLeft(find.text('Confirm')).dy,
+      tester.getTopLeft(find.text('Dismiss')).dy,
+    );
+
+    const four = ['Confirm', 'Edit details', 'Ignore sender', 'Dismiss'];
+    await pumpAt(320, four);
+    for (final label in four) {
+      expectOneLine(label);
+    }
+    final rows = {
+      for (final label in four) tester.getTopLeft(find.text(label)).dy,
+    };
+    expect(rows.length, greaterThan(1), reason: 'buttons wrap to new rows');
+
+    await pumpAt(400, const ['Confirm']);
+    final roomyButton = tester
+        .renderObject<RenderBox>(find.byType(FilledButton))
+        .getMaxIntrinsicWidth(double.infinity);
+    // Narrower than label + icon, but still wide enough for the label alone.
+    await pumpAt(roomyButton - 12, const ['Confirm']);
+    expectOneLine('Confirm');
+    expect(
+      tester.getSize(find.byIcon(Icons.check_rounded)),
+      Size.zero,
+      reason: 'the icon is dropped before the label wraps',
+    );
+  });
+
+  testWidgets('AppTrailingHeader keeps controls at the right edge', (
+    tester,
+  ) async {
+    const headerKey = Key('header');
+    Future<void> pumpAt(double width) => tester.pumpWidget(
+      _host(
+        Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: width,
+            child: AppTrailingHeader(
+              key: headerKey,
+              leading: const Text('Balance'),
+              trailing: const SizedBox(
+                key: Key('pills'),
+                width: 120,
+                height: 32,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await pumpAt(360);
+    final header = tester.getRect(find.byKey(headerKey));
+    var pills = tester.getRect(find.byKey(const Key('pills')));
+    var title = tester.getRect(find.text('Balance'));
+    expect(pills.right, header.right);
+    expect(pills.center.dy, closeTo(title.center.dy, 0.01));
+
+    await pumpAt(200);
+    expect(tester.takeException(), isNull);
+    pills = tester.getRect(find.byKey(const Key('pills')));
+    title = tester.getRect(find.text('Balance'));
+    expect(pills.right, tester.getRect(find.byKey(headerKey)).right);
+    expect(pills.top, greaterThan(title.bottom));
+  });
 }
