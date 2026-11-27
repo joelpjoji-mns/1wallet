@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:one_wallet_flutter/src/data/ledger_models.dart';
 import 'package:one_wallet_flutter/src/data/ledger_providers.dart';
 import 'package:one_wallet_flutter/src/features/accounts/account_editor_screen.dart';
+import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
 
 import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
@@ -148,5 +149,146 @@ void main() {
         expect(transactions, isNotEmpty);
       },
     );
+
+    testWidgets(
+      'hidden EMI templates of archived loans do not block deleting the source account',
+      (tester) async {
+        final base = sampleLedgerState();
+        final cleared = base.copyWith(
+          accounts: [
+            ...base.accounts,
+            const Account(
+              id: 'acc-old-loan',
+              name: 'Old car loan',
+              type: 'loan',
+              currency: 'INR',
+              openingBalance: Money(amountMinor: -100000, currency: 'INR'),
+              isArchived: true,
+            ),
+          ],
+          transactions: [
+            ...base.transactions.where(
+              (t) => t.status != 'scheduled' && t.status != 'paused',
+            ),
+            TransactionRecord(
+              id: 'emi-old-loan',
+              type: 'loan_repayment',
+              status: 'paused',
+              source: 'recurring',
+              accountId: 'acc-bank',
+              counterAccountId: 'acc-old-loan',
+              amount: const Money(amountMinor: 5000, currency: 'INR'),
+              baseAmount: const Money(amountMinor: 5000, currency: 'INR'),
+              occurredAt: DateTime.now().add(const Duration(days: 3)),
+            ),
+          ],
+        );
+
+        final prefs = await SharedPreferences.getInstance();
+        final container = ProviderContainer(
+          overrides: authenticatedSampleOverrides(
+            ledger: cleared,
+            prefs: prefs,
+          ),
+        );
+        addTearDown(container.dispose);
+        await container
+            .read(ledgerProvider.notifier)
+            .restoreLedgerState(cleared);
+        expect(
+          visiblePlansLinkedToAccount(
+            container.read(ledgerProvider),
+            'acc-bank',
+          ),
+          isEmpty,
+        );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: AccountEditorScreen(accountId: 'acc-bank'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final deleteBtn = find.widgetWithText(OutlinedButton, 'Delete account');
+        await tester.ensureVisible(deleteBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(deleteBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Cannot delete account'), findsNothing);
+        await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+        await tester.pumpAndSettle();
+
+        final bank = container
+            .read(ledgerProvider)
+            .accounts
+            .firstWhere((a) => a.id == 'acc-bank');
+        expect(bank.isDeleted, isTrue);
+      },
+    );
+  });
+
+  group('Deleted accounts stay deleted', () {
+    test('saving a deleted account does not resurrect it', () async {
+      final base = sampleLedgerState();
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: base, prefs: prefs),
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(ledgerProvider.notifier);
+      await controller.restoreLedgerState(base);
+
+      await controller.deleteAccount('acc-bank');
+      final deleted = container
+          .read(ledgerProvider)
+          .accounts
+          .firstWhere((a) => a.id == 'acc-bank');
+      expect(deleted.isDeleted, isTrue);
+
+      await controller.upsertAccount(
+        id: deleted.id,
+        name: 'Renamed',
+        type: deleted.type,
+        currency: deleted.currency,
+        isArchived: deleted.isArchived,
+      );
+      final after = container
+          .read(ledgerProvider)
+          .accounts
+          .firstWhere((a) => a.id == 'acc-bank');
+      expect(after.isDeleted, isTrue);
+    });
+
+    test('plans tied to deleted accounts are not listed as planned', () async {
+      final base = sampleLedgerState();
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: base, prefs: prefs),
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(ledgerProvider.notifier);
+      await controller.restoreLedgerState(base);
+      final linkedBefore = scheduledTransactions(container.read(ledgerProvider))
+          .where(
+            (t) =>
+                t.accountId == 'acc-bank' || t.counterAccountId == 'acc-bank',
+          );
+      expect(linkedBefore, isNotEmpty, reason: 'fixture needs bank plans');
+
+      await controller.deleteAccount('acc-bank');
+      final state = container.read(ledgerProvider);
+      expect(
+        scheduledTransactions(state).where(
+          (t) => t.accountId == 'acc-bank' || t.counterAccountId == 'acc-bank',
+        ),
+        isEmpty,
+      );
+      expect(visiblePlansLinkedToAccount(state, 'acc-bank'), isEmpty);
+    });
   });
 }

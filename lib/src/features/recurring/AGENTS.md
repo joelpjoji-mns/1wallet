@@ -32,3 +32,5 @@ Manages scheduled and recurring financial rules (`FutureGenerationRule`), such a
 
 - [ ] Check `test/recurring_plan_amount_update_test.dart` and `test/recurring_hide_skipped_and_rounding_test.dart`.
 - [ ] Ensure editing a recurring rule's amount gives the user the choice between updating future occurrences only or updating historical records.
+- [ ] Keep list, detail and payment-history headers aligned through `_RecurringCardHeader`: amounts and dates remain in the trailing column at phone widths; long amounts scale down and titles stay on one line with ellipsis.
+- [ ] In planned details, align the status/cadence row beneath the header and keep totals, next payment and accounts in one information panel.

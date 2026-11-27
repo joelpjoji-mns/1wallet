@@ -359,7 +359,7 @@ class _NotificationCaptureScreenState
           FilledButton.icon(
             onPressed: _isScanning ? null : _startNotificationScan,
             icon: _isScanning
-                ? AppInlineSpinner(size: 16, color: scheme.onPrimary)
+                ? AppInlineSpinner(size: 16, color: scheme.primary)
                 : const Icon(Icons.manage_search_rounded),
             label: Text(
               _isScanning ? 'Scanning…' : 'Scan now',

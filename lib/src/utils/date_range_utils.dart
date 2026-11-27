@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/date_range_popup.dart';
 
 /// Formats a custom date range as a persistent storage key (e.g. `custom:2026-11-01..2026-11-15`).
 String formatCustomDateRangeKey(DateTimeRange range) {
@@ -53,11 +54,15 @@ String formatCustomDateRangeLabel(String period, {DateTime? now}) {
       return 'Today';
     }
     final yesterday = addCalendarDays(today, -1);
-    if (s.year == yesterday.year && s.month == yesterday.month && s.day == yesterday.day) {
+    if (s.year == yesterday.year &&
+        s.month == yesterday.month &&
+        s.day == yesterday.day) {
       return 'Yesterday';
     }
     final tomorrow = addCalendarDays(today, 1);
-    if (s.year == tomorrow.year && s.month == tomorrow.month && s.day == tomorrow.day) {
+    if (s.year == tomorrow.year &&
+        s.month == tomorrow.month &&
+        s.day == tomorrow.day) {
       return 'Tomorrow';
     }
     if (s.year == current.year) {
@@ -94,7 +99,10 @@ String formatCustomDateRangeLabel(String period, {DateTime? now}) {
   final isFirstOfMonth = s.day == 1;
   final nextDay = addCalendarDays(e, 1);
   final isEndOfMonth = nextDay.day == 1;
-  if (isFirstOfMonth && isEndOfMonth && s.year == e.year && s.month == e.month) {
+  if (isFirstOfMonth &&
+      isEndOfMonth &&
+      s.year == e.year &&
+      s.month == e.month) {
     if (s.year == current.year && s.month == current.month) {
       return 'This month';
     }
@@ -109,7 +117,11 @@ String formatCustomDateRangeLabel(String period, {DateTime? now}) {
   }
 
   // Check full year ranges
-  if (s.day == 1 && s.month == 1 && e.month == 12 && e.day == 31 && s.year == e.year) {
+  if (s.day == 1 &&
+      s.month == 1 &&
+      e.month == 12 &&
+      e.day == 31 &&
+      s.year == e.year) {
     if (s.year == current.year) return 'This year';
     if (s.year == current.year - 1) return 'Last year';
     return '${s.year}';
@@ -127,11 +139,13 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   final today = DateTime(current.year, current.month, current.day);
   final dir = direction >= 0 ? 1 : -1;
 
-  final isTitle = currentFilter.isNotEmpty &&
+  final isTitle =
+      currentFilter.isNotEmpty &&
       currentFilter[0] == currentFilter[0].toUpperCase() &&
       !currentFilter.startsWith('custom:') &&
       !currentFilter.startsWith('Custom:');
-  final isCamel = !isTitle &&
+  final isCamel =
+      !isTitle &&
       (currentFilter == 'thisWeek' ||
           currentFilter == 'thisMonth' ||
           currentFilter == '30Days' ||
@@ -159,7 +173,9 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   // 1. Today / 1-day range
   if (currentFilter == 'today' || currentFilter == 'Today') {
     final target = addCalendarDays(today, dir);
-    if (target.year == today.year && target.month == today.month && target.day == today.day) {
+    if (target.year == today.year &&
+        target.month == today.month &&
+        target.day == today.day) {
       return formatPreset(snake: 'today', title: 'Today', camel: 'today');
     }
     return formatCustomDateRangeKey(DateTimeRange(start: target, end: target));
@@ -169,39 +185,60 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   final weekdayDiff = current.weekday - 1;
   final thisWeekStart = addCalendarDays(today, -weekdayDiff);
 
-  if (currentFilter == 'this_week' || currentFilter == 'thisWeek' || currentFilter == 'This week') {
+  if (currentFilter == 'this_week' ||
+      currentFilter == 'thisWeek' ||
+      currentFilter == 'This week') {
     final start = addCalendarDays(thisWeekStart, dir * 7);
     final end = addCalendarDays(start, 6);
     if (start.year == thisWeekStart.year &&
         start.month == thisWeekStart.month &&
         start.day == thisWeekStart.day) {
-      return formatPreset(snake: 'this_week', title: 'This week', camel: 'thisWeek');
+      return formatPreset(
+        snake: 'this_week',
+        title: 'This week',
+        camel: 'thisWeek',
+      );
     }
     return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
   }
 
   // 3. This month / Month range
-  if (currentFilter == 'this_month' || currentFilter == 'thisMonth' || currentFilter == 'This month') {
+  if (currentFilter == 'this_month' ||
+      currentFilter == 'thisMonth' ||
+      currentFilter == 'This month') {
     final start = DateTime(current.year, current.month + dir, 1);
     final end = DateTime(start.year, start.month + 1, 0);
     if (start.year == current.year && start.month == current.month) {
-      return formatPreset(snake: 'this_month', title: 'This month', camel: 'thisMonth');
+      return formatPreset(
+        snake: 'this_month',
+        title: 'This month',
+        camel: 'thisMonth',
+      );
     }
     return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
   }
 
   // 4. Last month
-  if (currentFilter == 'last_month' || currentFilter == 'lastMonth' || currentFilter == 'Last month') {
+  if (currentFilter == 'last_month' ||
+      currentFilter == 'lastMonth' ||
+      currentFilter == 'Last month') {
     final start = DateTime(current.year, current.month - 1 + dir, 1);
     final end = DateTime(start.year, start.month + 1, 0);
     if (start.year == current.year && start.month == current.month) {
-      return formatPreset(snake: 'this_month', title: 'This month', camel: 'thisMonth');
+      return formatPreset(
+        snake: 'this_month',
+        title: 'This month',
+        camel: 'thisMonth',
+      );
     }
     return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
   }
 
   // 5. 30 days
-  if (currentFilter == '30_days' || currentFilter == '30Days' || currentFilter == '30 days' || currentFilter == 'last_30_days') {
+  if (currentFilter == '30_days' ||
+      currentFilter == '30Days' ||
+      currentFilter == '30 days' ||
+      currentFilter == 'last_30_days') {
     if (dir < 0) {
       final end = addCalendarDays(today, -30);
       final start = addCalendarDays(end, -29);
@@ -214,7 +251,9 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   }
 
   // 6. 6 months
-  if (currentFilter == '6_months' || currentFilter == '6Months' || currentFilter == '6 months') {
+  if (currentFilter == '6_months' ||
+      currentFilter == '6Months' ||
+      currentFilter == '6 months') {
     if (dir < 0) {
       final end = DateTime(current.year, current.month - 6, current.day);
       final start = DateTime(end.year, end.month - 6, end.day);
@@ -227,11 +266,17 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
   }
 
   // 7. This year
-  if (currentFilter == 'this_year' || currentFilter == 'thisYear' || currentFilter == 'This year') {
+  if (currentFilter == 'this_year' ||
+      currentFilter == 'thisYear' ||
+      currentFilter == 'This year') {
     final start = DateTime(current.year + dir, 1, 1);
     final end = DateTime(start.year, 12, 31);
     if (start.year == current.year) {
-      return formatPreset(snake: 'this_year', title: 'This year', camel: 'thisYear');
+      return formatPreset(
+        snake: 'this_year',
+        title: 'This year',
+        camel: 'thisYear',
+      );
     }
     return formatCustomDateRangeKey(DateTimeRange(start: start, end: end));
   }
@@ -245,7 +290,9 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
     // Check if it's a 1-day range
     if (s.year == e.year && s.month == e.month && s.day == e.day) {
       final next = addCalendarDays(s, dir);
-      if (next.year == today.year && next.month == today.month && next.day == today.day) {
+      if (next.year == today.year &&
+          next.month == today.month &&
+          next.day == today.day) {
         return 'today';
       }
       return formatCustomDateRangeKey(DateTimeRange(start: next, end: next));
@@ -261,53 +308,74 @@ String shiftDateFilter(String currentFilter, int direction, {DateTime? now}) {
           nextStart.day == thisWeekStart.day) {
         return 'this_week';
       }
-      return formatCustomDateRangeKey(DateTimeRange(start: nextStart, end: nextEnd));
+      return formatCustomDateRangeKey(
+        DateTimeRange(start: nextStart, end: nextEnd),
+      );
     }
 
     // Check if it's a full calendar month (1st to last day of month)
     final isFirstOfMonth = s.day == 1;
     final isEndOfMonth = addCalendarDays(e, 1).day == 1;
-    if (isFirstOfMonth && isEndOfMonth && s.year == e.year && s.month == e.month) {
+    if (isFirstOfMonth &&
+        isEndOfMonth &&
+        s.year == e.year &&
+        s.month == e.month) {
       final nextStart = DateTime(s.year, s.month + dir, 1);
       final nextEnd = DateTime(nextStart.year, nextStart.month + 1, 0);
-      if (nextStart.year == current.year && nextStart.month == current.month) return 'this_month';
-      return formatCustomDateRangeKey(DateTimeRange(start: nextStart, end: nextEnd));
+      if (nextStart.year == current.year && nextStart.month == current.month) {
+        return 'this_month';
+      }
+      return formatCustomDateRangeKey(
+        DateTimeRange(start: nextStart, end: nextEnd),
+      );
     }
 
     // Check if it's a 30-day range
     if (daySpan == 30) {
       final nextStart = addCalendarDays(s, dir * 30);
       final nextEnd = addCalendarDays(e, dir * 30);
-      if (nextEnd.year == today.year && nextEnd.month == today.month && nextEnd.day == today.day) {
+      if (nextEnd.year == today.year &&
+          nextEnd.month == today.month &&
+          nextEnd.day == today.day) {
         return '30_days';
       }
-      return formatCustomDateRangeKey(DateTimeRange(start: nextStart, end: nextEnd));
+      return formatCustomDateRangeKey(
+        DateTimeRange(start: nextStart, end: nextEnd),
+      );
     }
 
     // Check if it's a full calendar year
-    if (s.day == 1 && s.month == 1 && e.month == 12 && e.day == 31 && s.year == e.year) {
+    if (s.day == 1 &&
+        s.month == 1 &&
+        e.month == 12 &&
+        e.day == 31 &&
+        s.year == e.year) {
       final nextStart = DateTime(s.year + dir, 1, 1);
       final nextEnd = DateTime(nextStart.year, 12, 31);
       if (nextStart.year == current.year) return 'this_year';
-      return formatCustomDateRangeKey(DateTimeRange(start: nextStart, end: nextEnd));
+      return formatCustomDateRangeKey(
+        DateTimeRange(start: nextStart, end: nextEnd),
+      );
     }
 
     // General span
     final nextStart = addCalendarDays(s, dir * daySpan);
     final nextEnd = addCalendarDays(e, dir * daySpan);
-    return formatCustomDateRangeKey(DateTimeRange(start: nextStart, end: nextEnd));
+    return formatCustomDateRangeKey(
+      DateTimeRange(start: nextStart, end: nextEnd),
+    );
   }
 
   return currentFilter;
 }
 
-/// Prompts the user to pick a custom date range using Flutter's [showDateRangePicker].
+/// Prompts the user to pick a custom date range using the compact [showAppDateRangePicker] popup.
 Future<DateTimeRange?> promptCustomDateRange(
   BuildContext context, {
   DateTimeRange? initialRange,
   String? helpText,
 }) async {
-  return await showDateRangePicker(
+  return await showAppDateRangePicker(
     context: context,
     firstDate: DateTime(2000),
     lastDate: DateTime(2100),

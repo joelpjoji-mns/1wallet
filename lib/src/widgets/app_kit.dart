@@ -1209,17 +1209,17 @@ class AppActionButton extends StatelessWidget {
     final isInteractive = enabled && onPressed != null;
 
     final bg = prominent
-        ? scheme.primary
+        ? scheme.primary.withValues(alpha: isDark ? 0.30 : 0.20)
         : (isDark
               ? scheme.primary.withValues(alpha: 0.16)
               : scheme.primary.withValues(alpha: 0.10));
-    final fg = prominent ? scheme.onPrimary : scheme.primary;
-    final border = prominent
-        ? null
-        : Border.all(
-            color: scheme.primary.withValues(alpha: isDark ? 0.25 : 0.20),
-            width: 0.5,
-          );
+    final fg = scheme.primary;
+    final border = Border.all(
+      color: scheme.primary.withValues(
+        alpha: prominent ? (isDark ? 0.55 : 0.45) : (isDark ? 0.25 : 0.20),
+      ),
+      width: 0.5,
+    );
 
     final borderRadius = BorderRadius.circular(AppRadii.pill);
 
@@ -2872,25 +2872,36 @@ abstract final class AppButtonStyles {
     textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.labelMedium),
   );
 
-  static ButtonStyle destructiveFilled(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return FilledButton.styleFrom(
-      backgroundColor: scheme.error,
-      foregroundColor: scheme.onError,
-    );
-  }
+  static ButtonStyle destructiveFilled(BuildContext context) =>
+      _destructiveGlass(context, prominent: true);
 
-  static ButtonStyle destructiveOutlined(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return OutlinedButton.styleFrom(
-      foregroundColor: scheme.error,
-      side: BorderSide(color: scheme.error.withValues(alpha: 0.6)),
-    );
-  }
+  static ButtonStyle destructiveOutlined(BuildContext context) =>
+      _destructiveGlass(context);
 
-  static ButtonStyle destructiveText(BuildContext context) {
-    return TextButton.styleFrom(
-      foregroundColor: Theme.of(context).colorScheme.error,
+  static ButtonStyle destructiveText(BuildContext context) =>
+      _destructiveGlass(context);
+
+  static ButtonStyle _destructiveGlass(
+    BuildContext context, {
+    bool prominent = false,
+  }) => accentGlass(
+    context,
+    Theme.of(context).colorScheme.error,
+    prominent: prominent,
+  );
+
+  /// Glass pill tinted with [accent], for actions that carry their own colour.
+  static ButtonStyle accentGlass(
+    BuildContext context,
+    Color accent, {
+    bool prominent = false,
+  }) {
+    final theme = Theme.of(context);
+    return AppTheme.accentGlassButtonStyle(
+      accent: accent,
+      brightness: theme.brightness,
+      disabledColor: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+      prominent: prominent,
     );
   }
 }

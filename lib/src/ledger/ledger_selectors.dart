@@ -714,6 +714,12 @@ List<TransactionRecord> scheduledTransactions(LedgerState state) {
     if (transaction.status != 'scheduled' && transaction.status != 'paused') {
       continue;
     }
+    // Plans tied to a deleted account can never run again and cannot be
+    // edited (deleted accounts are not selectable), so they are not listed.
+    if (accountById(state, transaction.accountId)?.isDeleted == true ||
+        accountById(state, transaction.counterAccountId)?.isDeleted == true) {
+      continue;
+    }
     if (transaction.type == 'loan_repayment') {
       final counterAccount = accountById(state, transaction.counterAccountId);
       if (counterAccount != null && isPastLoan(state, counterAccount)) {
@@ -725,6 +731,33 @@ List<TransactionRecord> scheduledTransactions(LedgerState state) {
   items.sort((left, right) => left.occurredAt.compareTo(right.occurredAt));
   _scheduledTransactionsExpando[state] = items;
   return items;
+}
+
+/// Planned payments shown in Planned payments that use [accountId] as either
+/// side. Hidden templates (past-loan EMIs, plans on deleted accounts) are
+/// excluded so callers never block on plans the user cannot see or edit.
+List<TransactionRecord> visiblePlansLinkedToAccount(
+  LedgerState state,
+  String accountId,
+) {
+  return [
+    for (final plan in scheduledTransactions(state))
+      if (plan.accountId == accountId || plan.counterAccountId == accountId)
+        plan,
+  ];
+}
+
+/// User-facing name of a planned payment, matching Planned payments cards.
+String planDisplayName(LedgerState state, TransactionRecord plan) {
+  final name = plan.name?.trim();
+  if (name != null && name.isNotEmpty) return name;
+  final counter = accountById(state, plan.counterAccountId);
+  if (plan.type == 'loan_repayment' && counter != null) return counter.name;
+  if (plan.type == 'transfer' && counter != null) {
+    return 'Transfer to ${counter.name}';
+  }
+  return categoryById(state, plan.categoryId)?.name ??
+      transactionTypeLabel(plan.type);
 }
 
 bool isPastLoan(LedgerState state, Account loan) {

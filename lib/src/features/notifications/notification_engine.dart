@@ -20,6 +20,7 @@ class AppNotification {
     this.badgeLabel,
     this.isOverdue = false,
     this.isDueSoon = false,
+    this.dueAt,
   });
 
   final String id;
@@ -35,6 +36,9 @@ class AppNotification {
   final String? badgeLabel;
   final bool isOverdue;
   final bool isDueSoon;
+
+  /// When the payment or bill this alert refers to is due.
+  final DateTime? dueAt;
 }
 
 final Expando<Map<String, List<AppNotification>>> _inboxCacheExpando =
@@ -97,9 +101,13 @@ List<AppNotification> buildNotificationInbox(
               state: state,
               amount: transaction.amount,
               when: when,
+              past: true,
             ),
             createdAt: transaction.occurredAt,
             actionRoute: '/recurring/${transaction.id}',
+            amount: transaction.amount,
+            isOverdue: true,
+            dueAt: transaction.occurredAt,
           ),
         );
       } else if (daysDiff <= 14) {
@@ -124,6 +132,9 @@ List<AppNotification> buildNotificationInbox(
             ),
             createdAt: currentTime,
             actionRoute: '/recurring/${transaction.id}',
+            amount: transaction.amount,
+            isDueSoon: daysDiff <= 1,
+            dueAt: transaction.occurredAt,
           ),
         );
       }
@@ -166,6 +177,7 @@ List<AppNotification> buildNotificationInbox(
               ? 'Overdue yesterday'
               : 'Overdue ${-status.daysUntilDue}d',
           isOverdue: true,
+          dueAt: status.dueDate,
         ),
       );
     } else if (status.isDueSoon) {
@@ -193,6 +205,7 @@ List<AppNotification> buildNotificationInbox(
                     ? 'Due tomorrow'
                     : 'Due in ${status.daysUntilDue}d'),
           isDueSoon: true,
+          dueAt: status.dueDate,
         ),
       );
     } else if (status.isStatementGenerated) {
@@ -211,6 +224,7 @@ List<AppNotification> buildNotificationInbox(
           cycleKey: status.cycleKey,
           amount: absBalance,
           badgeLabel: 'Bill ready',
+          dueAt: status.dueDate,
         ),
       );
     }
@@ -236,6 +250,7 @@ List<AppNotification> buildNotificationInbox(
           badgeLabel: n.badgeLabel,
           isOverdue: n.isOverdue,
           isDueSoon: n.isDueSoon,
+          dueAt: n.dueAt,
         ),
       )
       .toList();
@@ -257,9 +272,11 @@ String _dueBody({
   required LedgerState state,
   required Money amount,
   required String when,
+  bool past = false,
 }) {
+  final verb = past ? 'was' : 'is';
   if (state.preferences.privacyModeEnabled) {
-    return 'A scheduled payment is due $when.';
+    return 'A scheduled payment $verb due $when.';
   }
-  return '${formatMoney(amount, state.preferences.locale)} is due $when.';
+  return '${formatMoney(amount, state.preferences.locale)} $verb due $when.';
 }

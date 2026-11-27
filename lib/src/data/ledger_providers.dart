@@ -2446,6 +2446,8 @@ class LedgerController extends StateNotifier<LedgerState> {
       includeInNetWorth: includeInNetWorth,
       showOnHome: showOnHome,
       isArchived: isArchived,
+      // Editing must never undo a deletion (e.g. saving a deleted loan).
+      isDeleted: existing?.isDeleted ?? false,
       sortOrder: existing?.sortOrder ?? state.accounts.length + 1,
     );
 
@@ -3520,7 +3522,10 @@ class LedgerController extends StateNotifier<LedgerState> {
     List<ParsedWalletCsvRow> rows,
   ) => _runMutation(() async {
     if (rows.isEmpty) return 0;
-    if (state.accounts.isEmpty) {
+    final fallbackAccount = state.accounts.firstWhereOrNull(
+      (account) => !account.isDeleted,
+    );
+    if (fallbackAccount == null) {
       throw StateError('Create an account before importing CSV rows.');
     }
     final batchId = _newId('import');
@@ -3531,8 +3536,7 @@ class LedgerController extends StateNotifier<LedgerState> {
         _transactionSignature(transaction),
     };
     for (final row in rows) {
-      final account =
-          _matchAccount(state, row.accountName) ?? state.accounts.first;
+      final account = _matchAccount(state, row.accountName) ?? fallbackAccount;
       final category = _matchCategory(state, row.categoryName, row.type);
       final amount = row.amount.copyWith(currency: account.currency);
       final signature = _rowSignature(row, account.id, category?.id);
@@ -4320,10 +4324,11 @@ ImportBatch? _importBatchById(LedgerState state, String id) {
 Account? _matchAccount(LedgerState state, String name) {
   final normalized = name.trim().toLowerCase();
   if (normalized.isEmpty) return null;
-  for (final account in state.accounts) {
+  final accounts = state.accounts.where((account) => !account.isDeleted);
+  for (final account in accounts) {
     if (account.name.toLowerCase() == normalized) return account;
   }
-  for (final account in state.accounts) {
+  for (final account in accounts) {
     if (account.name.toLowerCase().contains(normalized) ||
         normalized.contains(account.name.toLowerCase())) {
       return account;

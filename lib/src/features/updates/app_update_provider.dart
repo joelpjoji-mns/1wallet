@@ -180,6 +180,33 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.18',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.18',
+    versionCode: 18,
+    runtimeVersion: '1.0.18',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-27T12:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Payday countdown, Next card bill and Unusual spending home widgets',
+        'Compact calendar popup for custom date ranges',
+        'Glass-styled buttons across the app',
+      ],
+      bugFixes: const [
+        'Deleted accounts no longer reappear or get blocked by hidden plans',
+        'Cleaner, aligned planned payment lists, details and summary',
+        'Review and inbox notification card layout fixes',
+      ],
+      notes: const ['New widgets appear at the bottom of the dashboard'],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.17',
     platform: 'android',
     channel: 'stable',

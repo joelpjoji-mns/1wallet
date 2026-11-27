@@ -1,6 +1,7 @@
-- Unified interactive story tour with illuminated spotlight beacons
-- Interactive Calendar forecast with next month preview and day sheet inspection
-- Compact glass coach marks with inline live sample previews
-- Non-optional guided onboarding flow cleanly advances across all core tabs
-- Smooth bottom sheet presentation and day transaction breakdown in tour
-- Sample tour workflows are isolated and non-destructive
+- Payday countdown, Next card bill and Unusual spending home widgets
+- Compact calendar popup for custom date ranges
+- Glass-styled buttons across the app
+- Deleted accounts no longer reappear or get blocked by hidden plans
+- Cleaner, aligned planned payment lists, details and summary
+- Review and inbox notification card layout fixes
+- New widgets appear at the bottom of the dashboard

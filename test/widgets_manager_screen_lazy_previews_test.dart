@@ -44,7 +44,9 @@ void main() {
       ),
     );
     await tester.pump();
-    final summary = find.text('16 active on Home');
+    final summary = find.text(
+      '${HomeDashboardWidgetId.values.length} active on Home',
+    );
     final reset = find.widgetWithText(FilledButton, 'Reset order');
     expect(summary, findsOneWidget);
     expect(reset, findsOneWidget);

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>1Wallet - Screen Studio</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; color: #e8eaf0; background: #101116; }
+    body { margin: 0; }
+    button, input, select { font: inherit; }
+    button, select { cursor: pointer; }
+    button { color: inherit; background: #22242e; border: 1px solid #343744; border-radius: 8px; padding: 9px 13px; }
+    button:hover { border-color: #a5b4fc; background: #2c3042; }
+    button[aria-pressed="true"], .screen.selected { background: #33395b; border-color: #a5b4fc; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #b9c5ff; outline-offset: 3px; }
+    header { min-height: 70px; padding: 16px 22px; border-bottom: 1px solid #2b2d36; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+    .brand { font-weight: 700; font-size: 19px; letter-spacing: -.6px; }
+    .brand span { color: #a5b4fc; }
+    .badge { font-size: 11px; text-transform: uppercase; letter-spacing: 1.4px; padding: 5px 8px; border: 1px solid #44485a; border-radius: 5px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+    select, input { background: #1c1e27; color: #e8eaf0; border: 1px solid #343744; border-radius: 7px; padding: 8px; }
+    .layout { display: grid; grid-template-columns: 245px minmax(0, 1fr); min-height: calc(100dvh - 70px); }
+    aside { border-right: 1px solid #2b2d36; padding: 20px 14px; height: calc(100dvh - 70px); overflow: auto; position: sticky; top: 0; }
+    aside input { width: 100%; margin-bottom: 16px; }
+    .section-label { color: #9095a8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; margin: 22px 8px 8px; }
+    .screen { display: block; width: 100%; background: transparent; text-align: left; border-color: transparent; font-size: 12px; margin: 2px 0; padding: 8px; }
+    .screen small { float: right; color: #9095a8; font-size: 10px; padding-top: 2px; }
+    main { min-width: 0; background-image: radial-gradient(#343640 1px, transparent 1px); background-size: 20px 20px; }
+    .intro { padding: 26px 32px 14px; }
+    h1 { font-size: 24px; letter-spacing: -.7px; margin: 0 0 7px; }
+    .muted { color: #a1a6b7; font-size: 12px; line-height: 1.7; margin: 0; }
+    .flowbar { padding: 0 32px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .flowbar button { font-size: 11px; }
+    .flowbar .label { color: #9095a8; font-size: 11px; margin-right: 5px; }
+    #workspace { padding: 10px 28px 40px; }
+    .preview-layout { display: flex; gap: 36px; justify-content: center; align-items: flex-start; }
+    .phone { --bezel: 9px; width: calc(var(--phone-width) + var(--bezel) * 2); flex: none; border: var(--bezel) solid #06070b; border-radius: 42px; overflow: hidden; box-shadow: 0 25px 80px #0008, 0 0 0 1px #484b5a; background: #000; }
+    .statusbar { height: 28px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; color: #eee; font-size: 10px; background: #000; }
+    .phone iframe { width: 100%; height: var(--phone-height); display: block; border: 0; background: #000; }
+    .homebar { height: 20px; display: grid; place-items: center; background: #000; }
+    .homebar::after { content: ""; width: 110px; height: 4px; border-radius: 10px; background: #ddd; }
+    .inspector { width: 240px; padding-top: 18px; }
+    .inspector h2 { font-size: 17px; margin: 0 0 8px; }
+    .inspector code { display: block; overflow-wrap: anywhere; font-size: 11px; color: #b6c2ff; margin: 16px 0; }
+    .inspector .rule { border-top: 1px solid #343744; margin: 18px 0; }
+    .inspector button { margin: 6px 4px 6px 0; font-size: 12px; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 30px 24px; }
+    .artboard { min-width: 0; }
+    .artboard-title { font-size: 11px; color: #b0b5c6; padding: 8px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .artboard-title button { padding: 5px 8px; font-size: 10px; }
+    .thumbnail { height: 375px; position: relative; overflow: hidden; border: 1px solid #444856; border-radius: 16px; background: #000; }
+    .thumbnail iframe { width: 390px; height: 844px; border: 0; transform: scale(.44); transform-origin: top left; position: absolute; left: calc(50% - 86px); }
+    .thumbnail:hover { border-color: #b4c0ff; }
+    .wireframe iframe { filter: grayscale(1) contrast(.9); }
+    .gallery-heading { grid-column: 1 / -1; margin: 12px 0 -14px; color: #b6c2ff; font-size: 15px; }
+    .empty { padding: 25px; color: #a1a6b7; }
+    footer { padding: 12px 32px 20px; font-size: 11px; color: #9095a8; }
+    @media (max-width: 1050px) { .preview-layout { flex-direction: column; align-items: center; } .inspector { width: min(390px, 100%); } .intro, .flowbar { padding-left: 20px; padding-right: 20px; } }
+    @media (max-width: 700px) {
+      header { padding: 12px; gap: 10px; } .toolbar { margin-left: 0; width: 100%; } .badge { display: none; }
+      .layout { grid-template-columns: 1fr; } aside { position: static; height: auto; border-right: 0; border-bottom: 1px solid #2b2d36; padding: 10px 12px; }
+      aside input { margin: 0; } #screen-list { max-height: 130px; overflow: auto; margin-top: 8px; }
+      #workspace { padding: 10px 8px 30px; overflow-x: auto; } .phone { --bezel: 4px; border-radius: 26px; }
+      .preview-layout { justify-content: flex-start; width: max-content; margin: auto; }
+      .gallery { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); } h1 { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><span>1</span>Wallet <span style="font-weight:400;color:#9095a8">/ Screen Studio</span></div>
+    <span class="badge">Live Flutter screens</span>
+    <div class="toolbar">
+      <button id="preview-mode" aria-pressed="true">Phone preview</button>
+      <button id="gallery-mode" aria-pressed="false">All screens</button>
+      <select id="device" aria-label="Phone size">
+        <option value="390,844">Phone 390 x 844</option>
+        <option value="360,780">Phone 360 x 780</option>
+        <option value="320,568">Compact 320 x 568</option>
+      </select>
+      <select id="theme" aria-label="App theme"><option value="dark">AMOLED</option><option value="light">Light</option></select>
+      <select id="data-state" aria-label="Wallet state"><option value="sample">Sample wallet</option><option value="empty">Empty wallet</option></select>
+      <button id="wireframe" aria-pressed="false">Monochrome</button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside aria-label="Screen library">
+      <input id="search" type="search" placeholder="Find a screen..." aria-label="Find a screen">
+      <div id="screen-list"></div>
+    </aside>
+    <main>
+      <div class="intro">
+        <h1>Your app, screen by screen.</h1>
+        <p class="muted">Actual app UI, not a redraw. Explore every routed screen or tap through a working phone prototype.</p>
+      </div>
+      <nav class="flowbar" aria-label="Example workflows">
+        <span class="label">START A FLOW</span>
+        <button data-flow="setup">First-time setup</button>
+        <button data-flow="expense">Log an expense</button>
+        <button data-flow="transfer">Transfer money</button>
+        <button data-flow="plan">Plan a payment</button>
+        <button data-flow="review">Review capture</button>
+        <button data-flow="appearance">Personalize</button>
+      </nav>
+      <div id="workspace"></div>
+      <footer>Disposable demo only. Changes stay in this frame's memory and reset on reload. Native permissions, SMS, biometrics and Google services are not simulated. Monochrome is a visual filter, not a separate wireframe design.</footer>
+    </main>
+  </div>
+  <script type="module" src="./studio.js"></script>
+</body>
+</html>

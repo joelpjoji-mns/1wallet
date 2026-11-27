@@ -41,6 +41,65 @@ abstract final class AppThemeAccents {
 }
 
 abstract final class AppTheme {
+  /// Accent-tinted glass pill shared by every secondary button, matching
+  /// [AppActionButton] (e.g. the "Manage" action on the accounts widget).
+  static ButtonStyle accentGlassButtonStyle({
+    required Color accent,
+    required Brightness brightness,
+    required Color disabledColor,
+    TextStyle? textStyle,
+    bool prominent = false,
+  }) {
+    final dark = brightness == Brightness.dark;
+    // Primary actions use a stronger tint of the same glass so they still lead.
+    final tint = accent.withValues(
+      alpha: prominent ? (dark ? 0.30 : 0.20) : (dark ? 0.16 : 0.10),
+    );
+    final edge = accent.withValues(
+      alpha: prominent ? (dark ? 0.55 : 0.45) : (dark ? 0.25 : 0.20),
+    );
+    return ButtonStyle(
+      foregroundColor: WidgetStateProperty.resolveWith(
+        (states) =>
+            states.contains(WidgetState.disabled) ? disabledColor : accent,
+      ),
+      iconColor: WidgetStateProperty.resolveWith(
+        (states) =>
+            states.contains(WidgetState.disabled) ? disabledColor : accent,
+      ),
+      backgroundColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled)
+            ? tint.withValues(alpha: tint.a * 0.38)
+            : tint,
+      ),
+      overlayColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.pressed)
+            ? accent.withValues(alpha: 0.14)
+            : states.contains(WidgetState.hovered) ||
+                  states.contains(WidgetState.focused)
+            ? accent.withValues(alpha: 0.08)
+            : null,
+      ),
+      side: WidgetStateProperty.resolveWith(
+        (states) => BorderSide(
+          color: states.contains(WidgetState.disabled)
+              ? edge.withValues(alpha: edge.a * 0.38)
+              : edge,
+          width: 0.5,
+        ),
+      ),
+      elevation: const WidgetStatePropertyAll(0),
+      shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+      textStyle: textStyle == null
+          ? null
+          : WidgetStatePropertyAll(
+              textStyle.copyWith(fontWeight: FontWeight.w700),
+            ),
+      shape: const WidgetStatePropertyAll(StadiumBorder()),
+    );
+  }
+
   static Color adjustColorIntensity(
     Color color,
     double intensity, {
@@ -292,15 +351,20 @@ abstract final class AppTheme {
           : const Color(0xFFFFFFFF),
       surfaceContainerLow: dark ? effectiveSurfaceLow : const Color(0xFFF8FAFC),
       surfaceContainer: dark ? effectiveSurface : const Color(0xFFF1F5F9),
-      surfaceContainerHigh:
-          dark ? effectiveSurfaceHigh : const Color(0xFFE2E8F0),
-      surfaceContainerHighest:
-          dark ? effectiveSurfaceHighest : const Color(0xFFCBD5E1),
+      surfaceContainerHigh: dark
+          ? effectiveSurfaceHigh
+          : const Color(0xFFE2E8F0),
+      surfaceContainerHighest: dark
+          ? effectiveSurfaceHighest
+          : const Color(0xFFCBD5E1),
       onSurface: dark ? baseScheme.onSurface : const Color(0xFF0F172A),
-      onSurfaceVariant:
-          dark ? baseScheme.onSurfaceVariant : const Color(0xFF475569),
+      onSurfaceVariant: dark
+          ? baseScheme.onSurfaceVariant
+          : const Color(0xFF475569),
       outline: dark ? baseScheme.outline : const Color(0xFF94A3B8),
-      outlineVariant: dark ? baseScheme.outlineVariant : const Color(0xFFE2E8F0),
+      outlineVariant: dark
+          ? baseScheme.outlineVariant
+          : const Color(0xFFE2E8F0),
     );
 
     // `ThemeData.fontFamily` only applies to the *default* text theme; an
@@ -342,6 +406,13 @@ abstract final class AppTheme {
         ? BorderSide(color: customBorderColor, width: outlineThickness)
         : BorderSide.none;
 
+    final glassButtonStyle = accentGlassButtonStyle(
+      accent: scheme.primary,
+      brightness: brightness,
+      disabledColor: scheme.onSurface.withValues(alpha: 0.38),
+      textStyle: textTheme.labelLarge,
+    );
+
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -357,61 +428,17 @@ abstract final class AppTheme {
       textTheme: textTheme,
       iconTheme: IconThemeData(color: scheme.onSurface),
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          foregroundColor: scheme.onPrimary,
-          backgroundColor: scheme.primary,
-          disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
-          disabledBackgroundColor: scheme.onSurface.withValues(alpha: 0.12),
-          textStyle: textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-          ),
+        style: accentGlassButtonStyle(
+          accent: scheme.primary,
+          brightness: brightness,
+          disabledColor: scheme.onSurface.withValues(alpha: 0.38),
+          textStyle: textTheme.labelLarge,
+          prominent: true,
         ),
       ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          foregroundColor: scheme.primary,
-          backgroundColor: scheme.surfaceContainerHigh,
-          disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
-          disabledBackgroundColor: scheme.onSurface.withValues(alpha: 0.12),
-          textStyle: textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: scheme.primary,
-          disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
-          side: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.6),
-            width: 1.0,
-          ),
-          textStyle: textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-          ),
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: scheme.primary,
-          disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
-          textStyle: textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-          ),
-        ),
-      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(style: glassButtonStyle),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: glassButtonStyle),
+      textButtonTheme: TextButtonThemeData(style: glassButtonStyle),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           foregroundColor: scheme.onSurface,
@@ -607,7 +634,9 @@ abstract final class AppTheme {
             .merge(textTheme.bodyMedium)
             .copyWith(color: scheme.onInverseSurface),
         actionTextColor: scheme.inversePrimary,
-        disabledActionTextColor: scheme.onInverseSurface.withValues(alpha: 0.38),
+        disabledActionTextColor: scheme.onInverseSurface.withValues(
+          alpha: 0.38,
+        ),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {

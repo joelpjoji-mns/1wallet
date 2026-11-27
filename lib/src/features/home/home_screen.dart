@@ -371,5 +371,8 @@ String _homeWidgetLabel(HomeDashboardWidgetId id) {
     HomeDashboardWidgetId.cashBurnRunway => 'Cash Runway',
     HomeDashboardWidgetId.noSpendStreak => 'No-Spend Days',
     HomeDashboardWidgetId.weekendWeekdayRatio => 'Weekend vs Weekday',
+    HomeDashboardWidgetId.paydayCountdown => 'Payday',
+    HomeDashboardWidgetId.nextCardBill => 'Next card bill',
+    HomeDashboardWidgetId.categorySpikes => 'Unusual spending',
   };
 }

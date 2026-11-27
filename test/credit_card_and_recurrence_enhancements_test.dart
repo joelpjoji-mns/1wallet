@@ -214,6 +214,44 @@ void main() {
       final notifications = buildNotificationInbox(dismissedState, now: now);
       expect(notifications.any((n) => n.id == dismissedId), isFalse);
     });
+
+    test('scheduled alerts flag overdue items and carry their due date', () {
+      final now = DateTime(2026, 10, 10, 9);
+      const usd = Money(amountMinor: 2800, currency: 'USD');
+      TransactionRecord plan(String id, DateTime due) => TransactionRecord(
+        id: id,
+        type: 'expense',
+        accountId: account.id,
+        amount: usd,
+        baseAmount: usd,
+        status: 'scheduled',
+        source: 'recurring',
+        occurredAt: due,
+        notes: 'Electricity bill',
+      );
+      final state = baseState.copyWith(
+        transactions: [
+          plan('late', DateTime(2026, 10, 7)),
+          plan('soon', DateTime(2026, 10, 11)),
+        ],
+      );
+
+      final notifications = buildNotificationInbox(state, now: now);
+      final overdue = notifications.singleWhere(
+        (n) => n.id == 'scheduled_overdue_late',
+      );
+      final upcoming = notifications.singleWhere(
+        (n) => n.id == 'scheduled_soon_soon',
+      );
+
+      expect(overdue.isOverdue, isTrue);
+      expect(overdue.body, endsWith('was due 3 days ago.'));
+      expect(overdue.dueAt, DateTime(2026, 10, 7));
+      expect(upcoming.isOverdue, isFalse);
+      expect(upcoming.isDueSoon, isTrue);
+      expect(upcoming.body, endsWith('is due tomorrow.'));
+      expect(upcoming.dueAt, DateTime(2026, 10, 11));
+    });
   });
 
   group('Ledger Codec Account serialization', () {

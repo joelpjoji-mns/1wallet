@@ -41,6 +41,9 @@ const kRnDefaultHomeWidgetOrder = <String>[
   'cashBurnRunway',
   'noSpendStreak',
   'weekendWeekdayRatio',
+  'paydayCountdown',
+  'nextCardBill',
+  'categorySpikes',
 ];
 
 @immutable

@@ -36,6 +36,9 @@ This directory is the foundational domain layer of 1Wallet. It defines the core 
    - Device-capture ownership (native capture queue, spool polling, legacy capture assignment) uses `ownsDeviceWallet`, so offline mode captures like a signed-in account.
    - Secure account fields are encrypted per owner. Moving a wallet between owners must re-key them (`rekeyLedgerForOwner`).
    - An offline import is stamped `'local-user'` and never takes the backup's Google uid.
+6. **Soft-Deleted Accounts Are Permanent**:
+   - `deleteAccount` keeps accounts with history as `isDeleted: true, isArchived: true` and pauses their plans. Every write path (`upsertAccount`, imports, pickers, loan lists) must preserve `isDeleted` and never target or list deleted accounts.
+   - Deletion guards must use `visiblePlansLinkedToAccount`, never raw `scheduled`/`paused` records, so hidden templates cannot block deletion.
 
 ---
 

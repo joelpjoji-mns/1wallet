@@ -439,10 +439,16 @@ class MiniFlowRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    final stats = [
+      MiniFlowStat(label: 'NET', value: net, color: scheme.primary),
+      MiniFlowStat(label: 'INCOME', value: income, color: scheme.positive),
+      MiniFlowStat(label: 'EXPENSE', value: expense, color: scheme.error),
+    ];
+    Widget box(MiniFlowStat stat) => Container(
+      key: ValueKey('mini-flow-${stat.label.toLowerCase()}'),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.md,
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.sm,
       ),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
@@ -451,14 +457,28 @@ class MiniFlowRail extends StatelessWidget {
           color: scheme.outlineVariant.withValues(alpha: 0.55),
         ),
       ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        spacing: AppSpacing.sm,
-        runSpacing: AppSpacing.sm,
+      child: stat,
+    );
+    // Accessibility text sizes stack the boxes so amounts stay legible.
+    if (MediaQuery.textScalerOf(context).scale(14) > 20) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          MiniFlowStat(label: 'INCOME', value: income, color: scheme.positive),
-          MiniFlowStat(label: 'EXPENSE', value: expense, color: scheme.error),
-          MiniFlowStat(label: 'NET', value: net, color: scheme.primary),
+          for (final (index, stat) in stats.indexed) ...[
+            if (index > 0) const SizedBox(height: AppSpacing.xs),
+            box(stat),
+          ],
+        ],
+      );
+    }
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (index, stat) in stats.indexed) ...[
+            if (index > 0) const SizedBox(width: AppSpacing.xxs),
+            Expanded(child: box(stat)),
+          ],
         ],
       ),
     );
@@ -483,14 +503,18 @@ class MiniFlowStat extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.xxxs),

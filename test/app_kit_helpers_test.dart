@@ -636,13 +636,14 @@ void main() {
         find.widgetWithText(FilledButton, 'Delete'),
       );
       final scheme = AppTheme.light().colorScheme;
-      expect(
-        button.style?.backgroundColor?.resolve(<WidgetState>{}),
-        scheme.error,
+      final background = button.style?.backgroundColor?.resolve(
+        <WidgetState>{},
       );
+      expect(background?.withValues(alpha: 1), scheme.error);
+      expect(background!.a, lessThan(1));
       expect(
         button.style?.foregroundColor?.resolve(<WidgetState>{}),
-        scheme.onError,
+        scheme.error,
       );
     });
   });

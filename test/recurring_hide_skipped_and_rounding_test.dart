@@ -15,6 +15,7 @@ import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
 import 'package:one_wallet_flutter/src/routing/app_router.dart';
 import 'package:one_wallet_flutter/src/startup/startup_state.dart';
 import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart' show AppPanel;
 import 'package:one_wallet_flutter/src/widgets/privacy_text.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
@@ -219,6 +220,19 @@ void main() {
         matching: find.text(stat.value),
       );
       expect(tester.getRect(amount).height, greaterThanOrEqualTo(12 * scale));
+      if (scale == 1.0) {
+        final net = tester.getRect(find.byKey(const ValueKey('mini-flow-net')));
+        final income = tester.getRect(
+          find.byKey(const ValueKey('mini-flow-income')),
+        );
+        final expenseBox = tester.getRect(
+          find.byKey(const ValueKey('mini-flow-expense')),
+        );
+        expect(net.top, income.top);
+        expect(income.top, expenseBox.top);
+        expect(net.right, lessThan(income.left));
+        expect(income.right, lessThan(expenseBox.left));
+      }
     });
   }
 
@@ -282,14 +296,22 @@ void main() {
     expect(find.text('\$575.00'), findsOneWidget);
     expect(find.text('2 of 6 payments'), findsOneWidget);
     expect(find.byType(GlassProgressIndicator), findsOneWidget);
-    // Compact summary: the count sits beside the total and the panel hugs
-    // its content (only its 12dp padding around label → bar).
+    // Totals and payment information share one panel.
     expect(
       tester.getTopLeft(find.text('2 of 6 payments')).dx,
       greaterThan(tester.getTopRight(find.text('\$575.00')).dx),
     );
-    final panel = tester.getRect(
-      find.byKey(const ValueKey('recurring-payment-summary')),
+    final panelFinder = find.byKey(const ValueKey('recurring-payment-summary'));
+    final panel = tester.getRect(panelFinder);
+    for (final text in ['Spent so far', 'Next payment', 'Account']) {
+      expect(
+        find.descendant(of: panelFinder, matching: find.text(text)),
+        findsOneWidget,
+      );
+    }
+    expect(
+      find.descendant(of: panelFinder, matching: find.byType(AppPanel)),
+      findsNothing,
     );
     final label = tester.getRect(find.text('Spent so far'));
     final bar = tester.getRect(find.byType(GlassProgressIndicator));
@@ -299,16 +321,29 @@ void main() {
       closeTo(12, 1),
     );
     expect(label.top - panel.top, closeTo(12, 1));
-    expect(panel.bottom - bar.bottom, closeTo(12, 1));
+    expect(
+      panel.bottom - tester.getRect(find.text('Main Checking')).bottom,
+      closeTo(12, 1),
+    );
+    expect(bar.bottom, lessThan(tester.getRect(find.text('Next payment')).top));
     expect(
       tester.getBottomLeft(find.text('Spent so far')).dy,
       lessThan(tester.getTopLeft(find.text('Next payment')).dy),
     );
-    final headerAmount = find.byKey(const ValueKey('detail-header-amount'));
-    final meta = tester.getRect(find.textContaining('SCHEDULED ·'));
+    final header = find.byKey(const ValueKey('recurring-header-plan-rent'));
+    final headerAmount = find.descendant(
+      of: header,
+      matching: find.byKey(const ValueKey('recurring-header-amount')),
+    );
+    final title = tester.getRect(
+      find.descendant(
+        of: header,
+        matching: find.byKey(const ValueKey('recurring-header-title')),
+      ),
+    );
     final amountRect = tester.getRect(headerAmount);
-    // Line 2: amount sits between the title (line 1) and the status (line 3).
-    expect(amountRect.bottom, lessThanOrEqualTo(meta.top + 1));
+    expect(amountRect.top, closeTo(title.top, 1));
+    expect(amountRect.left, greaterThan(title.right));
     expect(tester.takeException(), isNull);
   });
 
@@ -374,11 +409,20 @@ void main() {
         expect(paragraph.didExceedMaxLines, isFalse);
         painter.dispose();
       }
+      final nextPaymentField = find
+          .ancestor(
+            of: find.text('Next payment'),
+            matching: find.byType(Column),
+          )
+          .first;
       expect(
         tester
             .getTopLeft(
-              find.text(
-                formatLedgerDate(plan.occurredAt, seed.preferences.locale),
+              find.descendant(
+                of: nextPaymentField,
+                matching: find.text(
+                  formatLedgerDate(plan.occurredAt, seed.preferences.locale),
+                ),
               ),
             )
             .dy,
@@ -459,91 +503,100 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('urgent planned payments keep names and amounts readable', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(360, 780);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    const name = 'Quarterly rent payment';
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    for (final (days, badge, scale) in [
-      (-1, 'OVERDUE', 1.0),
-      (0, 'TODAY', 2.0),
-      (2, '2D', 1.0),
-    ]) {
-      final seed = buildSeed(hideSkipped: false);
-      final plan = seed.transactions.first.copyWith(
-        name: name,
-        occurredAt: today.add(Duration(days: days)),
-      );
-      final state = seed.copyWith(transactions: [plan]);
-      final container = ProviderContainer(
-        overrides: authenticatedSampleOverrides(ledger: state),
-      );
-      await container.read(ledgerProvider.notifier).restoreLedgerState(state);
-      final router = container.read(appRouterProvider);
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp.router(
-            routerConfig: router,
-            theme: AppTheme.light(),
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(scale)),
-              child: child!,
+  testWidgets(
+    'urgent planned payments ellipsize titles and keep amounts readable',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      const name = 'Quarterly rent payment';
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      for (final (days, badge, scale) in [
+        (-1, 'OVERDUE', 1.0),
+        (0, 'TODAY', 2.0),
+        (2, '2D', 1.0),
+      ]) {
+        final seed = buildSeed(hideSkipped: false);
+        final plan = seed.transactions.first.copyWith(
+          name: name,
+          occurredAt: today.add(Duration(days: days)),
+        );
+        final state = seed.copyWith(transactions: [plan]);
+        final container = ProviderContainer(
+          overrides: authenticatedSampleOverrides(ledger: state),
+        );
+        await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+        final router = container.read(appRouterProvider);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp.router(
+              routerConfig: router,
+              theme: AppTheme.light(),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
             ),
           ),
-        ),
-      );
-      router.go('/recurring');
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text(name));
-
-      final card = find.ancestor(
-        of: find.text(name),
-        matching: find.byWidgetPredicate(
-          (widget) => widget.runtimeType.toString() == '_RecurringCompactCard',
-        ),
-      );
-      expect(
-        tester.getSize(find.text(name)).width,
-        greaterThan(scale == 1 ? 180 : 120),
-      );
-      expect(
-        find.descendant(of: card, matching: find.text(badge)),
-        findsOneWidget,
-      );
-      final amount = find.descendant(
-        of: card,
-        matching: find.byType(PrivacyText),
-      );
-      expect(amount, findsOneWidget);
-      final amountText = find.descendant(
-        of: amount,
-        matching: find.byType(Text),
-      );
-      expect(
-        tester.renderObject<RenderParagraph>(amountText).didExceedMaxLines,
-        isFalse,
-      );
-      if (scale == 1) {
-        final fitted = find
-            .ancestor(of: amount, matching: find.byType(FittedBox))
-            .first;
-        expect(
-          tester.getSize(fitted).width + 0.01,
-          greaterThanOrEqualTo(tester.getSize(amountText).width),
         );
+        router.go('/recurring');
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text(name));
+
+        final card = find.ancestor(
+          of: find.text(name),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget.runtimeType.toString() == '_RecurringCompactCard',
+          ),
+        );
+        final title = tester.widget<Text>(find.text(name));
+        expect(title.maxLines, 1);
+        expect(title.overflow, TextOverflow.ellipsis);
+        expect(
+          find.descendant(of: card, matching: find.text(badge)),
+          findsOneWidget,
+        );
+        final amount = find.descendant(
+          of: card,
+          matching: find.byType(PrivacyText),
+        );
+        expect(amount, findsOneWidget);
+        final amountColumn = find.descendant(
+          of: card,
+          matching: find.byKey(const ValueKey('recurring-header-amount')),
+        );
+        expect(
+          tester.getRect(amountColumn).top,
+          closeTo(tester.getRect(find.text(name)).top, 1),
+        );
+        final amountText = find.descendant(
+          of: amount,
+          matching: find.byType(Text),
+        );
+        expect(
+          tester.renderObject<RenderParagraph>(amountText).didExceedMaxLines,
+          isFalse,
+        );
+        if (scale == 1) {
+          final fitted = find
+              .ancestor(of: amount, matching: find.byType(FittedBox))
+              .first;
+          expect(
+            tester.getSize(fitted).width + 0.01,
+            greaterThanOrEqualTo(tester.getSize(amountText).width),
+          );
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        container.dispose();
       }
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox.shrink());
-      container.dispose();
-    }
-  });
+    },
+  );
 
   testWidgets(
     'entering more fractional digits than the currency supports rounds '

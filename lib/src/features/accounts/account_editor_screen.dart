@@ -913,27 +913,33 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
   }
 
   Future<void> _confirmDeleteAccount(LedgerState state, Account account) async {
-    // 1. Check if the account is currently tied to any active plans / scheduled transactions
-    final activePlans = state.transactions
-        .where(
-          (transaction) =>
-              (transaction.accountId == account.id ||
-                  transaction.counterAccountId == account.id) &&
-              (transaction.status == 'scheduled' ||
-                  transaction.status == 'paused'),
-        )
-        .toList();
+    // Only plans the user can see in Planned payments may block deletion;
+    // hidden templates (paid-off loan EMIs, plans on deleted accounts) are
+    // paused by deleteAccount instead.
+    final activePlans = visiblePlansLinkedToAccount(state, account.id);
 
     if (activePlans.isNotEmpty) {
       final planCount = activePlans.length;
+      final planNames = activePlans
+          .take(3)
+          .map((plan) => '• ${planDisplayName(state, plan)}')
+          .join('\n');
+      final more = planCount > 3 ? '\n• and ${planCount - 3} more' : '';
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Cannot delete account'),
           content: Text(
-            '“${account.name}” is currently linked to $planCount planned payment${planCount == 1 ? '' : 's'}.\n\nPlease edit or delete those planned payments first before deleting this account.',
+            '“${account.name}” is currently linked to $planCount planned payment${planCount == 1 ? '' : 's'}:\n$planNames$more\n\nPlease edit or delete those planned payments first before deleting this account.',
           ),
           actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                this.context.push('/recurring');
+              },
+              child: const Text('View plans'),
+            ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('OK'),

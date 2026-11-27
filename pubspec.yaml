@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.17+17
+version: 1.0.18+18
 
 environment:
   sdk: ^3.12.0
@@ -47,6 +47,7 @@ dependencies:
   intl: ^0.20.2
   path_provider: ^2.1.5
   shared_preferences: ^2.5.6
+  shared_preferences_platform_interface: ^2.4.2
   uuid: ^4.5.3
   google_mlkit_text_recognition: ^0.17.1
   image_picker: ^1.1.2
@@ -59,6 +60,7 @@ dependencies:
   local_auth: ^3.0.1
   encrypt: ^5.0.3
   flutter_secure_storage: ^10.0.0
+  flutter_secure_storage_platform_interface: ^2.1.1
   crypto: ^3.0.6
   pointycastle: ^3.9.1
   flutter_colorpicker: ^1.1.0
@@ -81,14 +83,6 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
-
-  # Used directly by test/theme_controller_persistence_test.dart to simulate
-  # a SharedPreferences write failure (it's already a transitive dependency
-  # via shared_preferences; declaring it directly avoids the
-  # depend_on_referenced_packages lint).
-  shared_preferences_platform_interface: ^2.4.2
-  # Used directly by SecureKeyStore tests to provide deterministic storage.
-  flutter_secure_storage_platform_interface: ^2.1.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

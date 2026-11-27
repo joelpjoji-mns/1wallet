@@ -294,6 +294,23 @@ void main() {
       expect(find.textContaining('Jun'), findsWidgets);
       // May transaction / header should not be present
       expect(find.textContaining('May'), findsNothing);
+
+      await tester.tap(find.byType(FilterPill).at(1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.date_range_rounded).last);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('date-range-popup')), findsOneWidget);
+      expect(find.byType(DateRangePickerDialog), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('date-range-day-2026-6-5')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('date-range-day-2026-6-12')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('date-range-apply')));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(transactionsDateFilterProvider),
+        'custom:2026-06-05..2026-06-12',
+      );
     });
   });
 }

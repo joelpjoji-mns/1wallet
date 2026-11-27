@@ -138,11 +138,13 @@ void main() {
           )
           .first;
       final planTitleText = tester.widget<Text>(planTitle);
-      expect(planTitleText.maxLines, 2);
+      expect(planTitleText.maxLines, 1);
+      expect(planTitleText.overflow, TextOverflow.ellipsis);
       final titleRect = tester.getRect(planTitle);
       final amountRect = tester.getRect(planAmount);
-      // Line 1 is the title; the amount sits on line 2 beneath it.
-      expect(amountRect.top, greaterThanOrEqualTo(titleRect.bottom - 0.5));
+      // The title stays on one line with the amount beside it on the right.
+      expect(amountRect.left, greaterThanOrEqualTo(titleRect.right - 0.5));
+      expect(amountRect.top, lessThan(titleRect.bottom));
       final accountName = find
           .descendant(
             of: find.byType(RecurringDetailView),

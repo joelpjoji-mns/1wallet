@@ -9,6 +9,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'home_screen.dart';
 import 'home_widgets_new.dart';
+import 'home_widgets_insights.dart';
 
 import '../../data/ledger_models.dart';
 import '../../data/ledger_providers.dart';
@@ -26,6 +27,7 @@ import 'home_widget_card.dart';
 import 'home_widget_models.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/date_range_popup.dart';
 
 final _homeScheduledTransactionsProvider =
     Provider.autoDispose<List<TransactionRecord>>((ref) {
@@ -102,6 +104,14 @@ Widget buildHomeDashboardWidget({
     HomeDashboardWidgetId.weekendWeekdayRatio => WeekendWeekdayRatioHomeWidget(
       state: state,
     ),
+    HomeDashboardWidgetId.paydayCountdown => PaydayCountdownHomeWidget(
+      state: state,
+    ),
+    HomeDashboardWidgetId.nextCardBill => NextCardBillHomeWidget(state: state),
+    HomeDashboardWidgetId.categorySpikes => CategorySpikesHomeWidget(
+      state: state,
+      onRecords: () => onTabSelected(1),
+    ),
   };
 }
 
@@ -131,7 +141,7 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
         value.startsWith('custom:')) {
       final initial =
           parseCustomDateRange(value) ?? parseCustomDateRange(_period);
-      final picked = await showDateRangePicker(
+      final picked = await showAppDateRangePicker(
         context: context,
         firstDate: DateTime(2000),
         lastDate: DateTime(2100),
@@ -1709,7 +1719,7 @@ class _BalanceTrendHomeWidgetState
             value.startsWith('custom:')) {
           final initial =
               parseCustomDateRange(value) ?? parseCustomDateRange(_period);
-          final picked = await showDateRangePicker(
+          final picked = await showAppDateRangePicker(
             context: context,
             firstDate: DateTime(2000),
             lastDate: DateTime(2100),

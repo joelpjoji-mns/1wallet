@@ -618,8 +618,6 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                     icon: const Icon(Icons.send_rounded, size: 18),
                     label: const Text('Send email'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: scheme.primary,
-                      foregroundColor: scheme.onPrimary,
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.lg,
                         vertical: 14,

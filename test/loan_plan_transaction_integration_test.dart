@@ -86,6 +86,53 @@ void main() {
   }
 
   group('Loan, Plan & Transaction Integration', () {
+    testWidgets('finished and paused EMI plans are not posted repayments', (
+      tester,
+    ) async {
+      final bank = makeBank();
+      final loan = makeLoan();
+      final plan = makeEmiPlan();
+      final state = emptyLedgerState().copyWith(
+        accounts: [bank, loan],
+        categories: [makeCategory()],
+        transactions: [
+          plan.copyWith(status: 'finished'),
+          plan.copyWith(id: 'paused-plan', status: 'paused'),
+          plan.copyWith(
+            id: 'payment-1',
+            status: 'cleared',
+            originalTransactionId: plan.id,
+          ),
+          plan.copyWith(
+            id: 'payment-2',
+            status: 'posted',
+            occurredAt: DateTime(2026, 7, 1),
+            originalTransactionId: plan.id,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ledgerProvider.overrideWith(
+              (ref) => LedgerController(
+                StaticLedgerRepository(state),
+                initialState: state,
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(child: LoanDetailView(loan: loan)),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('2 posted repayments'), findsOneWidget);
+      expect(find.textContaining('4 posted repayments'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
     test(
       'Loan EMI plan reduces loan liability and advances or finishes plan',
       () async {
@@ -338,12 +385,12 @@ void main() {
       'LoanDetailView renders Record repayment when no EMI is scheduled',
       (tester) async {
         final bank = makeBank();
-        final loan = Account(
+        const loan = Account(
           id: 'acc-loan-no-emi',
           name: 'Personal Loan',
           type: 'loan',
           currency: 'USD',
-          openingBalance: const Money(amountMinor: -50000, currency: 'USD'),
+          openingBalance: Money(amountMinor: -50000, currency: 'USD'),
         );
         final category = makeCategory();
 
@@ -363,7 +410,7 @@ void main() {
                 ),
               ),
             ],
-            child: MaterialApp(
+            child: const MaterialApp(
               home: Scaffold(
                 body: SingleChildScrollView(child: LoanDetailView(loan: loan)),
               ),

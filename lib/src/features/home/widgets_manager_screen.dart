@@ -10,6 +10,7 @@ import '../common/full_screen_picker.dart';
 import '../common/route_scaffold.dart';
 import 'home_widget_models.dart';
 import 'home_widgets.dart';
+import '../../widgets/date_range_popup.dart';
 
 class WidgetsManagerScreen extends ConsumerWidget {
   const WidgetsManagerScreen({super.key});
@@ -251,12 +252,13 @@ class _LiveWidgetPreview extends ConsumerWidget {
                   }
                 },
               ),
-              ActionChip(
-                visualDensity: VisualDensity.compact,
-                avatar: const Icon(Icons.calendar_month_rounded, size: 16),
-                label: Text(homeWidgetDateLabel(datePreset)),
-                onPressed: () => _chooseDatePreset(context, ref, datePreset),
-              ),
+              if (homeWidgetSupportsDateFilter(widgetId))
+                ActionChip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: const Icon(Icons.calendar_month_rounded, size: 16),
+                  label: Text(homeWidgetDateLabel(datePreset)),
+                  onPressed: () => _chooseDatePreset(context, ref, datePreset),
+                ),
             ],
           ),
         ),
@@ -329,7 +331,7 @@ class _LiveWidgetPreview extends ConsumerWidget {
         if (!context.mounted) return;
         final initial =
             parseCustomDateRange(next) ?? parseCustomDateRange(datePreset);
-        final picked = await showDateRangePicker(
+        final picked = await showAppDateRangePicker(
           context: context,
           firstDate: DateTime(2000),
           lastDate: DateTime(2100),

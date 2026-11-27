@@ -16,7 +16,8 @@ export function AccountsPage() {
   const [showArchived, setShowArchived] = useState(false);
 
   const balances = useMemo(() => accountBalanceMap(accounts, transactions), [accounts, transactions]);
-  const visible = accounts.filter((a) => showArchived || !a.isArchived);
+  // Soft-deleted accounts stay in the snapshot only for transaction history.
+  const visible = accounts.filter((a) => !a.isDeleted && (showArchived || !a.isArchived));
 
   const handleSubmit = (value: AccountFormValue) => {
     const openingBalance = {

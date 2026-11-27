@@ -6,6 +6,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../design/tokens.dart';
 import '../../widgets/app_kit.dart';
 import 'home_widget_models.dart';
+import '../../widgets/date_range_popup.dart';
 
 class HomeWidgetCard extends StatelessWidget {
   const HomeWidgetCard({
@@ -216,25 +217,22 @@ class HomeWidgetCard extends StatelessWidget {
         ),
     ];
 
-    final matchedOption = dateFilterOptions.cast<String?>().firstWhere(
-      (opt) {
-        if (opt == null) return false;
-        if (opt == filter) return true;
-        final o = opt.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
-        final f = filter.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
-        return o == f;
-      },
-      orElse: () => null,
-    );
+    final matchedOption = dateFilterOptions.cast<String?>().firstWhere((opt) {
+      if (opt == null) return false;
+      if (opt == filter) return true;
+      final o = opt.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+      final f = filter.toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
+      return o == f;
+    }, orElse: () => null);
 
     final resolvedValue = isCustom
         ? filter
         : (matchedOption ??
-            (dateFilterOptions.contains(filter)
-                ? filter
-                : (dateFilterOptions.isNotEmpty
-                      ? dateFilterOptions.first
-                      : filter)));
+              (dateFilterOptions.contains(filter)
+                  ? filter
+                  : (dateFilterOptions.isNotEmpty
+                        ? dateFilterOptions.first
+                        : filter)));
 
     return GlassDropdownPill<String>(
       value: resolvedValue,
@@ -242,7 +240,10 @@ class HomeWidgetCard extends StatelessWidget {
       semanticLabel: '$title date filter',
       onPrevious: onDateFilterChanged != null
           ? () {
-              final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+              final shifted =
+                  (resolvedValue == 'All time' ||
+                      resolvedValue == 'all' ||
+                      resolvedValue == 'allTime')
                   ? shiftDateFilter('This month', -1)
                   : shiftDateFilter(resolvedValue, -1);
               onDateFilterChanged!(shifted);
@@ -250,7 +251,10 @@ class HomeWidgetCard extends StatelessWidget {
           : null,
       onNext: onDateFilterChanged != null
           ? () {
-              final shifted = (resolvedValue == 'All time' || resolvedValue == 'all' || resolvedValue == 'allTime')
+              final shifted =
+                  (resolvedValue == 'All time' ||
+                      resolvedValue == 'all' ||
+                      resolvedValue == 'allTime')
                   ? 'This month'
                   : shiftDateFilter(resolvedValue, 1);
               onDateFilterChanged!(shifted);
@@ -262,7 +266,7 @@ class HomeWidgetCard extends StatelessWidget {
             selected.startsWith('custom:')) {
           final initial =
               parseCustomDateRange(selected) ?? parseCustomDateRange(filter);
-          final picked = await showDateRangePicker(
+          final picked = await showAppDateRangePicker(
             context: context,
             firstDate: DateTime(2000),
             lastDate: DateTime(2100),

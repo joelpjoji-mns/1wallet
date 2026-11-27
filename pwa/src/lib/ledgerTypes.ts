@@ -54,6 +54,8 @@ export interface Account extends Extra {
   includeInNetWorth: boolean;
   showOnHome: boolean;
   isArchived: boolean;
+  /** Set by the app when an account with history is deleted; round-tripped as an extra key. */
+  isDeleted?: boolean;
   sortOrder: number;
   creditLimit?: Money | null;
 }

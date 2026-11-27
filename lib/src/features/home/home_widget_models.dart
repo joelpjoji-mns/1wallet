@@ -20,7 +20,10 @@ enum HomeDashboardWidgetId {
   safeToSpend('safeToSpend'),
   cashBurnRunway('cashBurnRunway'),
   noSpendStreak('noSpendStreak'),
-  weekendWeekdayRatio('weekendWeekdayRatio');
+  weekendWeekdayRatio('weekendWeekdayRatio'),
+  paydayCountdown('paydayCountdown'),
+  nextCardBill('nextCardBill'),
+  categorySpikes('categorySpikes');
 
   const HomeDashboardWidgetId(this.storageKey);
 
@@ -44,7 +47,21 @@ const defaultHomeWidgetOrder = [
   HomeDashboardWidgetId.cashBurnRunway,
   HomeDashboardWidgetId.noSpendStreak,
   HomeDashboardWidgetId.weekendWeekdayRatio,
+  HomeDashboardWidgetId.paydayCountdown,
+  HomeDashboardWidgetId.nextCardBill,
+  HomeDashboardWidgetId.categorySpikes,
 ];
+
+/// Widgets that ignore the period filter, so no date chip is shown for them.
+const undatedHomeWidgets = {
+  HomeDashboardWidgetId.paydayCountdown,
+  HomeDashboardWidgetId.nextCardBill,
+  HomeDashboardWidgetId.categorySpikes,
+};
+
+/// Whether the widget honours a period filter (shown as a date chip).
+bool homeWidgetSupportsDateFilter(HomeDashboardWidgetId id) =>
+    !undatedHomeWidgets.contains(id);
 
 const standardHomeDateFilterOptions = [
   'Today',
@@ -308,7 +325,14 @@ List<String> restoreHomeWidgetStorageKey(List<String> order, String id) {
   final target = defaultHomeWidgetOrder.indexWhere(
     (item) => item.storageKey == id,
   );
-  if (target < 0) return [...current, id];
+  if (target < 0) {
+    // Unknown keys go after everything currently resolved on Home.
+    return [
+      for (final item in resolveHomeWidgetOrder(current))
+        if (item.storageKey != id) item.storageKey,
+      id,
+    ];
+  }
   for (var index = target - 1; index >= 0; index -= 1) {
     final previous = defaultHomeWidgetOrder[index].storageKey;
     final existingIndex = current.indexOf(previous);

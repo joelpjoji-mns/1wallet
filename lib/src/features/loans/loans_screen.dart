@@ -39,7 +39,9 @@ class LoansScreen extends ConsumerWidget {
     }
     final allLoans = state.accounts
         .where(
-          (account) => account.type == 'loan' || account.type == 'overdraft',
+          (account) =>
+              !account.isDeleted &&
+              (account.type == 'loan' || account.type == 'overdraft'),
         )
         .toList();
     final activeLoans = allLoans
@@ -3192,12 +3194,11 @@ List<TransactionRecord> _postedLoanRepayments(
   LedgerState state,
   String loanId,
 ) {
-  return state.transactions
+  return sortedTransactions(state, includeScheduled: false)
       .where(
         (transaction) =>
             (transaction.accountId == loanId ||
                 transaction.counterAccountId == loanId) &&
-            transaction.status != 'scheduled' &&
             (transaction.type == 'loan_repayment' ||
                 transaction.type == 'transfer' ||
                 (transaction.status == 'void' &&
@@ -3210,17 +3211,13 @@ List<TransactionRecord> _loanHistoryRepayments(
   LedgerState state,
   String loanId,
 ) {
-  final items = state.transactions
+  return sortedTransactions(state, includeScheduled: false, hideInterest: true)
       .where(
         (transaction) =>
             (transaction.accountId == loanId ||
-                transaction.counterAccountId == loanId) &&
-            transaction.status != 'scheduled' &&
-            !isHiddenInterest(state, transaction),
+            transaction.counterAccountId == loanId),
       )
       .toList();
-  items.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
-  return items;
 }
 
 String _loanCadenceLabel(AccountLoanDetails details) {

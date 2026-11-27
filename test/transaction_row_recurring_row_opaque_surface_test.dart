@@ -227,4 +227,201 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'planned list, detail and history keep amounts and dates beside titles',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final now = DateTime.now();
+      final rent = TransactionRecord(
+        id: 'plan-rent',
+        type: 'expense',
+        status: 'scheduled',
+        source: 'recurring',
+        accountId: 'acc-bank',
+        amount: const Money(amountMinor: 123456789, currency: 'USD'),
+        baseAmount: const Money(amountMinor: 123456789, currency: 'USD'),
+        occurredAt: now.add(const Duration(days: 4)),
+        recurrenceFrequency: 'monthly',
+        name: 'Apartment rent with a long descriptive title',
+      );
+      final bill = rent.copyWith(
+        id: 'plan-bill',
+        name: 'Electricity',
+        amount: const Money(amountMinor: 1234, currency: 'USD'),
+        baseAmount: const Money(amountMinor: 1234, currency: 'USD'),
+      );
+      final payment = bill.copyWith(
+        id: 'payment-rent',
+        name: 'Previous rent payment',
+        status: 'cleared',
+        originalTransactionId: rent.id,
+        occurredAt: now.subtract(const Duration(days: 30)),
+      );
+      final state = emptyLedgerState().copyWith(
+        accounts: [
+          const Account(
+            id: 'acc-bank',
+            name: 'Household expenses account',
+            type: 'bank',
+            currency: 'USD',
+            openingBalance: Money(amountMinor: 500000, currency: 'USD'),
+          ),
+        ],
+        transactions: [rent, bill, payment],
+      );
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: state),
+      );
+      addTearDown(container.dispose);
+      await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+
+      Rect expectSideBySideHeader(TransactionRecord record) {
+        final header = find.byKey(ValueKey('recurring-header-${record.id}'));
+        final titleWidget = tester.widget<Text>(
+          find.descendant(
+            of: header,
+            matching: find.byKey(const ValueKey('recurring-header-title')),
+          ),
+        );
+        expect(titleWidget.maxLines, 1);
+        expect(titleWidget.overflow, TextOverflow.ellipsis);
+        final title = tester.getRect(
+          find.descendant(of: header, matching: find.text(record.name!)),
+        );
+        final amount = tester.getRect(
+          find.descendant(
+            of: header,
+            matching: find.byKey(const ValueKey('recurring-header-amount')),
+          ),
+        );
+        final date = tester.getRect(
+          find.descendant(
+            of: header,
+            matching: find.byKey(const ValueKey('recurring-header-status')),
+          ),
+        );
+        expect(amount.top, closeTo(title.top, 0.1));
+        expect(amount.left, greaterThan(title.right));
+        expect(date.left, closeTo(amount.left, 0.1));
+        expect(date.right, closeTo(amount.right, 0.1));
+        expect(date.top, greaterThanOrEqualTo(amount.bottom));
+        return amount;
+      }
+
+      for (final width in [320.0, 390.0]) {
+        await tester.binding.setSurfaceSize(Size(width, 844));
+        for (final scale in [1.0, 2.0]) {
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          for (final detail in [false, true]) {
+            await tester.pumpWidget(
+              UncontrolledProviderScope(
+                container: container,
+                child: MaterialApp(
+                  theme: AppTheme.light(),
+                  home: RecurringScreen(recordId: detail ? rent.id : null),
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+
+            final first = expectSideBySideHeader(rent);
+            final second = expectSideBySideHeader(detail ? payment : bill);
+            expect(first.right, closeTo(second.right, 0.1));
+            expect(first.width, closeTo(second.width, 0.1));
+            if (detail) {
+              final schedule = find.byKey(const ValueKey('recurring-schedule'));
+              final label = tester.getRect(
+                find.descendant(of: schedule, matching: find.text('SCHEDULED')),
+              );
+              final value = tester.getRect(
+                find.descendant(of: schedule, matching: find.text('MONTHLY')),
+              );
+              final header = find.byKey(
+                const ValueKey('recurring-header-plan-rent'),
+              );
+              final due = tester.getRect(
+                find.descendant(
+                  of: header,
+                  matching: find.byKey(
+                    const ValueKey('recurring-header-status'),
+                  ),
+                ),
+              );
+              expect(label.top, closeTo(value.top, 0.1));
+              expect(value.top, greaterThanOrEqualTo(due.bottom));
+              expect(value.right, closeTo(first.right, 0.1));
+              expect(label.right, lessThan(value.left));
+            }
+            expect(tester.takeException(), isNull);
+          }
+        }
+      }
+    },
+  );
+
+  testWidgets(
+    'planned detail keeps posting and recurrence actions in two-column rows',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final now = DateTime.now();
+      final state = emptyLedgerState().copyWith(
+        accounts: [
+          const Account(
+            id: 'acc-bank',
+            name: 'HDFC Main',
+            type: 'bank',
+            currency: 'USD',
+            openingBalance: Money(amountMinor: 500000, currency: 'USD'),
+          ),
+        ],
+        transactions: [
+          TransactionRecord(
+            id: 'plan-rent',
+            type: 'expense',
+            status: 'scheduled',
+            source: 'recurring',
+            accountId: 'acc-bank',
+            amount: const Money(amountMinor: 32000, currency: 'USD'),
+            baseAmount: const Money(amountMinor: 32000, currency: 'USD'),
+            occurredAt: now.add(const Duration(days: 4)),
+            recurrenceFrequency: 'monthly',
+            name: 'Rent',
+          ),
+        ],
+      );
+      final container = ProviderContainer(
+        overrides: authenticatedSampleOverrides(ledger: state),
+      );
+      addTearDown(container.dispose);
+      await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const Scaffold(body: RecurringScreen(recordId: 'plan-rent')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Post now'), findsOneWidget);
+      expect(find.text('Postpone'), findsOneWidget);
+      expect(find.text('Skip next'), findsOneWidget);
+      expect(find.text('Pause'), findsOneWidget);
+      expect(
+        tester.getCenter(find.text('Post now')).dy,
+        closeTo(tester.getCenter(find.text('Postpone')).dy, 1),
+      );
+      expect(
+        tester.getCenter(find.text('Skip next')).dy,
+        closeTo(tester.getCenter(find.text('Pause')).dy, 1),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

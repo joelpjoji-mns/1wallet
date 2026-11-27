@@ -283,64 +283,55 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header: icon + merchant/date + amount ──────────────────
-          Row(
-            children: [
-              IconBubble(
-                icon: candidate.source == 'sms'
-                    ? Icons.sms_rounded
-                    : Icons.receipt_long_rounded,
-                color: isIncome ? scheme.positive : scheme.primary,
-                compact: true,
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _candidateDisplayName(
-                        state,
-                        candidate,
-                        matchedPlan: matchedPlan,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxxs),
-                    Text(
-                      DateFormat.MMMd(
-                        state.preferences.locale.replaceAll('_', '-'),
-                      ).add_jm().format(candidate.createdAt.toLocal()),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+          _ReviewCardHeader(
+            leading: IconBubble(
+              icon: candidate.source == 'sms'
+                  ? Icons.sms_rounded
+                  : Icons.receipt_long_rounded,
+              color: isIncome ? scheme.positive : scheme.primary,
+              compact: true,
+            ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _candidateDisplayName(
+                    state,
+                    candidate,
+                    matchedPlan: matchedPlan,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-              if (candidate.parsedAmount != null) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Flexible(
-                  child: PrivacyText(
+                const SizedBox(height: AppSpacing.xxxs),
+                Text(
+                  DateFormat.MMMd(
+                    state.preferences.locale.replaceAll('_', '-'),
+                  ).add_jm().format(candidate.createdAt.toLocal()),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            trailing: candidate.parsedAmount == null
+                ? null
+                : PrivacyText(
                     (isIncome ? '+' : '') +
                         formatMoney(
                           candidate.parsedAmount!,
                           state.preferences.locale,
                         ),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: isIncome ? scheme.positive : scheme.onSurface,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,
                     ),
                   ),
-                ),
-              ],
-            ],
           ),
 
           // ── Suggestion chips ────────────────────────────────────────
@@ -424,56 +415,64 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            AppActionGroup(
-              children: [
-                TextButton.icon(
-                  onPressed: () => _showBlockDialog(context, ref, candidate),
-                  icon: const Icon(Icons.block_rounded, size: 16),
-                  label: const Text('Block'),
-                  style: AppButtonStyles.destructiveText(
-                    context,
-                  ).merge(AppButtonStyles.compact(context)),
-                ),
-                if (matchedPlan != null)
-                  FilledButton.tonalIcon(
-                    onPressed: () async {
-                      final router = GoRouter.of(context);
-                      await router.push(
-                        '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
-                      );
-                    },
-                    icon: const Icon(Icons.event_repeat_rounded, size: 16),
-                    label: const Text('Pay Plan'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: scheme.tertiaryContainer,
-                      foregroundColor: scheme.onTertiaryContainer,
+            SizedBox(
+              key: const ValueKey('capture-candidate-actions'),
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _showBlockDialog(context, ref, candidate),
+                    icon: const Icon(Icons.block_rounded, size: 16),
+                    label: const Text('Block', softWrap: false),
+                    style: AppButtonStyles.destructiveText(
+                      context,
                     ).merge(AppButtonStyles.compact(context)),
                   ),
-                TextButton.icon(
-                  onPressed: () => _updateCandidateStatus(
-                    context,
-                    ref,
-                    candidate.id,
-                    'rejected',
+                  if (matchedPlan != null)
+                    FilledButton.tonalIcon(
+                      onPressed: () async {
+                        final router = GoRouter.of(context);
+                        await router.push(
+                          '/add?plannedId=${matchedPlan.id}&captureCandidateId=${candidate.id}',
+                        );
+                      },
+                      icon: const Icon(Icons.event_repeat_rounded, size: 16),
+                      label: const Text('Pay Plan', softWrap: false),
+                      style: AppButtonStyles.accentGlass(
+                        context,
+                        scheme.tertiary,
+                      ).merge(AppButtonStyles.compact(context)),
+                    ),
+                  TextButton.icon(
+                    onPressed: () => _updateCandidateStatus(
+                      context,
+                      ref,
+                      candidate.id,
+                      'rejected',
+                    ),
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                    label: const Text('Dismiss', softWrap: false),
+                    style: AppButtonStyles.destructiveText(
+                      context,
+                    ).merge(AppButtonStyles.compact(context)),
                   ),
-                  icon: const Icon(Icons.close_rounded, size: 16),
-                  label: const Text('Dismiss'),
-                  style: AppButtonStyles.destructiveText(
-                    context,
-                  ).merge(AppButtonStyles.compact(context)),
-                ),
-                FilledButton.icon(
-                  onPressed: () => _updateCandidateStatus(
-                    context,
-                    ref,
-                    candidate.id,
-                    'approved',
+                  FilledButton.icon(
+                    onPressed: () => _updateCandidateStatus(
+                      context,
+                      ref,
+                      candidate.id,
+                      'approved',
+                    ),
+                    icon: const Icon(Icons.check_rounded, size: 16),
+                    label: const Text('Confirm', softWrap: false),
+                    style: AppButtonStyles.compact(context),
                   ),
-                  icon: const Icon(Icons.check_rounded, size: 16),
-                  label: const Text('Confirm'),
-                  style: AppButtonStyles.compact(context),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ],
@@ -496,6 +495,9 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
     if (account != null) {
       final accountColor = account.color ?? scheme.primary;
       final dueStatus = creditCardDueStatus(state, account);
+      final tone = notification.isOverdue || notification.isDueSoon
+          ? scheme.error
+          : scheme.primary;
 
       return Dismissible(
         key: ValueKey(notification.id),
@@ -514,10 +516,7 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           color: notification.read
               ? null
               : Color.alphaBlend(
-                  (notification.isOverdue || notification.isDueSoon
-                          ? scheme.error
-                          : scheme.primary)
-                      .withValues(alpha: 0.12),
+                  tone.withValues(alpha: 0.12),
                   scheme.surfaceContainerLow,
                 ),
           padding: EdgeInsets.zero,
@@ -552,59 +551,24 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  account.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              if (notification.badgeLabel != null) ...[
-                                const SizedBox(width: AppSpacing.xs),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.xs,
-                                    vertical: AppSpacing.xxxs,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        (notification.isOverdue ||
-                                                    notification.isDueSoon
-                                                ? scheme.error
-                                                : scheme.primary)
-                                            .withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadii.xs,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    notification.badgeLabel!,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color:
-                                          notification.isOverdue ||
-                                              notification.isDueSoon
-                                          ? scheme.error
-                                          : scheme.primary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
+                          Text(
+                            account.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.xxxs),
                           Text(
                             [
                               if (account.institution?.isNotEmpty == true)
                                 account.institution!,
-                              if (dueStatus != null)
-                                'Due ${dueStatus.daysUntilDue >= 0 ? "in ${dueStatus.daysUntilDue}d" : "${-dueStatus.daysUntilDue}d ago"} (${dueStatus.dueDate.day}/${dueStatus.dueDate.month})',
+                              if (notification.dueAt != null)
+                                'Due ${_shortDate(state, notification.dueAt!)}',
                             ].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
@@ -612,29 +576,40 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                         ],
                       ),
                     ),
-                    if (notification.amount != null) ...[
+                    if (notification.badgeLabel != null) ...[
                       const SizedBox(width: AppSpacing.sm),
-                      Flexible(
-                        child: PrivacyText(
-                          formatMoney(
-                            convertMoneyForDisplay(state, notification.amount!),
-                            state.preferences.locale,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: notification.isOverdue
-                                ? scheme.error
-                                : scheme.onSurface,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
+                      _NotificationBadge(
+                        label: notification.badgeLabel!,
+                        color: tone,
                       ),
                     ],
                   ],
                 ),
               ),
+              if (notification.amount != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.xs,
+                    AppSpacing.lg,
+                    AppSpacing.xxs,
+                  ),
+                  child: PrivacyText(
+                    formatMoney(
+                      convertMoneyForDisplay(state, notification.amount!),
+                      state.preferences.locale,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: notification.isOverdue
+                          ? scheme.error
+                          : scheme.onSurface,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 child: Text(
@@ -650,50 +625,38 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 thickness: 1,
                 color: scheme.outlineVariant.withValues(alpha: 0.3),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.xs,
+              _ReviewCardActions(
+                secondary: TextButton.icon(
+                  onPressed: () => _dismiss(ref, notification.id),
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  label: const Text('Dismiss', softWrap: false),
+                  style: AppButtonStyles.compact(context),
                 ),
-                child: Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _dismiss(ref, notification.id),
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      label: const Text('Dismiss', softWrap: false),
-                      style: AppButtonStyles.compact(context),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        final cycle =
-                            notification.cycleKey ?? dueStatus?.cycleKey;
-                        await ref
-                            .read(ledgerProvider.notifier)
-                            .markCardBillPaid(account.id, cycle);
-                        await _dismiss(ref, notification.id);
-                        if (context.mounted) {
-                          showAppSnackBar(
-                            context,
-                            'Marked ${account.name} bill as paid',
-                            action: SnackBarAction(
-                              label: 'Undo',
-                              onPressed: () {
-                                ref
-                                    .read(ledgerProvider.notifier)
-                                    .markCardBillPaid(account.id, null);
-                              },
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.check_rounded, size: 16),
-                      label: const Text('Confirm Paid', softWrap: false),
-                      style: AppButtonStyles.compact(context),
-                    ),
-                  ],
+                primary: FilledButton.icon(
+                  onPressed: () async {
+                    final cycle = notification.cycleKey ?? dueStatus?.cycleKey;
+                    await ref
+                        .read(ledgerProvider.notifier)
+                        .markCardBillPaid(account.id, cycle);
+                    await _dismiss(ref, notification.id);
+                    if (context.mounted) {
+                      showAppSnackBar(
+                        context,
+                        'Marked ${account.name} bill as paid',
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () {
+                            ref
+                                .read(ledgerProvider.notifier)
+                                .markCardBillPaid(account.id, null);
+                          },
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check_rounded, size: 16),
+                  label: const Text('Confirm Paid', softWrap: false),
+                  style: AppButtonStyles.compact(context),
                 ),
               ),
             ],
@@ -702,9 +665,13 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
       );
     }
 
-    final icon = switch (notification.channel) {
-      AppNotificationChannel.scheduled => Icons.event_repeat_rounded,
-    };
+    final tone = notification.isOverdue ? scheme.error : scheme.primary;
+    final icon = notification.isOverdue
+        ? Icons.event_busy_rounded
+        : Icons.event_repeat_rounded;
+    final metaLabel = notification.dueAt != null
+        ? 'Due ${_shortDate(state, notification.dueAt!)}'
+        : _relativeDate(notification.createdAt);
 
     return Dismissible(
       key: ValueKey(notification.id),
@@ -726,123 +693,127 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         color: notification.read
             ? null
             : Color.alphaBlend(
-                scheme.primaryContainer.withValues(alpha: 0.25),
+                tone.withValues(alpha: 0.1),
                 scheme.surfaceContainerLow,
               ),
         padding: EdgeInsets.zero,
         onTap: () => _openNotification(context, ref, notification),
-        child: Column(
+        child: Stack(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: notification.read ? 0 : 4,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: scheme.primary,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(AppRadii.md),
-                      bottomLeft: Radius.circular(AppRadii.md),
-                    ),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      IconBubble(
+                        icon: icon,
+                        color: notification.read
+                            ? scheme.onSurfaceVariant
+                            : tone,
+                        compact: true,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              notification.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: notification.read
+                                    ? FontWeight.w600
+                                    : FontWeight.w800,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xxxs),
+                            Text(
+                              notification.body,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: notification.isOverdue
+                                    ? scheme.error
+                                    : scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 12,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: AppSpacing.xxs),
+                                Flexible(
+                                  child: Text(
+                                    metaLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!notification.read) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
+                          child: Icon(
+                            Icons.fiber_manual_record_rounded,
+                            size: 10,
+                            color: tone,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        IconBubble(
-                          icon: icon,
-                          color: notification.read
-                              ? scheme.onSurfaceVariant
-                              : scheme.primary,
-                          compact: true,
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                notification.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: notification.read
-                                      ? FontWeight.w600
-                                      : FontWeight.w800,
-                                  color: scheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.xxxs),
-                              Text(
-                                notification.body,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              Text(
-                                _relativeDate(notification.createdAt),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (!notification.read) ...[
-                          const SizedBox(width: AppSpacing.sm),
-                          Padding(
-                            padding: const EdgeInsets.only(top: AppSpacing.xs),
-                            child: Icon(
-                              Icons.fiber_manual_record_rounded,
-                              size: 10,
-                              color: scheme.primary,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+                _ReviewCardActions(
+                  secondary: TextButton.icon(
+                    onPressed: () => _dismiss(ref, notification.id),
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                    label: const Text('Dismiss', softWrap: false),
+                    style: AppButtonStyles.compact(context),
                   ),
+                  primary: notification.actionRoute == null
+                      ? null
+                      : TextButton.icon(
+                          onPressed: () =>
+                              _openNotification(context, ref, notification),
+                          icon: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 16,
+                          ),
+                          label: const Text('View', softWrap: false),
+                          style: AppButtonStyles.compact(context),
+                        ),
                 ),
               ],
             ),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: scheme.outlineVariant.withValues(alpha: 0.3),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xxs,
+            // Unread accent spans the full card height without shifting
+            // content, so read and unread cards stay aligned.
+            if (!notification.read)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(width: 4, color: tone),
               ),
-              child: Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _dismiss(ref, notification.id),
-                    icon: const Icon(Icons.close_rounded, size: 16),
-                    label: const Text('Dismiss'),
-                    style: AppButtonStyles.compact(context),
-                  ),
-                  if (notification.actionRoute != null)
-                    TextButton.icon(
-                      onPressed: () =>
-                          _openNotification(context, ref, notification),
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                      label: const Text('View'),
-                      style: AppButtonStyles.compact(context),
-                    ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -1243,54 +1214,45 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header: Transfer icon + title + amount ──────────────────
-          Row(
-            children: [
-              IconBubble(
-                icon: Icons.swap_horiz_rounded,
-                color: scheme.primary,
-                compact: true,
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Transfer detected',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxxs),
-                    Text(
-                      DateFormat.MMMd(
-                        state.preferences.locale.replaceAll('_', '-'),
-                      ).add_jm().format(pair.createdAt.toLocal()),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+          _ReviewCardHeader(
+            leading: IconBubble(
+              icon: Icons.swap_horiz_rounded,
+              color: scheme.primary,
+              compact: true,
+            ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Transfer detected',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-              if (amount != null) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Flexible(
-                  child: PrivacyText(
+                const SizedBox(height: AppSpacing.xxxs),
+                Text(
+                  DateFormat.MMMd(
+                    state.preferences.locale.replaceAll('_', '-'),
+                  ).add_jm().format(pair.createdAt.toLocal()),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            trailing: amount == null
+                ? null
+                : PrivacyText(
                     formatMoney(amount, state.preferences.locale),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: scheme.primary,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,
                     ),
                   ),
-                ),
-              ],
-            ],
           ),
 
           // ── Accounts route chips: From ➔ To ─────────────────────────
@@ -1305,24 +1267,10 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
                 icon: const Icon(Icons.call_made_rounded),
                 iconColor: scheme.error,
               ),
-              Icon(
-                Icons.arrow_forward_rounded,
-                size: 14,
-                color: scheme.onSurfaceVariant,
-              ),
               _ReviewQueueChip(
                 label: 'To: ${toAccount?.name ?? 'Account'}',
                 icon: const Icon(Icons.call_received_rounded),
                 iconColor: scheme.positive,
-              ),
-              _ReviewQueueChip(
-                label: 'Transfer',
-                icon: const Icon(Icons.swap_horiz_rounded),
-                iconColor: scheme.tertiary,
-                labelStyle: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.tertiary,
-                ),
               ),
             ],
           ),
@@ -1381,32 +1329,21 @@ class _ReviewQueueScreenState extends ConsumerState<ReviewQueueScreen>
           const SizedBox(height: AppSpacing.sm),
 
           // ── Actions ─────────────────────────────────────────────────
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: [
-              // Dismiss both
-              TextButton.icon(
-                onPressed: () => _dismissTransferPair(context, ref, pair),
-                icon: const Icon(Icons.close_rounded, size: 16),
-                label: const Text('Dismiss', softWrap: false),
-                style: AppButtonStyles.destructiveText(
-                  context,
-                ).merge(AppButtonStyles.compact(context)),
-              ),
-
-              // Confirm Transfer
-              FilledButton.icon(
-                onPressed: () => _confirmTransferPair(context, ref, pair),
-                icon: const Icon(Icons.check_rounded, size: 16),
-                label: const Text(
-                  'Confirm',
-                  semanticsLabel: 'Confirm transfer',
-                ),
-                style: AppButtonStyles.compact(context),
-              ),
-            ],
+          _ReviewCardActions(
+            secondary: TextButton.icon(
+              onPressed: () => _dismissTransferPair(context, ref, pair),
+              icon: const Icon(Icons.close_rounded, size: 16),
+              label: const Text('Dismiss', softWrap: false),
+              style: AppButtonStyles.destructiveText(
+                context,
+              ).merge(AppButtonStyles.compact(context)),
+            ),
+            primary: FilledButton.icon(
+              onPressed: () => _confirmTransferPair(context, ref, pair),
+              icon: const Icon(Icons.check_rounded, size: 16),
+              label: const Text('Confirm', semanticsLabel: 'Confirm transfer'),
+              style: AppButtonStyles.compact(context),
+            ),
           ),
         ],
       ),
@@ -1476,6 +1413,110 @@ String _relativeDate(DateTime date) {
   if (diff.inDays == 1) return 'yesterday';
   if (diff.inDays < 7) return '${diff.inDays}d ago';
   return '${localDate.year.toString().padLeft(4, '0')}-${localDate.month.toString().padLeft(2, '0')}-${localDate.day.toString().padLeft(2, '0')}';
+}
+
+String _shortDate(LedgerState state, DateTime date) {
+  return DateFormat.MMMEd(
+    state.preferences.locale.replaceAll('_', '-'),
+  ).format(date.toLocal());
+}
+
+/// Icon, title block and an amount that shrinks to fit instead of being
+/// truncated. The amount may use up to 55% of the row.
+class _ReviewCardHeader extends StatelessWidget {
+  const _ReviewCardHeader({
+    required this.leading,
+    required this.title,
+    this.trailing,
+  });
+
+  final Widget leading;
+  final Widget title;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: [
+          leading,
+          const SizedBox(width: AppSpacing.md),
+          Expanded(child: title),
+          if (trailing != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: constraints.maxWidth * 0.55,
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: trailing,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Secondary action at the start, primary action at the end; wraps on
+/// narrow screens or large text.
+class _ReviewCardActions extends StatelessWidget {
+  const _ReviewCardActions({required this.secondary, this.primary});
+
+  final Widget secondary;
+  final Widget? primary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [secondary, ?primary],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationBadge extends StatelessWidget {
+  const _NotificationBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xxxs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(AppRadii.xs),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
 }
 
 String _candidateDisplayName(

@@ -19,6 +19,7 @@ import '../common/full_screen_picker.dart';
 import '../home/home_screen.dart';
 import 'transactions_components.dart';
 import 'transaction_row.dart';
+import '../../widgets/date_range_popup.dart';
 
 final _filteredTransactionsProvider = Provider.autoDispose
     .family<List<TransactionRecord>, _TransactionFilterState>((ref, filter) {
@@ -1015,7 +1016,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       final currentFilter = ref.read(transactionsDateFilterProvider);
       final initial =
           parseCustomDateRange(value) ?? parseCustomDateRange(currentFilter);
-      final picked = await showDateRangePicker(
+      final picked = await showAppDateRangePicker(
         context: context,
         firstDate: DateTime(2000),
         lastDate: DateTime(2100),

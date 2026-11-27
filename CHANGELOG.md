@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.18] - 2026-11-27
+
+### Added
+- Payday countdown home widget: days until the next active salary plan (calendar-day counts, late salaries with a 7-day grace before rolling forward and flagging missed pay), pay-cycle progress, bills due before payday and what is left after them, with Record/View actions and an option to pin one of several salary plans.
+- Next card bill home widget: the soonest unpaid credit-card bill with due-in/overdue/paid status, a warning when it falls before payday, and other cards' upcoming bills.
+- Unusual spending home widget: categories whose month-to-date spend is well above or below their average for the same point in recent months, ignoring transfers and tiny categories and waiting for two months of history.
+- The new widgets appear at the bottom of the dashboard, including for existing layouts, and can be reordered or hidden from Manage widgets.
+- Browser Screen Studio with phone-sized previews and grouped live artboards of the actual Flutter screens, searchable routes, workflow shortcuts, appearance and empty-wallet controls, and disposable offline sample data.
+- Rich Screen Studio sample wallet with multi-year activity, multicurrency accounts, linked planned-payment history, active and paid-off loans, populated capture review, and all supported bill-notification scenarios.
+
+### Changed
+- Custom date ranges (History, home widgets, balance period and widget manager) now open a compact calendar popup instead of a full-screen picker. Tap a start and end day, switch months or jump to a year, then Apply; a single day selects a one-day range. Days between the start and end are highlighted as one continuous band, and Clear, Cancel and Apply are equal-width buttons.
+- Every app button (filled, outlined, text and elevated, including dialog actions such as Apply, Cancel and Post now) now uses the accent glass pill style of the home widget "Manage" action. Primary actions use a slightly stronger tint, and destructive actions use the same glass in the error colour.
+
+### Fixed
+- Loan repayment history and payment counts exclude paused and completed EMI plan templates instead of displaying them as additional posted repayments.
+- Review & Inbox notification cards: overdue planned payments are flagged and styled as overdue with "was due" wording, alerts show their actual due date instead of "just now", titles wrap to two lines, large amounts scale down instead of truncating, card-due alerts keep the full account name and amount, action buttons are spread across the card, the unread accent spans the full card height, and transfer cards drop the redundant chip and orphaned arrow.
+- Review capture and planned-payment actions now wrap to available phone width instead of isolating Confirm or Post now on a full-width row.
+- Planned-payment lists, details and payment history share consistent header sizing and alignment, keeping amounts and due dates beside titles rather than moving them onto separate full-width rows. Titles stay on one line and truncate with an ellipsis.
+- Planned details align the schedule status and cadence across the header and combine payment totals, next payment and accounts into one compact information panel.
+- The planned summary again shows Net, Income and Expense on a single row in three separate boxes instead of wrapping onto a second line; only accessibility text sizes stack them.
+- Deleted accounts no longer come back: editing a deleted loan from Past loans used to clear its deleted flag and resurface it under Accounts. Deleted loans are no longer listed, and saving an account always preserves deletion.
+- Deleting an account is no longer blocked by planned payments you cannot see (EMIs of paid-off or archived loans, or plans tied to deleted accounts). The "Cannot delete account" dialog now names the blocking plans and links to Planned payments.
+- Plans tied to deleted accounts are hidden from Planned payments, CSV imports never land in deleted accounts, and the web app hides deleted accounts instead of offering to unarchive them.
+
 ## [1.0.17] - 2026-11-26
 
 ### Added
