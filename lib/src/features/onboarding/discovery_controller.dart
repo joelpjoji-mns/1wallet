@@ -249,6 +249,12 @@ class DiscoveryController extends StateNotifier<DiscoveryProgress> {
   Future<void> _writes = Future.value();
   bool _syncingCloud = false;
   int _syncGeneration = 0;
+  DiscoveryCloudProgress? _lastSynced;
+  DateTime? _lastSyncedAt;
+
+  // Tour progress is local-first; the cloud copy only needs an occasional
+  // check, not a round-trip on every step, hint or app resume.
+  static const cloudRefreshInterval = Duration(minutes: 10);
 
   Future<void> _save(DiscoveryProgress progress, {bool sync = true}) {
     state = progress;
@@ -532,6 +538,14 @@ class DiscoveryController extends StateNotifier<DiscoveryProgress> {
   Future<void> refreshCloudCompletion() async {
     final store = completionStore;
     if (store == null || _syncingCloud) return;
+    final lastSynced = _lastSynced;
+    final lastSyncedAt = _lastSyncedAt;
+    if (lastSynced != null &&
+        lastSyncedAt != null &&
+        DateTime.now().difference(lastSyncedAt) < cloudRefreshInterval &&
+        lastSynced.covers(_cloudSnapshot(state))) {
+      return;
+    }
     _syncingCloud = true;
     var retry = false;
     try {
@@ -543,6 +557,8 @@ class DiscoveryController extends StateNotifier<DiscoveryProgress> {
           ? await store.readProgress()
           : await store.mergeProgress(_cloudSnapshot(progressAtStart));
       if (!mounted) return;
+      _lastSynced = remote ?? _cloudSnapshot(progressAtStart);
+      _lastSyncedAt = DateTime.now();
       if (remote != null &&
           generation == _syncGeneration &&
           identical(state, progressAtStart)) {
@@ -552,9 +568,10 @@ class DiscoveryController extends StateNotifier<DiscoveryProgress> {
         state = state.copyWith(isRestoring: false, clearSyncError: true);
       }
       retry = generation != _syncGeneration;
-    } catch (error, stack) {
+    } catch (error) {
+      // Offline or slow networks are expected; progress is already saved on
+      // this device and the next resume or tour change retries quietly.
       debugPrint('Could not sync guide progress: $error');
-      debugPrintStack(stackTrace: stack);
       if (mounted) {
         state = state.copyWith(
           isRestoring: false,

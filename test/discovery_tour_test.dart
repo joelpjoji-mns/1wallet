@@ -530,6 +530,29 @@ void main() {
     controller.dispose();
   });
 
+  test('unchanged progress does not hit the cloud on every resume', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final store = _FakeCompletionStore();
+    final controller = DiscoveryController(
+      prefs,
+      'cloud-user',
+      completionStore: store,
+    );
+    await Future<void>.delayed(Duration.zero);
+    await controller.prepareWelcome();
+    await controller.start();
+    await Future<void>.delayed(Duration.zero);
+    final writes = store.writes;
+    for (var i = 0; i < 3; i++) {
+      await controller.refreshCloudCompletion();
+    }
+    await controller.dismissHint('settings');
+    await controller.dismissHint('settings');
+    await Future<void>.delayed(Duration.zero);
+    expect(store.writes, writes + 1);
+    expect(store.progress?.introduced, {'settings'});
+    controller.dispose();
+  });
   testWidgets('spotlight follows a real target and leaves it tappable', (
     tester,
   ) async {
@@ -1035,41 +1058,45 @@ void main() {
     },
   );
 
-  testWidgets('tour welcome is non-optional and does not offer a dismiss action', (
-    tester,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    const user = AuthUser(id: 'non-optional-user', email: 'mandatory@test.com');
-    final container = ProviderContainer(
-      overrides: [
-        ...authenticatedSampleOverrides(prefs: prefs),
-        authRepositoryProvider.overrideWithValue(
-          FakeAuthRepository(currentUser: user),
+  testWidgets(
+    'tour welcome is non-optional and does not offer a dismiss action',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      const user = AuthUser(
+        id: 'non-optional-user',
+        email: 'mandatory@test.com',
+      );
+      final container = ProviderContainer(
+        overrides: [
+          ...authenticatedSampleOverrides(prefs: prefs),
+          authRepositoryProvider.overrideWithValue(
+            FakeAuthRepository(currentUser: user),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container
+          .read(discoveryControllerProvider(user.id).notifier)
+          .prepareWelcome();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const OneWalletApp(),
         ),
-      ],
-    );
-    addTearDown(container.dispose);
-    await container
-        .read(discoveryControllerProvider(user.id).notifier)
-        .prepareWelcome();
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const OneWalletApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Your wallet is ready'), findsOneWidget);
-    expect(find.text('Not now'), findsNothing);
-    expect(find.text('Interactive 1Wallet Story'), findsOneWidget);
-    await tester.tap(find.text('Show me'));
-    await tester.pumpAndSettle();
-    expect(
-      container.read(discoveryControllerProvider(user.id)).status,
-      DiscoveryStatus.active,
-    );
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Your wallet is ready'), findsOneWidget);
+      expect(find.text('Not now'), findsNothing);
+      expect(find.text('Interactive 1Wallet Story'), findsOneWidget);
+      await tester.tap(find.text('Show me'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(discoveryControllerProvider(user.id)).status,
+        DiscoveryStatus.active,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets(
     'tour displays compact sample cards and interactive calendar forecast',

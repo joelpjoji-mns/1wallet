@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.20] - 2026-11-27
+
+### Fixed
+- The "Tour progress is saved on this device. Cloud sync is unavailable." message no longer pops up repeatedly. Tour progress is saved on the device first and its background cloud sync is now silent: it skips the cloud when nothing has changed (instead of a server transaction on every tour step, hint and app resume) and allows 20 seconds instead of 5 for a reconnecting network.
+
 ## [1.0.19] - 2026-11-27
 
 ### Changed

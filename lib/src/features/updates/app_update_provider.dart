@@ -180,6 +180,28 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.20',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.20',
+    versionCode: 20,
+    runtimeVersion: '1.0.20',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-27T14:00:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [],
+      bugFixes: const [
+        'No more repeated "Tour progress ... Cloud sync is unavailable" messages',
+        'Tour progress syncs quietly in the background and waits for slow networks',
+      ],
+      notes: const ['Tour progress is always saved on your device first'],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.19',
     platform: 'android',
     channel: 'stable',

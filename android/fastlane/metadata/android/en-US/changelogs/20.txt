@@ -1,0 +1,3 @@
+- No more repeated "Tour progress ... Cloud sync is unavailable" messages
+- Tour progress syncs quietly in the background and waits for slow networks
+- Tour progress is always saved on your device first

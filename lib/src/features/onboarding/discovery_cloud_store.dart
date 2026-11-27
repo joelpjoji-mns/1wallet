@@ -38,6 +38,16 @@ class DiscoveryCloudProgress {
     );
   }
 
+  /// Whether merging [other] into this progress would change nothing.
+  bool covers(DiscoveryCloudProgress other) =>
+      (welcomeSeen || !other.welcomeSeen) &&
+      (started || !other.started) &&
+      (finished || !other.finished) &&
+      step >= other.step &&
+      completed.containsAll(other.completed) &&
+      skipped.containsAll(other.skipped.difference(completed)) &&
+      introduced.containsAll(other.introduced);
+
   factory DiscoveryCloudProgress.fromMap(Map<String, dynamic> data) {
     if (data['completed'] is! bool) {
       throw const FormatException('Invalid cloud discovery progress.');
@@ -104,6 +114,10 @@ final discoveryCompletionStoreProvider =
       );
     });
 
+// Transactions need the server; give cold starts and app resumes time to
+// reconnect instead of failing after a few seconds.
+const _cloudTimeout = Duration(seconds: 20);
+
 class _FirestoreDiscoveryCompletionStore implements DiscoveryCompletionStore {
   _FirestoreDiscoveryCompletionStore(
     this.firestore,
@@ -127,7 +141,7 @@ class _FirestoreDiscoveryCompletionStore implements DiscoveryCompletionStore {
     _checkOwner();
     final snapshot = await _document
         .get(const GetOptions(source: Source.server))
-        .timeout(const Duration(seconds: 5));
+        .timeout(_cloudTimeout);
     _checkOwner();
     final data = snapshot.data();
     return data == null ? null : DiscoveryCloudProgress.fromMap(data);
@@ -150,7 +164,7 @@ class _FirestoreDiscoveryCompletionStore implements DiscoveryCompletionStore {
           transaction.set(_document, merged.toMap());
           return merged;
         })
-        .timeout(const Duration(seconds: 5));
+        .timeout(_cloudTimeout);
     _checkOwner();
     return result;
   }

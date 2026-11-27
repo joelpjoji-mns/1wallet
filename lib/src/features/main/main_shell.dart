@@ -277,22 +277,11 @@ class _MainShellState extends ConsumerState<MainShell>
     if (_observedDiscoveryOwner == owner) return;
     _observedDiscoveryOwner = owner;
     _discoverySubscription?.close();
+    // Loads tour progress early so its cloud restore can run. Cloud sync
+    // failures stay silent: progress is always saved on the device first.
     _discoverySubscription = owner == null
         ? null
-        : ref.listenManual(discoveryControllerProvider(owner), (
-            previous,
-            next,
-          ) {
-            if (next.syncError != null &&
-                next.syncError != previous?.syncError) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (context.mounted &&
-                    ref.read(authControllerProvider).ownerId == owner) {
-                  showAppSnackBar(context, next.syncError!);
-                }
-              });
-            }
-          });
+        : ref.listenManual(discoveryControllerProvider(owner), (_, _) {});
   }
 
   void _runDiscovery(Future<void> operation) {
@@ -595,8 +584,9 @@ class _MainShellState extends ConsumerState<MainShell>
                               current.month + 1,
                             );
                             ref
-                                .read(calendarVisibleMonthProvider.notifier)
-                                .state = next;
+                                    .read(calendarVisibleMonthProvider.notifier)
+                                    .state =
+                                next;
                           },
                           selectedTab: selectedIndex,
                           hasAccounts: ref.watch(
