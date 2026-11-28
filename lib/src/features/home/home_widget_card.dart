@@ -137,11 +137,20 @@ class HomeWidgetCard extends StatelessWidget {
                 children: [
                   headerRow(includeActions: false),
                   const SizedBox(height: AppSpacing.xs),
-                  Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: headerActions,
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < headerActions.length; i++) ...[
+                            if (i > 0) const SizedBox(width: AppSpacing.xs),
+                            headerActions[i],
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               );
@@ -243,6 +252,7 @@ class HomeWidgetCard extends StatelessWidget {
                         : filter)));
 
     return GlassDropdownPill<String>(
+      scale: 0.75,
       value: resolvedValue,
       options: options,
       semanticLabel: '$title date filter',

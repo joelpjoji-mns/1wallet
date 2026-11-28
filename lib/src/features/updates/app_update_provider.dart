@@ -180,6 +180,33 @@ enum UpdateStatus { idle, checking, downloading, downloaded, installing, error }
 
 final List<AppUpdateRelease> kBuiltInReleaseHistory = [
   AppUpdateRelease(
+    id: '1.0.25',
+    platform: 'android',
+    channel: 'stable',
+    status: 'published',
+    versionName: '1.0.25',
+    versionCode: 25,
+    runtimeVersion: '1.0.25',
+    releaseType: 'full',
+    requirement: 'optional',
+    mandatory: false,
+    minimumSupportedVersionCode: 1,
+    publishedAt: '2026-11-28T10:15:00.000Z',
+    changelog: Changelog(
+      newFeatures: const [
+        'Account color controls match your selection; tap the icon to change color',
+      ],
+      bugFixes: const [
+        'Dashboard corner controls are 25% smaller and stay together on one line',
+        'Planned cards and details keep category and due date above the schedule',
+        'Planned account names use the accent color; day badges are removed',
+        'Floating snackbars are replaced by inline feedback with Undo',
+        'Update messages explain Google Play confirmation and installation',
+      ],
+      notes: const ['Google Play owns its consent and installation screens'],
+    ),
+  ),
+  AppUpdateRelease(
     id: '1.0.24',
     platform: 'android',
     channel: 'stable',

@@ -559,6 +559,13 @@ void main() {
         expect(title.overflow, TextOverflow.ellipsis);
         expect(
           find.descendant(of: card, matching: find.text(badge)),
+          findsNothing,
+        );
+        expect(
+          find.descendant(
+            of: card,
+            matching: find.byKey(ValueKey('recurring-urgency-${plan.id}')),
+          ),
           findsOneWidget,
         );
         final amount = find.descendant(

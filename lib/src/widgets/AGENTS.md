@@ -34,7 +34,7 @@ Contains shared visual widgets designed around 1Wallet's signature frosted glass
 | Button labels | Always one line: `AppButtonLabel(label:, icon:)` as the button child (drops the icon before the label could wrap); `AppButtonRow` for equal-width action rows that move buttons onto new rows instead of squeezing labels | Plain `Text` labels in tight rows, `FittedBox`-scaled labels, two-line labels |
 | Confirm dialog | `showAppConfirmDialog(...)` → `Future<bool>` (`AppConfirmDialog`: TextButton cancel + FilledButton confirm, error-filled when `destructive`) | Hand-built confirmation `AlertDialog`s; form dialogs stay `AlertDialog` with the same action order |
 | Sheets | `showAppSheet(...)`; draggable/full-height content in `AppSheetSurface` (handle via `AppSheetHandle`) | Raw `showModalBottomSheet`, copied drag-handle/DecoratedBox surfaces |
-| Feedback | `showAppSnackBar(context, msg)` / `messenger.showAppSnackBar(msg)` (floating, replaces the current one) | Inline `SnackBar(...)` |
+| Feedback | `showAppSnackBar(context, msg)` / `messenger.showAppSnackBar(msg)` (legacy name; inline MaterialBanner, replaces the current one, preserves Undo) | Floating `SnackBar(...)` or other overlay feedback |
 | Loading | `AppLoadingState(message:)` for an empty page/section; `AppInlineSpinner` in buttons/rows/headers | `Center(child: CircularProgressIndicator())`, hand-sized spinners |
 | Empty / error | `EmptyState(...)`; errors use `tone: MetricTone.danger` | Ad-hoc centred icon + text columns |
 | Amounts | `PrivacyText` + `formatMoney` / `NumberFormatter` (integer minor units) | Raw `Text` for money |

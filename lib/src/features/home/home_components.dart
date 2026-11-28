@@ -26,8 +26,8 @@ class HomeBalancePill extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final pill = Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+        horizontal: AppSpacing.sm * 0.75,
+        vertical: AppSpacing.xs * 0.75,
       ),
       decoration: BoxDecoration(
         color: scheme.primary.withAlphaFactor(isDark ? 0.28 : 0.16),
@@ -37,19 +37,20 @@ class HomeBalancePill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: scheme.primary),
-            const SizedBox(width: AppSpacing.xxs),
+            Icon(icon, size: 12, color: scheme.primary),
+            const SizedBox(width: AppSpacing.xxs * 0.75),
           ],
           Text(
             label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: scheme.primary,
-              fontWeight: FontWeight.w900,
-            ),
+            maxLines: 1,
+            softWrap: false,
+            style: Theme.of(context).textTheme.labelLarge
+                ?.apply(fontSizeFactor: 0.75, letterSpacingFactor: 0.75)
+                .copyWith(color: scheme.primary, fontWeight: FontWeight.w900),
           ),
           if (showChevron) ...[
-            const SizedBox(width: AppSpacing.xxxs),
-            Icon(Icons.expand_more_rounded, size: 16, color: scheme.primary),
+            const SizedBox(width: AppSpacing.xxxs * 0.75),
+            Icon(Icons.expand_more_rounded, size: 12, color: scheme.primary),
           ],
         ],
       ),

@@ -107,19 +107,39 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
         _selectedType ?? account?.type ?? widget.initialType ?? 'bank';
     final isCash = currentType == 'cash';
     final isCardType = currentType == 'card' || currentType == 'credit_card';
-    final accountIconPreview = Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
+    Future<void> chooseColor() async {
+      final color = await showAppColorPicker(
+        context: context,
+        initialColor: selectedColor,
+        title: 'Account color',
+      );
+      if (color != null && mounted) {
+        setState(() => _selectedColor = color);
+      }
+    }
+
+    final accountIconPreview = Semantics(
+      button: true,
+      label: 'Choose account color',
+      child: Material(
         color: selectedColor,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      child: Icon(
-        account == null
-            ? Icons.account_balance_wallet_outlined
-            : accountIcon(account),
-        color: selectedForeground,
-        size: 32,
+        child: InkWell(
+          key: const ValueKey('account-color-icon'),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
+          onTap: chooseColor,
+          child: SizedBox(
+            width: 64,
+            height: 64,
+            child: Icon(
+              account == null
+                  ? Icons.account_balance_wallet_outlined
+                  : accountIcon(account),
+              color: selectedForeground,
+              size: 32,
+            ),
+          ),
+        ),
       ),
     );
     final typeField = _DetailField(
@@ -383,16 +403,9 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
                       child: _DetailField(
                         icon: Icons.palette_outlined,
                         label: 'Choose color',
-                        onTap: () async {
-                          final color = await showAppColorPicker(
-                            context: context,
-                            initialColor: selectedColor,
-                            title: 'Account color',
-                          );
-                          if (color != null) {
-                            setState(() => _selectedColor = color);
-                          }
-                        },
+                        color: selectedColor,
+                        foreground: selectedForeground,
+                        onTap: chooseColor,
                       ),
                     ),
                   ],
@@ -1264,26 +1277,38 @@ class _AccountEditorScreenState extends ConsumerState<AccountEditorScreen> {
 }
 
 class _DetailField extends StatelessWidget {
-  const _DetailField({required this.icon, required this.label, this.onTap});
+  const _DetailField({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.color,
+    this.foreground,
+  });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
+  final Color? color;
+  final Color? foreground;
 
   @override
   Widget build(BuildContext context) {
     return AppPanel(
-      glass: true,
+      glass: color == null,
+      color: color,
       onTap: onTap,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Theme.of(context).colorScheme.primary),
+          Icon(
+            icon,
+            color: foreground ?? Theme.of(context).colorScheme.primary,
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: TextStyle(fontWeight: FontWeight.w800, color: foreground),
             ),
           ),
         ],

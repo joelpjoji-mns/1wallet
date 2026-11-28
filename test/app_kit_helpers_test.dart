@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'package:one_wallet_flutter/src/design/tokens.dart';
@@ -17,6 +18,44 @@ Widget _host(Widget child, {ThemeData? theme}) => MaterialApp(
 );
 
 void main() {
+  testWidgets('corner pill text icons and height are reduced by 25 percent', (
+    tester,
+  ) async {
+    Future<Size> pump(double scale) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: _host(
+            Center(
+              child: GlassDropdownPill<String>(
+                scale: scale,
+                value: 'INR',
+                options: const [GlassDropdownOption('INR', 'INR')],
+                onChanged: (_) {},
+                icon: Icons.currency_exchange_rounded,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester.getSize(find.byType(GlassDropdownPill<String>));
+    }
+
+    final original = await pump(1);
+    final originalText = tester.widget<Text>(find.text('INR')).style!.fontSize!;
+    final smaller = await pump(0.75);
+    expect(smaller.height, closeTo(original.height * 0.75, 0.01));
+    expect(smaller.width, closeTo(original.width * 0.75, 0.01));
+    expect(
+      tester.widget<Text>(find.text('INR')).style!.fontSize,
+      originalText * 0.75,
+    );
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.currency_exchange_rounded)).size,
+      12,
+    );
+  });
+
   testWidgets('premium rows give large text and trailing content room', (
     tester,
   ) async {
@@ -475,7 +514,39 @@ void main() {
   });
 
   group('showAppSnackBar', () {
-    testWidgets('shows a floating snackbar and replaces the visible one', (
+    testWidgets('inline feedback preserves Undo and dismisses after use', (
+      tester,
+    ) async {
+      late BuildContext captured;
+      var undone = false;
+      await tester.pumpWidget(
+        _host(
+          Builder(
+            builder: (context) {
+              captured = context;
+              return const Text('Wallet content');
+            },
+          ),
+        ),
+      );
+      showAppSnackBar(
+        captured,
+        'Bill marked paid',
+        action: SnackBarAction(label: 'Undo', onPressed: () => undone = true),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+      expect(
+        tester.getRect(find.text('Wallet content')).top,
+        greaterThan(tester.getRect(find.byType(MaterialBanner)).bottom - 1),
+      );
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+      expect(undone, isTrue);
+      expect(find.byType(MaterialBanner), findsNothing);
+    });
+
+    testWidgets('shows inline feedback and replaces the visible message', (
       tester,
     ) async {
       late BuildContext captured;
@@ -497,8 +568,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 750));
 
       expect(find.text('Second'), findsOneWidget);
-      final bar = tester.widget<SnackBar>(find.byType(SnackBar));
-      expect(bar.behavior, SnackBarBehavior.floating);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.byType(MaterialBanner), findsOneWidget);
+      expect(find.text('First'), findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Second'), findsNothing);
     });
 
     testWidgets('is a no-op without a ScaffoldMessenger', (tester) async {
@@ -552,7 +627,7 @@ void main() {
           ),
         );
         final foreground = richText.text.style!.color!;
-        final background = theme.snackBarTheme.backgroundColor!;
+        final background = theme.colorScheme.surfaceContainerLow;
         final foregroundLuminance = foreground.computeLuminance();
         final backgroundLuminance = background.computeLuminance();
         final lighter = foregroundLuminance > backgroundLuminance
@@ -565,7 +640,7 @@ void main() {
         expect(background.a, 1);
         expect(richText.text.style!.fontSize, greaterThanOrEqualTo(12));
         expect((lighter + 0.05) / (darker + 0.05), greaterThanOrEqualTo(4.5));
-        final actionColor = theme.snackBarTheme.actionTextColor!;
+        final actionColor = theme.colorScheme.primary;
         final actionLuminance = actionColor.computeLuminance();
         final actionLighter = actionLuminance > backgroundLuminance
             ? actionLuminance

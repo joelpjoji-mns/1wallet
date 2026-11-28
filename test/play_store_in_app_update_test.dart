@@ -56,6 +56,43 @@ void main() {
 
   _dailyCheckTests();
 
+  testWidgets(
+    'update offer explains the required Play screens without promises',
+    (tester) async {
+      final gateway = _FakeGateway(
+        info: _info(availability: UpdateAvailability.updateAvailable),
+      );
+      final service = PlayStoreUpdateService(gateway: gateway);
+      await service.checkForUpdate();
+      final container = ProviderContainer(
+        overrides: [playStoreUpdateProvider.overrideWith((ref) => service)],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const Scaffold(body: PlayUpdateSheet()),
+          ),
+        ),
+      );
+      expect(
+        find.text('Google Play asks you to confirm the update'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Google Play handles installation and the app restart'),
+        findsOneWidget,
+      );
+      expect(find.text('Downloads while you keep using the app'), findsNothing);
+      expect(
+        find.textContaining('its own update and installation screens'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('update sheet shows live download progress', (tester) async {
     final gateway = _FakeGateway(
       info: _info(

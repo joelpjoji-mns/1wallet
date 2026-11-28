@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -137,8 +138,9 @@ class GlassDropdownPill<T> extends ConsumerWidget {
     this.onPrevious,
     this.onNext,
     this.active = false,
+    this.scale = 1,
     super.key,
-  });
+  }) : assert(scale > 0 && scale <= 1);
 
   final T value;
   final List<GlassDropdownOption<T>> options;
@@ -147,6 +149,7 @@ class GlassDropdownPill<T> extends ConsumerWidget {
   final String? semanticLabel;
   final double maxLabelWidth;
   final bool compact;
+  final double scale;
   final String? displayLabel;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
@@ -301,14 +304,14 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                         onPrevious!();
                       },
                       child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: 6,
-                          top: AppSpacing.xs,
-                          bottom: AppSpacing.xs,
+                        padding: EdgeInsets.only(
+                          left: 6 * scale,
+                          top: AppSpacing.xs * scale,
+                          bottom: AppSpacing.xs * scale,
                         ),
                         child: Icon(
                           Icons.chevron_left_rounded,
-                          size: 16,
+                          size: 16 * scale,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),
@@ -319,17 +322,17 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                   onTap: toggleMenu,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                      onPrevious != null ? 0 : AppSpacing.sm,
-                      AppSpacing.xs,
-                      onNext != null ? 0 : AppSpacing.sm,
-                      AppSpacing.xs,
+                      onPrevious != null ? 0 : AppSpacing.sm * scale,
+                      AppSpacing.xs * scale,
+                      onNext != null ? 0 : AppSpacing.sm * scale,
+                      AppSpacing.xs * scale,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (icon != null) ...[
-                          Icon(icon, size: 16, color: scheme.primary),
-                          const SizedBox(width: AppSpacing.xxs),
+                          Icon(icon, size: 16 * scale, color: scheme.primary),
+                          SizedBox(width: AppSpacing.xxs * scale),
                         ],
                         ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: maxLabelWidth),
@@ -339,16 +342,20 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(
+                                ?.apply(
+                                  fontSizeFactor: scale,
+                                  letterSpacingFactor: scale,
+                                )
+                                .copyWith(
                                   color: pillForeground,
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.xxxs),
+                        SizedBox(width: AppSpacing.xxxs * scale),
                         Icon(
                           Icons.expand_more_rounded,
-                          size: 16,
+                          size: 16 * scale,
                           color: pillForeground,
                         ),
                       ],
@@ -367,14 +374,14 @@ class GlassDropdownPill<T> extends ConsumerWidget {
                         onNext!();
                       },
                       child: Padding(
-                        padding: const EdgeInsets.only(
-                          right: 6,
-                          top: AppSpacing.xs,
-                          bottom: AppSpacing.xs,
+                        padding: EdgeInsets.only(
+                          right: 6 * scale,
+                          top: AppSpacing.xs * scale,
+                          bottom: AppSpacing.xs * scale,
                         ),
                         child: Icon(
                           Icons.chevron_right_rounded,
-                          size: 16,
+                          size: 16 * scale,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),
@@ -2646,8 +2653,8 @@ class AppBackAction extends StatelessWidget {
 // styles and grouped settings rows. See lib/src/widgets/AGENTS.md.
 // ─────────────────────────────────────────────────────────────────────────
 
-/// Canonical transient feedback: floating, and replaces any visible snackbar
-/// so rapid actions never queue stale messages.
+/// Legacy-named feedback helper. Messages now occupy an inline banner, never
+/// a floating snackbar, so errors and undo actions do not cover wallet content.
 void showAppSnackBar(
   BuildContext context,
   String message, {
@@ -2667,17 +2674,79 @@ extension AppSnackBarMessenger on ScaffoldMessengerState {
     SnackBarAction? action,
     Duration? duration,
   }) {
-    this
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          action: action,
-          duration: duration ?? const Duration(milliseconds: 4000),
+    final theme = Theme.of(context);
+    void dismiss() => hideCurrentMaterialBanner();
+
+    removeCurrentMaterialBanner();
+    showMaterialBanner(
+      MaterialBanner(
+        backgroundColor: theme.colorScheme.surfaceContainerLow,
+        contentTextStyle: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurface,
         ),
-      );
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        content: _AppFeedbackMessage(
+          key: UniqueKey(),
+          message: message,
+          duration: duration ?? const Duration(seconds: 4),
+          onExpired: dismiss,
+        ),
+        actions: [
+          if (action != null)
+            TextButton(
+              onPressed: () {
+                dismiss();
+                action.onPressed();
+              },
+              child: AppButtonLabel(label: action.label),
+            ),
+          TextButton(
+            onPressed: dismiss,
+            child: AppButtonLabel(label: 'Dismiss'),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+class _AppFeedbackMessage extends StatefulWidget {
+  const _AppFeedbackMessage({
+    required this.message,
+    required this.duration,
+    required this.onExpired,
+    super.key,
+  });
+
+  final String message;
+  final Duration duration;
+  final VoidCallback onExpired;
+
+  @override
+  State<_AppFeedbackMessage> createState() => _AppFeedbackMessageState();
+}
+
+class _AppFeedbackMessageState extends State<_AppFeedbackMessage> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(widget.duration, widget.onExpired);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      Semantics(liveRegion: true, child: Text(widget.message));
 }
 
 /// Canonical button styles for destructive actions at each button level.

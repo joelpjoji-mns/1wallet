@@ -112,6 +112,7 @@ class PlayUpdateSheet extends ConsumerWidget {
     final notifier = ref.read(playStoreUpdateProvider.notifier);
     final current = ref.watch(packageInfoProvider).valueOrNull;
     final phase = _phaseFor(update.status);
+    final flexible = update.updateInfo?.flexibleUpdateAllowed ?? false;
     final positive = theme.brightness == Brightness.dark
         ? AppColors.positiveDark
         : AppColors.positiveLight;
@@ -131,7 +132,9 @@ class PlayUpdateSheet extends ConsumerWidget {
       _SheetPhase.downloading => (
         Icons.downloading_rounded,
         'Downloading update',
-        'Keep using 1Wallet while it downloads',
+        flexible
+            ? 'Google Play is downloading the update'
+            : 'Continue in the Google Play update screen',
       ),
       _SheetPhase.ready => (
         Icons.check_circle_outline_rounded,
@@ -141,7 +144,7 @@ class PlayUpdateSheet extends ConsumerWidget {
       _SheetPhase.installing => (
         Icons.restart_alt_rounded,
         'Installing…',
-        '1Wallet will reopen on the new version',
+        'Google Play installs the update and restarts 1Wallet',
       ),
       _SheetPhase.failed => (
         Icons.cloud_off_rounded,
@@ -170,15 +173,15 @@ class PlayUpdateSheet extends ConsumerWidget {
           children: [
             _Highlight(
               icon: Icons.bolt_rounded,
-              text: 'Downloads while you keep using the app',
+              text: 'Google Play asks you to confirm the update',
             ),
             _Highlight(
               icon: Icons.lock_outline_rounded,
-              text: 'Your wallet data is never touched',
+              text: 'Your wallet stays on this device',
             ),
             _Highlight(
               icon: Icons.restart_alt_rounded,
-              text: "One quick restart when it's ready",
+              text: 'Google Play handles installation and the app restart',
             ),
           ],
         );
@@ -237,7 +240,7 @@ class PlayUpdateSheet extends ConsumerWidget {
                 ),
               ],
             ),
-            if (phase == _SheetPhase.downloading) ...[
+            if (phase == _SheetPhase.downloading && flexible) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
                 "You can close this. 1Wallet restarts on its own when it's ready.",
@@ -381,7 +384,7 @@ class PlayUpdateSheet extends ConsumerWidget {
               if (phase == _SheetPhase.available) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Google Play asks you to confirm once.',
+                  'Google Play may show its own update and installation screens.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant,

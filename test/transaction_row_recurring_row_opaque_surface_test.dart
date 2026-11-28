@@ -242,6 +242,7 @@ void main() {
         source: 'recurring',
         accountId: 'acc-bank',
         amount: const Money(amountMinor: 123456789, currency: 'USD'),
+        categoryId: 'cat-nested',
         baseAmount: const Money(amountMinor: 123456789, currency: 'USD'),
         occurredAt: now.add(const Duration(days: 4)),
         recurrenceFrequency: 'monthly',
@@ -271,6 +272,21 @@ void main() {
           ),
         ],
         transactions: [rent, bill, payment],
+        categories: const [
+          Category(id: 'cat-house', name: 'Household', kind: 'expense'),
+          Category(
+            id: 'cat-bills',
+            name: 'Bills',
+            kind: 'expense',
+            parentId: 'cat-house',
+          ),
+          Category(
+            id: 'cat-nested',
+            name: 'Apartment maintenance and rent',
+            kind: 'expense',
+            parentId: 'cat-bills',
+          ),
+        ],
       );
       final container = ProviderContainer(
         overrides: authenticatedSampleOverrides(ledger: state),
@@ -307,6 +323,16 @@ void main() {
         expect(amount.left, greaterThan(title.right));
         expect(date.right, closeTo(amount.right, 0.1));
         expect(date.top, greaterThanOrEqualTo(amount.bottom));
+        final category = find.descendant(
+          of: header,
+          matching: find.byKey(const ValueKey('recurring-header-category')),
+        );
+        expect(
+          tester.widget<Text>(category).data,
+          'Household > Bills > Apartment maintenance and rent',
+        );
+        expect(tester.widget<Text>(category).maxLines, 1);
+        expect(tester.getRect(category).top, closeTo(date.top, 0.1));
         return amount;
       }
 
@@ -331,12 +357,7 @@ void main() {
             expect(first.right, closeTo(second.right, 0.1));
             if (detail) {
               final schedule = find.byKey(const ValueKey('recurring-schedule'));
-              final label = tester.getRect(
-                find.descendant(of: schedule, matching: find.text('SCHEDULED')),
-              );
-              final value = tester.getRect(
-                find.descendant(of: schedule, matching: find.text('MONTHLY')),
-              );
+              final value = tester.getRect(schedule);
               final header = find.byKey(
                 const ValueKey('recurring-header-plan-rent'),
               );
@@ -348,10 +369,8 @@ void main() {
                   ),
                 ),
               );
-              expect(label.top, closeTo(value.top, 0.1));
               expect(value.top, greaterThanOrEqualTo(due.bottom));
               expect(value.right, closeTo(first.right, 0.1));
-              expect(label.right, lessThan(value.left));
             }
             expect(tester.takeException(), isNull);
           }
@@ -483,9 +502,25 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final expense = find.text('Every 2 months on 17 from HDFC Main');
+    final expense = find.text(
+      'Every 2 months on 17 from HDFC Main',
+      findRichText: true,
+    );
     expect(expense, findsOneWidget);
-    expect(find.text('Every 2 months on 17 into HDFC Main'), findsOneWidget);
+    final scheduleText = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('recurring-card-schedule')).first,
+        matching: find.byType(Text),
+      ),
+    );
+    final accountSpan = (scheduleText.textSpan! as TextSpan).children!
+        .whereType<TextSpan>()
+        .firstWhere((span) => span.text == 'HDFC Main');
+    expect(accountSpan.style!.color, AppTheme.light().colorScheme.primary);
+    expect(
+      find.text('Every 2 months on 17 into HDFC Main', findRichText: true),
+      findsOneWidget,
+    );
     // Notes that only repeat the plan name are not shown twice.
     expect(find.byKey(const ValueKey('recurring-card-notes')), findsOneWidget);
 
@@ -563,7 +598,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // The urgency badge sits on the status line instead of adding a row.
+    // Urgency remains on the left rail, without an extra day badge.
     await pump(const RecurringScreen(mode: 'overview'));
     final header = find.byKey(
       const ValueKey('recurring-header-plan-groceries'),
@@ -580,11 +615,15 @@ void main() {
         matching: find.byKey(const ValueKey('recurring-header-status')),
       ),
     );
-    final badge = tester.getRect(find.text('2D'));
-    expect(badge.top, greaterThanOrEqualTo(amount.bottom));
-    expect(badge.top, greaterThanOrEqualTo(status.top));
-    expect(badge.bottom, lessThanOrEqualTo(status.bottom));
-    final schedule = tester.getRect(find.text('Every 1 week from Monzo Bank'));
+    expect(find.text('2D'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('recurring-urgency-plan-groceries')),
+      findsOneWidget,
+    );
+    expect(status.top, greaterThanOrEqualTo(amount.bottom));
+    final schedule = tester.getRect(
+      find.text('Every 1 week from Monzo Bank', findRichText: true),
+    );
     expect(schedule.top - status.bottom, lessThan(8));
 
     // A skipped history entry keeps its icon beside its label.

@@ -23,6 +23,8 @@ Maintains built-in release history and in-app Changelog, presents what's new cha
    - Changelog and release notes must be fully accessible in offline mode without requiring sign-in.
 4. **Mandatory Changelog Entry on Version Bump**:
    - Every version bump must prepend a new `AppUpdateRelease` entry to `kBuiltInReleaseHistory` with categorized release notes. CI/CD pipelines derive Play Store release notes directly from this structure.
+5. **Google Play UI Ownership**:
+   - Play owns update consent and installation/restart screens; the custom sheet must not claim it replaces those screens. Background downloads are only available with the flexible flow.
 
 ---
 

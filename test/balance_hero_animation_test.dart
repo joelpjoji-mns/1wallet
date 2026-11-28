@@ -9,11 +9,64 @@ import 'package:one_wallet_flutter/src/features/home/home_async_providers.dart';
 import 'package:one_wallet_flutter/src/features/home/home_screen.dart';
 import 'package:one_wallet_flutter/src/features/home/home_widgets.dart';
 import 'package:one_wallet_flutter/src/ledger/ledger_selectors.dart';
+import 'package:one_wallet_flutter/src/theme/app_theme.dart';
+import 'package:one_wallet_flutter/src/widgets/app_kit.dart';
 
 import 'fixtures/sample_ledger.dart';
 import 'test_harness.dart';
 
 void main() {
+  testWidgets('balance corner controls stay on one line at phone widths', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    tester.view.devicePixelRatio = 1;
+    final base = sampleLedgerState();
+    final state = base.copyWith(
+      preferences: base.preferences.copyWith(
+        homeWidgetFilters: {'balanceHero': 'custom:2026-01-01..2026-11-28'},
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: authenticatedSampleOverrides(ledger: state),
+    );
+    addTearDown(container.dispose);
+    await container.read(ledgerProvider.notifier).restoreLedgerState(state);
+    for (final width in [320.0, 360.0, 390.0, 800.0]) {
+      tester.view.physicalSize = Size(width, 844);
+      for (final theme in [AppTheme.light(), AppTheme.amoled()]) {
+        for (final scale in [1.0, 2.0]) {
+          await tester.pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: MaterialApp(
+                theme: theme,
+                home: MediaQuery(
+                  data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+                  child: Scaffold(
+                    body: BalanceHomeWidget(
+                      state: state,
+                      onTabSelected: (_) {},
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final pills = find.byType(GlassDropdownPill<String>);
+          expect(pills, findsNWidgets(2));
+          final date = tester.getRect(pills.first);
+          final currency = tester.getRect(pills.last);
+          expect(date.center.dy, closeTo(currency.center.dy, 0.1));
+          expect(date.right, lessThan(currency.left));
+          expect(currency.right, lessThanOrEqualTo(width));
+          expect(tester.takeException(), isNull);
+        }
+      }
+    }
+  });
+
   testWidgets('BalanceHomeWidget animates main net balance number on changes', (
     WidgetTester tester,
   ) async {

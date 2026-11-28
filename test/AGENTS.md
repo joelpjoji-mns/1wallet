@@ -68,7 +68,7 @@ reproduces it before fixing it. The full checklist and automation tips are in
 | :--- | :--- |
 | `ui_route_matrix_test.dart` | Renders inventoried populated, empty-wallet, and gated routes across selected phone, landscape, tablet, theme, and text-scale variants. Scrolls available vertical viewports and checks rendered button labels; also samples dialogs, a keyboard, and offline consent. It filters the known `semantics.parentDataDirty` harness error and is not exhaustive interaction coverage. |
 | `ui_design_system_guard_test.dart` | Lint-style guard: feature screens may not use raw radii, font sizes or families, hex/named colours, inline `SnackBar`s, raw bottom sheets, Material `Card`/`ListTile`/`Switch`/`AppBar`, or extra `Scaffold`s. |
-| `app_kit_helpers_test.dart` | Canonical helpers: `showAppSnackBar`, `showAppConfirmDialog`, `showAppSheet`, `AppLoadingState`, `EmptyState`, `AppGroupedSection`/`AppGroupedTile`. |
+| `app_kit_helpers_test.dart` | Canonical helpers: legacy-named `showAppSnackBar` now uses inline feedback with Undo, plus `showAppConfirmDialog`, `showAppSheet`, `AppLoadingState`, `EmptyState`, `AppGroupedSection`/`AppGroupedTile`. |
 | `prototype_runtime_test.dart` | Screen Studio safety and coverage: prototype keys stay in memory, sample references resolve, the demo inbox covers every alert type, and gated UI opens without changing production startup. |
 | `accessibility/a11y_guidelines_test.dart` | Automated WCAG contrast (`textContrastGuideline`) and tap target (`androidTapTargetGuideline`) audits. |
 

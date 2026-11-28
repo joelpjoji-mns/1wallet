@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.25] - 2026-11-28
+
+### Changed
+- Dashboard corner controls are 25% smaller (text, icons and padding). Date and currency controls stay together on one line, scaling down together when necessary.
+- Floating snackbars throughout the app are replaced by inline feedback that does not overlay content; error messages and Undo remain available.
+- Choose color uses the selected account color with a contrasting label. The account icon opens the same color picker.
+- Planned payment cards and details show title/amount, then category hierarchy/due date on one line, then schedule/account. Account names use the light accent color.
+- Removed redundant day-count urgency badges while retaining the red left-edge accent.
+
+### Fixed
+- Long categories no longer push scheduled-payment metadata out of order.
+- Update messages no longer promise an entirely custom/background update. Google Play's consent and installation screens remain required.
+
 ## [1.0.24] - 2026-11-27
 
 ### Changed

@@ -391,17 +391,9 @@ class _RecurringCompactCard extends StatelessWidget {
     final primaryTitle = hasName
         ? transaction.name!.trim()
         : defaultPrimaryTitle;
-    final categorySubtitle = hasName ? defaultPrimaryTitle : null;
-
-    final recurrence = _recurringCadenceLabel(
-      transaction.recurrenceFrequency,
-      transaction.recurrenceInterval,
-      transaction.recurrenceDaysOfMonth,
-    );
-    final accountPhrase = _recurringAccountPhrase(transaction, account);
-    final scheduleLine = accountPhrase == null
-        ? recurrence
-        : '$recurrence $accountPhrase';
+    final categorySubtitle = category == null
+        ? defaultPrimaryTitle
+        : categoryPath(state, category);
     final notesLine = _recurringCardNotes(transaction);
     final status = _recurringStatus(
       context,
@@ -426,13 +418,6 @@ class _RecurringCompactCard extends StatelessWidget {
         !historyMode && transaction.status == 'scheduled' && daysUntilDue < 3;
     final isOverdue = isUrgent && daysUntilDue < 0;
     final isDueToday = isUrgent && daysUntilDue == 0;
-    final urgencyLabel = isOverdue
-        ? 'OVERDUE'
-        : isDueToday
-        ? 'TODAY'
-        : isUrgent
-        ? '${daysUntilDue}D'
-        : null;
     final urgentBorderColor = isDueToday || isOverdue
         ? scheme.error
         : scheme.error.withAlphaFactor(0.7);
@@ -449,6 +434,7 @@ class _RecurringCompactCard extends StatelessWidget {
               top: 0,
               bottom: 0,
               width: 4,
+              key: ValueKey('recurring-urgency-${transaction.id}'),
               child: ColoredBox(color: urgentBorderColor),
             ),
           Padding(
@@ -476,43 +462,20 @@ class _RecurringCompactCard extends StatelessWidget {
                     style: amountStyle,
                   ),
                   status: status,
-                  badge: urgencyLabel == null
-                      ? null
-                      : Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs,
-                            vertical: AppSpacing.xxxs,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDueToday || isOverdue
-                                ? scheme.errorContainer
-                                : scheme.errorContainer.withAlphaFactor(0.6),
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                          ),
-                          child: Text(
-                            urgencyLabel,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: isDueToday || isOverdue
-                                      ? 0.8
-                                      : 0.5,
-                                  color: scheme.onErrorContainer,
-                                ),
-                          ),
-                        ),
                   details: [
-                    if (categorySubtitle != null) ...[
-                      Text(
+                    Tooltip(
+                      message: categorySubtitle,
+                      child: Text(
                         categorySubtitle,
-                        maxLines: 2,
+                        key: const ValueKey('recurring-header-category'),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
                 // Schedule and notes span the card width so the account
@@ -522,14 +485,10 @@ class _RecurringCompactCard extends StatelessWidget {
                     start: _RoundRecurringIcon.size + AppSpacing.sm,
                     top: AppSpacing.xxxs,
                   ),
-                  child: Text(
-                    scheduleLine,
+                  child: _RecurringScheduleLine(
                     key: const ValueKey('recurring-card-schedule'),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                    transaction: transaction,
+                    account: account,
                   ),
                 ),
                 if (notesLine != null)
@@ -630,7 +589,6 @@ class _RecurringCardHeader extends StatelessWidget {
     required this.details,
     required this.amount,
     required this.status,
-    this.badge,
     super.key,
   });
 
@@ -639,7 +597,6 @@ class _RecurringCardHeader extends StatelessWidget {
   final List<Widget> details;
   final Widget amount;
   final ({String label, IconData icon, Color color}) status;
-  final Widget? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -660,15 +617,8 @@ class _RecurringCardHeader extends StatelessWidget {
                 key: const ValueKey('recurring-header-status'),
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // The urgency badge already signals timing, so its status
-                  // icon would only crowd the details beside it.
-                  if (badge != null) ...[
-                    badge!,
-                    const SizedBox(width: AppSpacing.xxs),
-                  ] else ...[
-                    Icon(status.icon, color: status.color, size: 14),
-                    const SizedBox(width: AppSpacing.xxs),
-                  ],
+                  Icon(status.icon, color: status.color, size: 14),
+                  const SizedBox(width: AppSpacing.xxs),
                   // One line keeps every status (including "Skipped <date>")
                   // the same height; a long label shrinks instead of wrapping.
                   Flexible(
@@ -1516,7 +1466,6 @@ class RecurringDetailView extends ConsumerWidget {
     final account = accountById(state, transaction.accountId);
     final counter = accountById(state, transaction.counterAccountId);
     final category = categoryById(state, transaction.categoryId);
-    final frequency = transaction.recurrenceFrequency ?? 'once';
     final scheme = Theme.of(context).colorScheme;
     final loanDetails = account?.loanDetails ?? counter?.loanDetails;
     final stackDetails = MediaQuery.textScalerOf(context).scale(14) > 20;
@@ -1530,7 +1479,11 @@ class RecurringDetailView extends ConsumerWidget {
       isPaused: transaction.status == 'paused',
     );
 
-    Widget detailField(String label, String value) {
+    Widget detailField(
+      String label,
+      String value, {
+      bool accountValue = false,
+    }) {
       final labelText = Text(
         label,
         style: Theme.of(
@@ -1540,9 +1493,10 @@ class RecurringDetailView extends ConsumerWidget {
       final valueText = Text(
         value,
         textAlign: stackDetails ? TextAlign.start : TextAlign.end,
-        style: Theme.of(
-          context,
-        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: accountValue ? scheme.primary : null,
+        ),
       );
       return stackDetails
           ? Column(
@@ -1587,8 +1541,7 @@ class RecurringDetailView extends ConsumerWidget {
                     ),
                     title: transaction.name?.trim().isNotEmpty == true
                         ? transaction.name!.trim()
-                        : (category?.name ??
-                              transactionTypeLabel(transaction.type)),
+                        : _recurringPrimaryTitle(state, transaction),
                     amount: PrivacyText(
                       _recurringAmountLabel(state, transaction),
                       maxLines: 1,
@@ -1596,14 +1549,22 @@ class RecurringDetailView extends ConsumerWidget {
                     ),
                     status: status,
                     details: [
-                      Text(
-                        transaction.name?.trim().isNotEmpty == true &&
-                                category != null
-                            ? category.name
-                            : transactionTypeLabel(transaction.type),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
+                      Tooltip(
+                        message: category == null
+                            ? _recurringPrimaryTitle(state, transaction)
+                            : categoryPath(state, category),
+                        child: Text(
+                          category == null
+                              ? _recurringPrimaryTitle(state, transaction)
+                              : categoryPath(state, category),
+                          key: const ValueKey('recurring-header-category'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ),
                     ],
@@ -1613,35 +1574,10 @@ class RecurringDetailView extends ConsumerWidget {
                     padding: const EdgeInsets.only(
                       left: _RoundRecurringIcon.size + AppSpacing.sm,
                     ),
-                    child: Row(
+                    child: _RecurringScheduleLine(
                       key: const ValueKey('recurring-schedule'),
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 6,
-                          child: Text(
-                            transaction.status.toUpperCase(),
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          flex: 5,
-                          child: Text(
-                            '${transactionTypeLabel(frequency).toUpperCase()}${transaction.postMode == 'auto' ? ' · AUTO' : ''}',
-                            textAlign: TextAlign.end,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                      ],
+                      transaction: transaction,
+                      account: account,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -1675,6 +1611,7 @@ class RecurringDetailView extends ConsumerWidget {
                         detailField(
                           counter != null ? 'From account' : 'Account',
                           account?.name ?? 'Unknown',
+                          accountValue: true,
                         ),
                         if (counter != null) ...[
                           SizedBox(
@@ -1682,7 +1619,11 @@ class RecurringDetailView extends ConsumerWidget {
                                 ? AppSpacing.sm
                                 : AppSpacing.xxs,
                           ),
-                          detailField('To account', counter.name),
+                          detailField(
+                            'To account',
+                            counter.name,
+                            accountValue: true,
+                          ),
                         ],
                       ],
                     ),
@@ -2196,15 +2137,50 @@ String _recurringCadenceLabel(
   return 'Every $n $unit';
 }
 
-/// Account wording that follows the cadence on a plan card, for example
-/// "Every 2 months on 17 from HDFC Savings".
-String? _recurringAccountPhrase(
-  TransactionRecord transaction,
-  Account? account,
-) {
-  final name = account?.name.trim();
-  if (name == null || name.isEmpty) return null;
-  return transaction.type == 'income' ? 'into $name' : 'from $name';
+class _RecurringScheduleLine extends StatelessWidget {
+  const _RecurringScheduleLine({
+    required this.transaction,
+    required this.account,
+    super.key,
+  });
+
+  final TransactionRecord transaction;
+  final Account? account;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final name = account?.name.trim();
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: _recurringCadenceLabel(
+              transaction.recurrenceFrequency,
+              transaction.recurrenceInterval,
+              transaction.recurrenceDaysOfMonth,
+            ),
+          ),
+          if (name != null && name.isNotEmpty) ...[
+            TextSpan(text: transaction.type == 'income' ? ' into ' : ' from '),
+            TextSpan(
+              text: name,
+              style: TextStyle(
+                color: scheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          if (transaction.postMode == 'auto') const TextSpan(text: ' · AUTO'),
+        ],
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(
+        context,
+      ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+    );
+  }
 }
 
 final _skipsInFlight = <String>{};

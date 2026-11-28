@@ -237,108 +237,114 @@ class _BalanceHomeWidgetState extends ConsumerState<BalanceHomeWidget> {
               ],
             ),
             // Period and currency hug the right edge of the header.
-            trailing: Wrap(
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: [
-                () {
-                  final isCustom = _period.startsWith('custom:');
-                  final activeCustomLabel = isCustom
-                      ? homeWidgetDateLabel(_period)
-                      : 'Custom range';
-                  final options = [
-                    for (final opt in standardHomeDateFilterOptions)
-                      if (opt == 'Custom range' || opt == 'custom')
+            trailing: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerEnd,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  () {
+                    final isCustom = _period.startsWith('custom:');
+                    final activeCustomLabel = isCustom
+                        ? homeWidgetDateLabel(_period)
+                        : 'Custom range';
+                    final options = [
+                      for (final opt in standardHomeDateFilterOptions)
+                        if (opt == 'Custom range' || opt == 'custom')
+                          GlassDropdownOption(
+                            isCustom ? _period : 'custom',
+                            activeCustomLabel,
+                            icon: Icons.date_range_rounded,
+                          )
+                        else
+                          GlassDropdownOption(opt, homeWidgetDateLabel(opt)),
+                      if (isCustom &&
+                          !standardHomeDateFilterOptions.contains(
+                            'Custom range',
+                          ) &&
+                          !standardHomeDateFilterOptions.contains('custom'))
                         GlassDropdownOption(
-                          isCustom ? _period : 'custom',
+                          _period,
                           activeCustomLabel,
                           icon: Icons.date_range_rounded,
-                        )
-                      else
-                        GlassDropdownOption(opt, homeWidgetDateLabel(opt)),
-                    if (isCustom &&
-                        !standardHomeDateFilterOptions.contains(
-                          'Custom range',
-                        ) &&
-                        !standardHomeDateFilterOptions.contains('custom'))
-                      GlassDropdownOption(
-                        _period,
-                        activeCustomLabel,
-                        icon: Icons.date_range_rounded,
-                      ),
-                  ];
-                  final matchedOption = standardHomeDateFilterOptions
-                      .cast<String?>()
-                      .firstWhere((opt) {
-                        if (opt == null) return false;
-                        if (opt == _period) return true;
-                        final o = opt.toLowerCase().replaceAll(
-                          RegExp(r'[\s_]'),
-                          '',
-                        );
-                        final f = _period.toLowerCase().replaceAll(
-                          RegExp(r'[\s_]'),
-                          '',
-                        );
-                        return o == f;
-                      }, orElse: () => null);
-                  final resolvedValue = isCustom
-                      ? _period
-                      : (matchedOption ??
-                            (standardHomeDateFilterOptions.contains(_period)
-                                ? _period
-                                : 'This month'));
-                  return GlassDropdownPill<String>(
-                    value: resolvedValue,
-                    options: options,
-                    onChanged: _onPeriodChanged,
-                    onPrevious: () {
-                      final shifted =
-                          (resolvedValue == 'All time' ||
-                              resolvedValue == 'all' ||
-                              resolvedValue == 'allTime')
-                          ? shiftDateFilter('This month', -1)
-                          : shiftDateFilter(resolvedValue, -1);
-                      _onPeriodChanged(shifted);
-                    },
-                    onNext: () {
-                      final shifted =
-                          (resolvedValue == 'All time' ||
-                              resolvedValue == 'all' ||
-                              resolvedValue == 'allTime')
-                          ? 'This month'
-                          : shiftDateFilter(resolvedValue, 1);
-                      _onPeriodChanged(shifted);
-                    },
-                    icon: Icons.calendar_month_rounded,
-                    semanticLabel: 'Balance period',
-                  );
-                }(),
-                if (allCurrencies.length > 1 && forcedCurrency == null)
-                  GlassDropdownPill<String>(
-                    value: displayCurrency,
-                    options: [
-                      for (final currency in allCurrencies)
-                        GlassDropdownOption(currency, currency),
-                    ],
-                    onChanged: (val) {
-                      ref.read(ledgerProvider.notifier).setDisplayCurrency(val);
-                    },
-                    icon: Icons.currency_exchange_rounded,
-                    semanticLabel: 'Display currency',
-                    maxLabelWidth: 50,
-                  )
-                else
-                  HomeBalancePill(
-                    label: displayCurrency,
-                    icon: Icons.currency_exchange_rounded,
-                    onTap: forcedCurrency == null
-                        ? () => context.push('/currencies')
-                        : null,
-                  ),
-              ],
+                        ),
+                    ];
+                    final matchedOption = standardHomeDateFilterOptions
+                        .cast<String?>()
+                        .firstWhere((opt) {
+                          if (opt == null) return false;
+                          if (opt == _period) return true;
+                          final o = opt.toLowerCase().replaceAll(
+                            RegExp(r'[\s_]'),
+                            '',
+                          );
+                          final f = _period.toLowerCase().replaceAll(
+                            RegExp(r'[\s_]'),
+                            '',
+                          );
+                          return o == f;
+                        }, orElse: () => null);
+                    final resolvedValue = isCustom
+                        ? _period
+                        : (matchedOption ??
+                              (standardHomeDateFilterOptions.contains(_period)
+                                  ? _period
+                                  : 'This month'));
+                    return GlassDropdownPill<String>(
+                      scale: 0.75,
+                      value: resolvedValue,
+                      options: options,
+                      onChanged: _onPeriodChanged,
+                      onPrevious: () {
+                        final shifted =
+                            (resolvedValue == 'All time' ||
+                                resolvedValue == 'all' ||
+                                resolvedValue == 'allTime')
+                            ? shiftDateFilter('This month', -1)
+                            : shiftDateFilter(resolvedValue, -1);
+                        _onPeriodChanged(shifted);
+                      },
+                      onNext: () {
+                        final shifted =
+                            (resolvedValue == 'All time' ||
+                                resolvedValue == 'all' ||
+                                resolvedValue == 'allTime')
+                            ? 'This month'
+                            : shiftDateFilter(resolvedValue, 1);
+                        _onPeriodChanged(shifted);
+                      },
+                      icon: Icons.calendar_month_rounded,
+                      semanticLabel: 'Balance period',
+                    );
+                  }(),
+                  const SizedBox(width: AppSpacing.xs * 0.75),
+                  if (allCurrencies.length > 1 && forcedCurrency == null)
+                    GlassDropdownPill<String>(
+                      scale: 0.75,
+                      value: displayCurrency,
+                      options: [
+                        for (final currency in allCurrencies)
+                          GlassDropdownOption(currency, currency),
+                      ],
+                      onChanged: (val) {
+                        ref
+                            .read(ledgerProvider.notifier)
+                            .setDisplayCurrency(val);
+                      },
+                      icon: Icons.currency_exchange_rounded,
+                      semanticLabel: 'Display currency',
+                      maxLabelWidth: 50,
+                    )
+                  else
+                    HomeBalancePill(
+                      label: displayCurrency,
+                      icon: Icons.currency_exchange_rounded,
+                      onTap: forcedCurrency == null
+                          ? () => context.push('/currencies')
+                          : null,
+                    ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xxxs),
@@ -1692,6 +1698,7 @@ class _BalanceTrendHomeWidgetState
                   : 'This month'));
 
     return GlassDropdownPill<String>(
+      scale: 0.75,
       value: resolvedValue,
       options: options,
       onPrevious: () {
